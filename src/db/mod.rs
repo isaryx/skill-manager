@@ -227,4 +227,3 @@ mod tests {
         assert!(store.meta_file("engineering").is_file());
     }
 }
-

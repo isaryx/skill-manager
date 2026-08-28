@@ -494,7 +494,9 @@ fn switch_agent_same_target_only_updates_agent_name() {
         .success();
 
     let setup_path = home.path().join(".skm.toml");
-    let setup = fs::read_to_string(&setup_path).unwrap().replace("generic", "codex");
+    let setup = fs::read_to_string(&setup_path)
+        .unwrap()
+        .replace("generic", "codex");
     fs::write(&setup_path, setup).unwrap();
 
     let link = home.path().join(".agents/skills/docx");

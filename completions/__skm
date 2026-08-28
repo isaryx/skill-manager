@@ -1,0 +1,825 @@
+#compdef _skm
+
+autoload -U is-at-least
+
+__skm() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :__skm_commands" \
+"*::: :->skm" \
+&& ret=0
+    case $state in
+    (skm)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:_skm-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+'--agent=[Target agent for this project]:AGENT:(claude-code cursor generic codex gemini-cli copilot-cli)' \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'--force[Overwrite an existing \`.skm.toml\`]' \
+'--accept-existing-skills[Proceed when the agent skills directory already has entries (non-interactive)]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(import)
+_arguments "${_arguments_options[@]}" : \
+'--as=[Name to use in the library]:AS_NAME:_default' \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'(--move)--copy[Copy the skill into the library (keeps the original)]' \
+'(--copy)--move[Move the skill into the library (removes the original)]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':dir -- Path to the skill directory:_files' \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+'--as=[Name to use in the library]:AS_NAME:_default' \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'(--move)--copy[Copy the skill into the library (keeps the original)]' \
+'(--copy)--move[Move the skill into the library (removes the original)]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':dir -- Path to the skill directory:_files' \
+&& ret=0
+;;
+(profile)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_skm__subcmd__profile_commands" \
+"*::: :->profile" \
+&& ret=0
+
+    case $state in
+    (profile)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-profile-command-$line[1]:"
+        case $line[1] in
+            (setup)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Profile name:_default' \
+&& ret=0
+;;
+(ls)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use user-level config when checking which profile is active]' \
+'--user[Use user-level config when checking which profile is active]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Profile name:_default' \
+&& ret=0
+;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Profile name:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_skm__subcmd__profile__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-profile-help-command-$line[1]:"
+        case $line[1] in
+            (setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(ls)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(skill)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_skm__subcmd__skill_commands" \
+"*::: :->skill" \
+&& ret=0
+
+    case $state in
+    (skill)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-skill-command-$line[1]:"
+        case $line[1] in
+            (ls)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'--force[Remove without confirmation (required when stdin is not a TTY)]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':id -- Store skill ID to remove:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_skm__subcmd__skill__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-skill-help-command-$line[1]:"
+        case $line[1] in
+            (ls)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(use-profile)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':profile -- Profile name:_default' \
+&& ret=0
+;;
+(switch-agent)
+_arguments "${_arguments_options[@]}" : \
+'--agent=[Agent to switch to]:AGENT:(claude-code cursor generic codex gemini-cli copilot-cli)' \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(ls)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'(-s --skill)-p[List profiles only (same as \`skm profile ls\`)]' \
+'(-s --skill)--profile[List profiles only (same as \`skm profile ls\`)]' \
+'(-p --profile)-s[List skills only (same as \`skm skill ls\`)]' \
+'(-p --profile)--skill[List skills only (same as \`skm skill ls\`)]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(scan)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_skm__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(import)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(profile)
+_arguments "${_arguments_options[@]}" : \
+":: :_skm__subcmd__help__subcmd__profile_commands" \
+"*::: :->profile" \
+&& ret=0
+
+    case $state in
+    (profile)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-help-profile-command-$line[1]:"
+        case $line[1] in
+            (setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(ls)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(skill)
+_arguments "${_arguments_options[@]}" : \
+":: :_skm__subcmd__help__subcmd__skill_commands" \
+"*::: :->skill" \
+&& ret=0
+
+    case $state in
+    (skill)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-help-skill-command-$line[1]:"
+        case $line[1] in
+            (ls)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(use-profile)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(switch-agent)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(ls)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(scan)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[__skm_commands] )) ||
+__skm_commands() {
+    local commands; commands=(
+'init:Set up the skill store and project config (\`.skm.toml\`)' \
+'import:Import a skill directory into the library' \
+'add:Import a skill directory into the library' \
+'profile:Create and manage profiles' \
+'skill:Manage skills in the library' \
+'use-profile:Activate a profile and sync skill links' \
+'switch-agent:Change the target agent in your config' \
+'sync:Refresh skill links without changing the active profile' \
+'status:Show the target agent, active profile, linked skills, and placement conflicts' \
+'ls:List skills and profiles in the store' \
+'scan:Refresh the on-disk skill index' \
+'doctor:Read-only health report for the store, profiles, and skill links' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands '_skm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__doctor_commands] )) ||
+_skm__subcmd__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm doctor commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help_commands] )) ||
+_skm__subcmd__help_commands() {
+    local commands; commands=(
+'init:Set up the skill store and project config (\`.skm.toml\`)' \
+'import:Import a skill directory into the library' \
+'profile:Create and manage profiles' \
+'skill:Manage skills in the library' \
+'use-profile:Activate a profile and sync skill links' \
+'switch-agent:Change the target agent in your config' \
+'sync:Refresh skill links without changing the active profile' \
+'status:Show the target agent, active profile, linked skills, and placement conflicts' \
+'ls:List skills and profiles in the store' \
+'scan:Refresh the on-disk skill index' \
+'doctor:Read-only health report for the store, profiles, and skill links' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'skm help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__doctor_commands] )) ||
+_skm__subcmd__help__subcmd__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help doctor commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__help_commands] )) ||
+_skm__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__import_commands] )) ||
+_skm__subcmd__help__subcmd__import_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help import commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__init_commands] )) ||
+_skm__subcmd__help__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help init commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__ls_commands] )) ||
+_skm__subcmd__help__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__profile_commands] )) ||
+_skm__subcmd__help__subcmd__profile_commands() {
+    local commands; commands=(
+'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
+'ls:List profile names' \
+'show:Show skills in a profile' \
+'rm:Remove a profile' \
+    )
+    _describe -t commands 'skm help profile commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__profile__subcmd__ls_commands] )) ||
+_skm__subcmd__help__subcmd__profile__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help profile ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__profile__subcmd__rm_commands] )) ||
+_skm__subcmd__help__subcmd__profile__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help profile rm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__profile__subcmd__setup_commands] )) ||
+_skm__subcmd__help__subcmd__profile__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help profile setup commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__profile__subcmd__show_commands] )) ||
+_skm__subcmd__help__subcmd__profile__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help profile show commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__scan_commands] )) ||
+_skm__subcmd__help__subcmd__scan_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help scan commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__skill_commands] )) ||
+_skm__subcmd__help__subcmd__skill_commands() {
+    local commands; commands=(
+'ls:List enabled skills in the library' \
+'setup:Choose which library skills are enabled (interactive; all enabled by default)' \
+'rm:Permanently remove a skill from the library' \
+    )
+    _describe -t commands 'skm help skill commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__skill__subcmd__ls_commands] )) ||
+_skm__subcmd__help__subcmd__skill__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help skill ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__skill__subcmd__rm_commands] )) ||
+_skm__subcmd__help__subcmd__skill__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help skill rm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__skill__subcmd__setup_commands] )) ||
+_skm__subcmd__help__subcmd__skill__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help skill setup commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__status_commands] )) ||
+_skm__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help status commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__switch-agent_commands] )) ||
+_skm__subcmd__help__subcmd__switch-agent_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help switch-agent commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__sync_commands] )) ||
+_skm__subcmd__help__subcmd__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help sync commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__use-profile_commands] )) ||
+_skm__subcmd__help__subcmd__use-profile_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help use-profile commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__import_commands] )) ||
+_skm__subcmd__import_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm import commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__init_commands] )) ||
+_skm__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm init commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__ls_commands] )) ||
+_skm__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile_commands] )) ||
+_skm__subcmd__profile_commands() {
+    local commands; commands=(
+'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
+'ls:List profile names' \
+'show:Show skills in a profile' \
+'rm:Remove a profile' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'skm profile commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__help_commands] )) ||
+_skm__subcmd__profile__subcmd__help_commands() {
+    local commands; commands=(
+'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
+'ls:List profile names' \
+'show:Show skills in a profile' \
+'rm:Remove a profile' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'skm profile help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__help__subcmd__help_commands] )) ||
+_skm__subcmd__profile__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile help help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__help__subcmd__ls_commands] )) ||
+_skm__subcmd__profile__subcmd__help__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile help ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__help__subcmd__rm_commands] )) ||
+_skm__subcmd__profile__subcmd__help__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile help rm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__help__subcmd__setup_commands] )) ||
+_skm__subcmd__profile__subcmd__help__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile help setup commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__help__subcmd__show_commands] )) ||
+_skm__subcmd__profile__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile help show commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__ls_commands] )) ||
+_skm__subcmd__profile__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__rm_commands] )) ||
+_skm__subcmd__profile__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile rm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__setup_commands] )) ||
+_skm__subcmd__profile__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile setup commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__show_commands] )) ||
+_skm__subcmd__profile__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile show commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__scan_commands] )) ||
+_skm__subcmd__scan_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm scan commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill_commands] )) ||
+_skm__subcmd__skill_commands() {
+    local commands; commands=(
+'ls:List enabled skills in the library' \
+'setup:Choose which library skills are enabled (interactive; all enabled by default)' \
+'rm:Permanently remove a skill from the library' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'skm skill commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill__subcmd__help_commands] )) ||
+_skm__subcmd__skill__subcmd__help_commands() {
+    local commands; commands=(
+'ls:List enabled skills in the library' \
+'setup:Choose which library skills are enabled (interactive; all enabled by default)' \
+'rm:Permanently remove a skill from the library' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'skm skill help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill__subcmd__help__subcmd__help_commands] )) ||
+_skm__subcmd__skill__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm skill help help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill__subcmd__help__subcmd__ls_commands] )) ||
+_skm__subcmd__skill__subcmd__help__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm skill help ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill__subcmd__help__subcmd__rm_commands] )) ||
+_skm__subcmd__skill__subcmd__help__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm skill help rm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill__subcmd__help__subcmd__setup_commands] )) ||
+_skm__subcmd__skill__subcmd__help__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm skill help setup commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill__subcmd__ls_commands] )) ||
+_skm__subcmd__skill__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm skill ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill__subcmd__rm_commands] )) ||
+_skm__subcmd__skill__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm skill rm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__skill__subcmd__setup_commands] )) ||
+_skm__subcmd__skill__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm skill setup commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__status_commands] )) ||
+_skm__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm status commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__switch-agent_commands] )) ||
+_skm__subcmd__switch-agent_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm switch-agent commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__sync_commands] )) ||
+_skm__subcmd__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm sync commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__use-profile_commands] )) ||
+_skm__subcmd__use-profile_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm use-profile commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "__skm" ]; then
+    __skm "$@"
+else
+    compdef __skm _skm
+fi

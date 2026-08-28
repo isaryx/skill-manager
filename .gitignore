@@ -1,0 +1,32 @@
+# Rust / Cargo
+/target/
+**/*.rs.bk
+
+# skm project config (created by `skm init` in this repo)
+.skm.toml
+
+# Release packaging (release workflow)
+/dist/
+
+# Environment / secrets
+.env
+.env.*
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Coverage / profiling
+coverage/
+*.profraw
+
+# Local Cargo overrides (cross-linker, etc.)
+.cargo/config.toml

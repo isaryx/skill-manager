@@ -25,7 +25,7 @@ pub use agent::Agent;
     version,
     about = "Manage AI agent skills from one local library",
     long_about = "Keep skills in one store, organize them into profiles, and link them into \
-                  agent folders (Claude Code, Cursor, Codex, Gemini CLI, Copilot CLI, generic). \
+                  agent folders (Claude Code, Cursor, generic for Codex/Cursor/Gemini/Copilot). \
                   Run `skm sync` to refresh links."
 )]
 pub struct Cli {

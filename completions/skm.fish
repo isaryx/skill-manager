@@ -48,10 +48,9 @@ complete -c skm -n "__fish_skm_needs_command" -f -a "doctor" -d 'Read-only healt
 complete -c skm -n "__fish_skm_needs_command" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c skm -n "__fish_skm_using_subcommand init" -l agent -d 'Target agent for this project' -r -f -a "claude-code\t''
 cursor\t''
-generic\t''
-codex\t''
+generic\t'Agent Skills layout (.agents/skills); used by Codex, Cursor, Gemini CLI'
 gemini-cli\t''
-copilot-cli\t''"
+copilot-cli\t'Copilot CLI native path (.github/skills); also reads .agents/skills'"
 complete -c skm -n "__fish_skm_using_subcommand init" -l store -d 'Store root directory (env: SKM_STORE)' -r -F
 complete -c skm -n "__fish_skm_using_subcommand init" -l color -d 'When to colorize human output (`auto` respects NO_COLOR)' -r -f -a "auto\t''
 always\t''
@@ -61,7 +60,7 @@ complete -c skm -n "__fish_skm_using_subcommand init" -l accept-existing-skills 
 complete -c skm -n "__fish_skm_using_subcommand init" -s v -l verbose -d 'Enable verbose logging on stderr'
 complete -c skm -n "__fish_skm_using_subcommand init" -l json -d 'Emit machine-readable JSON on stdout (`status`, `ls`, `skill ls`, `doctor` only)'
 complete -c skm -n "__fish_skm_using_subcommand init" -l dry-run -d 'Preview changes without writing (`sync`, `use-profile`, `skill rm` only)'
-complete -c skm -n "__fish_skm_using_subcommand init" -s h -l help -d 'Print help'
+complete -c skm -n "__fish_skm_using_subcommand init" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c skm -n "__fish_skm_using_subcommand import" -l as -d 'Name to use in the library' -r
 complete -c skm -n "__fish_skm_using_subcommand import" -l store -d 'Store root directory (env: SKM_STORE)' -r -F
 complete -c skm -n "__fish_skm_using_subcommand import" -l color -d 'When to colorize human output (`auto` respects NO_COLOR)' -r -f -a "auto\t''
@@ -187,10 +186,9 @@ complete -c skm -n "__fish_skm_using_subcommand use-profile" -l dry-run -d 'Prev
 complete -c skm -n "__fish_skm_using_subcommand use-profile" -s h -l help -d 'Print help'
 complete -c skm -n "__fish_skm_using_subcommand switch-agent" -l agent -d 'Agent to switch to' -r -f -a "claude-code\t''
 cursor\t''
-generic\t''
-codex\t''
+generic\t'Agent Skills layout (.agents/skills); used by Codex, Cursor, Gemini CLI'
 gemini-cli\t''
-copilot-cli\t''"
+copilot-cli\t'Copilot CLI native path (.github/skills); also reads .agents/skills'"
 complete -c skm -n "__fish_skm_using_subcommand switch-agent" -l store -d 'Store root directory (env: SKM_STORE)' -r -F
 complete -c skm -n "__fish_skm_using_subcommand switch-agent" -l color -d 'When to colorize human output (`auto` respects NO_COLOR)' -r -f -a "auto\t''
 always\t''
@@ -199,7 +197,7 @@ complete -c skm -n "__fish_skm_using_subcommand switch-agent" -s u -l user -d 'U
 complete -c skm -n "__fish_skm_using_subcommand switch-agent" -s v -l verbose -d 'Enable verbose logging on stderr'
 complete -c skm -n "__fish_skm_using_subcommand switch-agent" -l json -d 'Emit machine-readable JSON on stdout (`status`, `ls`, `skill ls`, `doctor` only)'
 complete -c skm -n "__fish_skm_using_subcommand switch-agent" -l dry-run -d 'Preview changes without writing (`sync`, `use-profile`, `skill rm` only)'
-complete -c skm -n "__fish_skm_using_subcommand switch-agent" -s h -l help -d 'Print help'
+complete -c skm -n "__fish_skm_using_subcommand switch-agent" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c skm -n "__fish_skm_using_subcommand sync" -l store -d 'Store root directory (env: SKM_STORE)' -r -F
 complete -c skm -n "__fish_skm_using_subcommand sync" -l color -d 'When to colorize human output (`auto` respects NO_COLOR)' -r -f -a "auto\t''
 always\t''

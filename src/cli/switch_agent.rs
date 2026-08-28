@@ -4,14 +4,15 @@ use std::path::Path;
 
 use dialoguer::Confirm;
 
-use crate::adapters::{get_adapter, interactive_switch_agent, SetupLevel};
+use crate::adapters::{get_adapter, interactive_switch_agent, resolve_target_dir, SetupLevel};
 use crate::cli::Agent;
 use crate::config::write_setup;
 use crate::error::SkmError;
 use crate::progress;
-use crate::setup::{select_setup, set_setup_agent};
+use crate::setup::{select_setup, set_setup_agent, target_dir_for_setup};
 use crate::store::StorePaths;
-use crate::sync::{reconcile_with_setup, ReconcileOptions};
+use crate::sync::{reconcile_with_setup, unwire_all, ReconcileOptions};
+use crate::util::paths_equal;
 
 pub fn run_switch_agent(
     store: &StorePaths,
@@ -29,7 +30,18 @@ pub fn run_switch_agent(
         return Ok(());
     }
 
-    let sync = should_sync_after_switch(selected.setup.profile.active.is_some())?;
+    let old_target = target_dir_for_setup(&selected).ok().map(|(_, dir)| dir);
+    let new_target = resolve_target_dir(&new_agent, selected.level, &selected.project_root)
+        .map(|(_, dir)| dir)?;
+    let same_target = old_target
+        .as_ref()
+        .is_some_and(|old| paths_equal(old, &new_target));
+
+    let sync = if same_target {
+        false
+    } else {
+        should_sync_after_switch(selected.setup.profile.active.is_some())?
+    };
 
     progress::step(format!("updating setup to {new_agent}"));
     set_setup_agent(&mut selected.setup, &new_agent)?;
@@ -38,6 +50,13 @@ pub fn run_switch_agent(
         progress::step("syncing skills");
         reconcile_with_setup(store, &selected, None, ReconcileOptions::default())
             .map_err(|e| e.op("syncing skills"))?;
+    }
+
+    if let Some(old_target) = old_target {
+        if !same_target {
+            unwire_all(&old_target, &store.canonical_root())
+                .map_err(|e| e.op("cleaning up previous agent's skills"))?;
+        }
     }
 
     write_setup(&selected.path, &selected.setup).map_err(|e| e.op("writing config file"))?;

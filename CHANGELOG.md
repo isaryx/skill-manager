@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.2.1] - 2026-08-28
+
+Agent adapter cleanup and `switch-agent` fix when agents share a skills directory.
+
+### Changed
+
+- **`codex` agent removed** — use `generic` instead (same `.agents/skills` path). Existing configs with `placement.agent = "codex"` still resolve.
+- **`generic` agent** — help and docs now list supported clients: Codex, Cursor, Gemini CLI, Copilot CLI ([docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md))
+
+### Fixed
+
+- **`skm switch-agent`** — when old and new agents resolve to the same target directory, only updates `placement.agent` (no sync, no cleanup of existing symlinks). Fixes `codex` → `generic` and any future agents that share a path.
+
+[0.2.1]: https://github.com/isaryx/skill-manager/releases/tag/v0.2.1
+
 ## [0.2.0] - 2026-08-28
 
 Health checks, scriptable JSON output, Tier 1 agent adapters, and CLI polish.

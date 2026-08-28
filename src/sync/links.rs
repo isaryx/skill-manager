@@ -11,7 +11,7 @@ pub(crate) fn resolve_symlink_target(path: &Path) -> Option<PathBuf> {
     } else {
         path.parent()?.join(target)
     };
-    Some(resolved.canonicalize().unwrap_or(resolved))
+    resolved.canonicalize().ok()
 }
 
 pub(crate) fn is_store_owned_symlink(path: &Path, store_root: &Path) -> bool {
@@ -24,9 +24,11 @@ pub(crate) fn is_store_owned_symlink(path: &Path, store_root: &Path) -> bool {
     resolve_symlink_target(path).is_some_and(|resolved| is_path_inside(store_root, &resolved))
 }
 
-/// Entry exists and is not a symlink owned by skm (project skill, hand-installed file, etc.).
+/// Entry exists and is not a symlink owned by skm (project skill, hand-installed file,
+/// dangling symlink, etc.). Uses `symlink_metadata` rather than `exists()`/`is_dir()` so a
+/// dangling symlink is still detected as occupying the name.
 pub(crate) fn is_foreign_occupant(path: &Path, store_root: &Path) -> bool {
-    path.exists() && !is_store_owned_symlink(path, store_root)
+    fs::symlink_metadata(path).is_ok() && !is_store_owned_symlink(path, store_root)
 }
 
 fn relative_name(base: &Path, path: &Path) -> String {
@@ -62,7 +64,16 @@ where
 
             if is_store_owned_symlink(&path, store_root) {
                 visitor(&path, rel)?;
-            } else if path.is_dir() {
+                continue;
+            }
+
+            // `symlink_metadata` (unlike `is_dir()`) does not follow symlinks, so a
+            // non-owned symlink to a directory is never mistaken for a real subdirectory
+            // to recurse into (avoids escaping the tree and symlink-cycle recursion).
+            let is_real_dir = fs::symlink_metadata(&path)
+                .map(|meta| meta.file_type().is_dir())
+                .unwrap_or(false);
+            if is_real_dir {
                 walk(base, &path, store_root, visitor)?;
             }
         }
@@ -139,5 +150,67 @@ mod tests {
         let store_root = store.path().canonicalize().unwrap();
         assert!(!is_store_owned_symlink(&link, &store_root));
         assert!(is_foreign_occupant(&link, &store_root));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dangling_symlink_does_not_resolve() {
+        let tmp = TempDir::new().unwrap();
+        let link = tmp.path().join("broken");
+        std::os::unix::fs::symlink(tmp.path().join("does-not-exist"), &link).unwrap();
+
+        assert!(
+            resolve_symlink_target(&link).is_none(),
+            "a symlink whose target does not exist should resolve to None, not Some(unresolved path)"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn dangling_foreign_symlink_is_foreign() {
+        let store = TempDir::new().unwrap();
+        let skills = store.path().join("agent-skills");
+        fs::create_dir_all(&skills).unwrap();
+        let link = skills.join("docx");
+        std::os::unix::fs::symlink(store.path().join("does-not-exist"), &link).unwrap();
+
+        let store_root = store.path().canonicalize().unwrap();
+        assert!(
+            is_foreign_occupant(&link, &store_root),
+            "a hand-created dangling symlink occupying a placement name should be treated as a foreign conflict"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn walk_does_not_follow_foreign_symlinks_into_directories() {
+        let root = TempDir::new().unwrap();
+        let store_root = root.path().join("store");
+        fs::create_dir_all(&store_root).unwrap();
+        let skill = store_root.join("docx");
+        fs::create_dir_all(&skill).unwrap();
+
+        // A directory outside the target tree that happens to contain a store-owned symlink.
+        let outside = root.path().join("outside");
+        fs::create_dir_all(&outside).unwrap();
+        std::os::unix::fs::symlink(&skill, outside.join("leaked")).unwrap();
+
+        let target = root.path().join("agent-skills");
+        fs::create_dir_all(&target).unwrap();
+        // A foreign (non-store-owned) symlink inside the target, pointing at `outside`.
+        std::os::unix::fs::symlink(&outside, target.join("foreign")).unwrap();
+
+        let store_canon = store_root.canonicalize().unwrap();
+        let mut visited = Vec::new();
+        walk_store_owned_symlinks(&target, &store_canon, |_, rel| {
+            visited.push(rel);
+            Ok(())
+        })
+        .unwrap();
+
+        assert!(
+            visited.is_empty(),
+            "walker should not follow the foreign symlink `foreign` into `outside` and discover {visited:?}"
+        );
     }
 }

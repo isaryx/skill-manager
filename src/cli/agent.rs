@@ -5,8 +5,11 @@ pub enum Agent {
     #[value(name = "claude-code")]
     ClaudeCode,
     Cursor,
+    #[value(
+        name = "generic",
+        help = "Agent Skills layout (.agents/skills); used by Codex, Cursor, Gemini CLI, Copilot CLI"
+    )]
     Generic,
-    Codex,
     #[value(name = "gemini-cli")]
     GeminiCli,
     #[value(name = "copilot-cli")]
@@ -19,7 +22,6 @@ impl Agent {
             Agent::ClaudeCode => "claude-code",
             Agent::Cursor => "cursor",
             Agent::Generic => "generic",
-            Agent::Codex => "codex",
             Agent::GeminiCli => "gemini-cli",
             Agent::CopilotCli => "copilot-cli",
         }

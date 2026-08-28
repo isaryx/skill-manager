@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.2.0 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
+**Version:** 0.2.1 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 
@@ -38,7 +38,7 @@ skm scan
 skm doctor [--json]
 ```
 
-Agents: `generic`, `claude-code`, `cursor`, `codex`, `gemini-cli`, `copilot-cli`.
+Agents: `generic` (Codex, Cursor, Gemini CLI, Copilot CLI), `claude-code`, `cursor`, `gemini-cli`, `copilot-cli`. Existing configs with `placement.agent = "codex"` still work.
 
 ---
 
@@ -107,6 +107,12 @@ Both call `reconcile()`: validate → fix (rebuild index, adopt missing meta) �
 Flat names in agent dir: unique leaf → leaf; collisions → `__` between path segments. Unresolvable collision → exit 2.
 
 **Foreign skills:** a top-level entry in the agent skills dir that is not a store-owned symlink is left untouched. If a profile placement targets an occupied name, that placement is **skipped** (stderr: `skipped <name> (conflicted)`); reconcile continues and exits **0**.
+
+### `skm switch-agent`
+
+Updates `placement.agent` in the setup file. When the old and new agents resolve to **different** target directories, optionally syncs skills to the new agent (TTY prompt; auto on off-TTY when a profile is active) and removes store-owned symlinks from the previous agent's directory.
+
+When both agents share the same target directory (e.g. legacy `codex` → `generic`), only the agent name in config changes — existing symlinks are left in place and sync is skipped.
 
 ### `skm skill rm`
 

@@ -112,7 +112,7 @@ pub fn add_skill_tree(
     let prefix = format!("{name}/");
     let skill_ids: Vec<String> = discover_skill_ids(store)?
         .into_iter()
-        .filter(|id| id.starts_with(&prefix))
+        .filter(|id| id == &name || id.starts_with(&prefix))
         .collect();
 
     if skill_ids.is_empty() {
@@ -225,5 +225,33 @@ fn prune_empty_parents(store_root: &Path, removed: &Path) {
         } else {
             break;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::store::{init_store_layout, StorePaths};
+    use tempfile::TempDir;
+
+    #[test]
+    fn add_skill_tree_reports_root_skill_when_root_itself_is_a_skill() {
+        let store_tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(store_tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        let src_tmp = TempDir::new().unwrap();
+        let src = src_tmp.path().join("parent");
+        fs::create_dir_all(src.join("child")).unwrap();
+        fs::write(src.join("SKILL.md"), "# parent").unwrap();
+        fs::write(src.join("child/SKILL.md"), "# child").unwrap();
+
+        let ids = add_skill_tree(&store, &src, TransferMode::Copy, None).unwrap();
+
+        assert!(
+            ids.contains(&"parent".to_string()),
+            "expected the bundle root's own skill id to be reported alongside its nested child, got {ids:?}"
+        );
+        assert!(ids.contains(&"parent/child".to_string()));
     }
 }

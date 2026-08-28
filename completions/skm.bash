@@ -530,7 +530,7 @@ _skm() {
             fi
             case "${prev}" in
                 --agent)
-                    COMPREPLY=($(compgen -W "claude-code cursor generic codex gemini-cli copilot-cli" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "claude-code cursor generic gemini-cli copilot-cli" -- "${cur}"))
                     return 0
                     ;;
                 --store)
@@ -974,7 +974,7 @@ _skm() {
             fi
             case "${prev}" in
                 --agent)
-                    COMPREPLY=($(compgen -W "claude-code cursor generic codex gemini-cli copilot-cli" -- "${cur}"))
+                    COMPREPLY=($(compgen -W "claude-code cursor generic gemini-cli copilot-cli" -- "${cur}"))
                     return 0
                     ;;
                 --store)

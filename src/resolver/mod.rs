@@ -199,6 +199,22 @@ mod tests {
     }
 
     #[test]
+    fn flat_name_disambiguation_reports_collision_with_literal_id() {
+        // "team/tdd" and "other/tdd" share the leaf "tdd" and disambiguate to
+        // "team__tdd"/"other__tdd", which collides with the literal id "team__tdd" — a
+        // genuine placement clash (both would need the same flat name in the agent
+        // directory), not a false positive. Per docs/SPEC.md:107, an unresolvable
+        // collision is expected to error.
+        let ids = vec![
+            "team/tdd".to_string(),
+            "other/tdd".to_string(),
+            "team__tdd".to_string(),
+        ];
+        let err = assign_placement_names(&ids).unwrap_err();
+        assert!(matches!(err, ResolveError::Conflict(name) if name == "team__tdd"));
+    }
+
+    #[test]
     fn empty_profile_errors() {
         let (_tmp, store) = make_store_with_skill("docx");
         let profile = ProfileFile { skill: vec![] };

@@ -36,7 +36,11 @@ __skm() {
         case $line[1] in
             (init)
 _arguments "${_arguments_options[@]}" : \
-'--agent=[Target agent for this project]:AGENT:(claude-code cursor generic codex gemini-cli copilot-cli)' \
+'--agent=[Target agent for this project]:AGENT:((claude-code\:""
+cursor\:""
+generic\:"Agent Skills layout (.agents/skills); used by Codex, Cursor, Gemini CLI"
+gemini-cli\:""
+copilot-cli\:"Copilot CLI native path (.github/skills); also reads .agents/skills"))' \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '--force[Overwrite an existing \`.skm.toml\`]' \
@@ -45,8 +49,8 @@ _arguments "${_arguments_options[@]}" : \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
-'-h[Print help]' \
-'--help[Print help]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
 && ret=0
 ;;
 (import)
@@ -305,7 +309,11 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (switch-agent)
 _arguments "${_arguments_options[@]}" : \
-'--agent=[Agent to switch to]:AGENT:(claude-code cursor generic codex gemini-cli copilot-cli)' \
+'--agent=[Agent to switch to]:AGENT:((claude-code\:""
+cursor\:""
+generic\:"Agent Skills layout (.agents/skills); used by Codex, Cursor, Gemini CLI"
+gemini-cli\:""
+copilot-cli\:"Copilot CLI native path (.github/skills); also reads .agents/skills"))' \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
@@ -314,8 +322,8 @@ _arguments "${_arguments_options[@]}" : \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
-'-h[Print help]' \
-'--help[Print help]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
 && ret=0
 ;;
 (sync)

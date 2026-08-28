@@ -176,12 +176,17 @@ fn same_path(a: &Path, b: &Path) -> bool {
     fs::canonicalize(a).ok() == fs::canonicalize(b).ok() || a == b
 }
 
-/// A bundle is a directory whose immediate children are skill directories (no root SKILL.md).
+pub(crate) fn paths_equal(a: &Path, b: &Path) -> bool {
+    same_path(a, b)
+}
+
+/// A bundle is a directory that contains skills at any nesting depth but is not itself
+/// a skill root (no root SKILL.md).
 pub fn is_skill_bundle(path: &Path) -> bool {
     if is_skill_dir(path) || !path.is_dir() {
         return false;
     }
-    list_immediate_skill_dirs(path)
+    discover_all_skill_dirs(path)
         .map(|dirs| !dirs.is_empty())
         .unwrap_or(false)
 }
@@ -280,6 +285,20 @@ mod tests {
         assert_eq!(skills.len(), 1);
         assert!(skills[0].ends_with("a/b/c/skill"));
         assert!(is_skill_tree(&root));
+    }
+
+    #[test]
+    fn is_skill_bundle_recognizes_multi_level_nesting() {
+        let tmp = TempDir::new().unwrap();
+        let vendor = tmp.path().join("vendor");
+        let deep = vendor.join("team/tdd");
+        fs::create_dir_all(&deep).unwrap();
+        fs::write(deep.join("SKILL.md"), "# tdd").unwrap();
+
+        assert!(
+            is_skill_bundle(&vendor),
+            "a directory containing a skill nested 2+ levels deep should still be recognized as a bundle"
+        );
     }
 
     #[test]

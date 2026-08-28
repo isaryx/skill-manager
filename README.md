@@ -2,7 +2,7 @@
 
 **skm** is a command-line tool for managing AI agent skills across projects and editors.
 
-Keep skills in one local library, organize them into named profiles, and link them into agent folders (Claude Code, Cursor, Codex, Gemini CLI, Copilot CLI, and more). Run `skm sync` any time to refresh those links.
+Keep skills in one local library, organize them into named profiles, and link them into agent folders (Claude Code, Cursor, generic for Codex/Cursor/Gemini CLI/Copilot CLI, and more). Run `skm sync` any time to refresh those links.
 
 ## How it works
 
@@ -138,10 +138,9 @@ Store path resolution (first match wins): `--store` → `SKM_STORE` → app conf
 
 | Agent | Skills directory |
 |-------|------------------|
-| `generic` | `.agents/skills` |
+| `generic` | `.agents/skills` (Codex, Cursor, Gemini CLI, Copilot CLI) |
 | `claude-code` | `.claude/skills` |
 | `cursor` | `.cursor/skills` |
-| `codex` | `.agents/skills` |
 | `gemini-cli` | `.gemini/skills` |
 | `copilot-cli` | `.github/skills` |
 

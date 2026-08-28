@@ -186,6 +186,21 @@ pub fn compute_link_changes(
     Ok((to_wire, to_unwire, skipped))
 }
 
+/// Remove every store-owned symlink under `target` and prune emptied directories.
+/// Used when leaving an agent's skills directory entirely (e.g. `switch-agent`), so
+/// skm-managed links don't linger, orphaned and invisible, in the previous agent's dir.
+pub fn unwire_all(target: &Path, store_root: &Path) -> Result<(), SkmError> {
+    if !target.is_dir() {
+        return Ok(());
+    }
+    walk_store_owned_symlinks(target, store_root, |path, rel| {
+        progress::unwired(&rel, false);
+        fs::remove_file(path)?;
+        Ok(())
+    })?;
+    prune_empty_skill_dirs(target)
+}
+
 fn remove_dangling_store_symlinks(target: &Path, store_root: &Path) -> Result<(), SkmError> {
     walk_store_owned_symlinks(target, store_root, |path, _| {
         if resolve_link_target(path).is_none() {
@@ -387,5 +402,34 @@ mod tests {
         assert!(!to_wire.contains(&"docx".to_string()));
         assert!(to_wire.contains(&"other".to_string()));
         assert!(to_unwire.is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn apply_placements_skips_foreign_dangling_symlink_instead_of_erroring() {
+        let root = TempDir::new().unwrap();
+        let store_root = root.path().join("store");
+        fs::create_dir_all(&store_root).unwrap();
+        let docx_src = store_root.join("docx");
+        fs::create_dir_all(&docx_src).unwrap();
+
+        let target = root.path().join("agent");
+        fs::create_dir_all(&target).unwrap();
+        // A hand-created broken symlink occupies the placement name.
+        std::os::unix::fs::symlink(root.path().join("does-not-exist"), target.join("docx"))
+            .unwrap();
+
+        let placements = vec![SkillPlacement {
+            store_id: "docx".into(),
+            name: "docx".into(),
+            source: docx_src,
+        }];
+
+        let store_canon = store_root.canonicalize().unwrap();
+        let result = apply_placements(&target, &placements, &store_canon, false);
+        assert!(
+            result.is_ok(),
+            "a foreign dangling symlink at the placement name should be skipped as a conflict, not error: {result:?}"
+        );
     }
 }

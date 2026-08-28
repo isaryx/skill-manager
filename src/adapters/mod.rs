@@ -50,26 +50,16 @@ impl AgentAdapter for CursorAdapter {
     }
 }
 
+/// Agents that document `.agents/skills` as a native or interoperable skills path.
+pub const GENERIC_AGENT_CLIENTS: &str = "Codex, Cursor, Gemini CLI, Copilot CLI";
+
+/// [Agent Skills](https://agentskills.io) layout (`.agents/skills`). Used natively by Codex;
+/// Cursor, Gemini CLI, and Copilot CLI also read this path as an interoperable alias.
 pub struct GenericAdapter;
 
 impl AgentAdapter for GenericAdapter {
     fn name(&self) -> &'static str {
         "generic"
-    }
-
-    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> PathBuf {
-        match level {
-            SetupLevel::User => home_dir().join(".agents").join("skills"),
-            SetupLevel::Project => project_root.join(".agents").join("skills"),
-        }
-    }
-}
-
-pub struct CodexAdapter;
-
-impl AgentAdapter for CodexAdapter {
-    fn name(&self) -> &'static str {
-        "codex"
     }
 
     fn target_dir(&self, level: SetupLevel, project_root: &Path) -> PathBuf {
@@ -114,8 +104,7 @@ pub fn get_adapter(name: &str) -> Result<Box<dyn AgentAdapter>, SkmError> {
     match name {
         "claude-code" => Ok(Box::new(ClaudeCodeAdapter)),
         "cursor" => Ok(Box::new(CursorAdapter)),
-        "generic" => Ok(Box::new(GenericAdapter)),
-        "codex" => Ok(Box::new(CodexAdapter)),
+        "generic" | "codex" => Ok(Box::new(GenericAdapter)),
         "gemini-cli" => Ok(Box::new(GeminiCliAdapter)),
         "copilot-cli" => Ok(Box::new(CopilotCliAdapter)),
         other => Err(SkmError::UnknownAgent(other.to_string())),
@@ -207,10 +196,24 @@ const INIT_AGENTS: &[&str] = &[
     "generic",
     "claude-code",
     "cursor",
-    "codex",
     "gemini-cli",
     "copilot-cli",
 ];
+
+/// Maps legacy config ids to their canonical menu / CLI id.
+fn canonical_agent_id(agent: &str) -> &str {
+    match agent {
+        "codex" => "generic",
+        other => other,
+    }
+}
+
+fn agent_menu_title(agent: &str) -> String {
+    match agent {
+        "generic" => format!("generic ({GENERIC_AGENT_CLIENTS})"),
+        other => other.to_string(),
+    }
+}
 
 pub fn interactive_select_agent() -> Result<String, SkmError> {
     let cwd = env::current_dir()?;
@@ -252,7 +255,8 @@ fn agent_select_label(
     project_root: &Path,
 ) -> Result<String, SkmError> {
     let path = format_agent_skills_path(agent, level, project_root)?;
-    Ok(format!("{agent} \x1b[2m({path})\x1b[0m"))
+    let title = agent_menu_title(agent);
+    Ok(format!("{title} \x1b[2m({path})\x1b[0m"))
 }
 
 fn interactive_select_agent_impl(
@@ -291,16 +295,17 @@ fn interactive_switch_agent_select(
         return Err(SkmError::NotATty);
     }
 
+    let current_canonical = canonical_agent_id(current);
     let current_index = INIT_AGENTS
         .iter()
-        .position(|&agent| agent == current)
+        .position(|&agent| agent == current_canonical)
         .ok_or_else(|| SkmError::UnknownAgent(current.to_string()))?;
 
     let labels: Vec<String> = INIT_AGENTS
         .iter()
         .map(|&agent| {
             let mut label = agent_select_label(agent, level, project_root)?;
-            if agent == current {
+            if agent == current_canonical {
                 label.push_str(" \x1b[2m(current)\x1b[0m");
             }
             Ok(label)
@@ -390,9 +395,10 @@ mod tests {
     }
 
     #[test]
-    fn codex_uses_agents_skills_path() {
-        let adapter = CodexAdapter;
+    fn codex_config_alias_uses_generic_adapter() {
+        let adapter = get_adapter("codex").unwrap();
         let project = Path::new("/tmp/proj");
+        assert_eq!(adapter.name(), "generic");
         assert_eq!(
             adapter.target_dir(SetupLevel::Project, project),
             project.join(".agents/skills")
@@ -402,6 +408,16 @@ mod tests {
             adapter.target_dir(SetupLevel::User, project),
             home.join(".agents/skills")
         );
+    }
+
+    #[test]
+    fn agent_select_label_notes_generic_clients() {
+        let label =
+            agent_select_label("generic", SetupLevel::Project, Path::new("/tmp/proj")).unwrap();
+        assert!(label.contains("Codex"));
+        assert!(label.contains("Cursor"));
+        assert!(label.contains("Gemini CLI"));
+        assert!(label.contains("Copilot CLI"));
     }
 
     #[test]

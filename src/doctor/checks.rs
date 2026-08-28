@@ -110,14 +110,18 @@ pub fn check_store(store: &StorePaths) -> Vec<Issue> {
 pub fn check_index(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
     let mut issues = Vec::new();
 
-    let enabled_on_disk = list_enabled_pool_ids(store)?;
-    let index_count = list_skills(&open_index(store)?).map(|rows| rows.len())?;
+    let enabled_on_disk: HashSet<String> = list_enabled_pool_ids(store)?.into_iter().collect();
+    let index_ids: HashSet<String> = list_skills(&open_index(store)?)?
+        .into_iter()
+        .map(|row| row.id)
+        .collect();
 
-    if index_count != enabled_on_disk.len() {
+    if index_ids != enabled_on_disk {
         issues.push(Issue::warn(
             "index.stale",
             format!(
-                "index lists {index_count} skills; {} found on disk (run `skm scan`)",
+                "index lists {} skills; {} found on disk (run `skm scan`)",
+                index_ids.len(),
                 enabled_on_disk.len()
             ),
         ));
@@ -476,5 +480,47 @@ mod tests {
 
         let issues = check_skills_on_disk(&store).unwrap();
         assert!(issues.iter().any(|i| i.code == "skill.missing_skill_md"));
+    }
+
+    #[test]
+    fn check_skills_does_not_flag_deeply_nested_valid_skill_dirs() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        let skill = store.root().join("vendor/team/tdd");
+        fs::create_dir_all(&skill).unwrap();
+        fs::write(skill.join("SKILL.md"), "# tdd").unwrap();
+
+        let issues = check_skills_on_disk(&store).unwrap();
+        assert!(
+            !issues.iter().any(|i| i.code == "skill.missing_skill_md"),
+            "a valid 3-level nested skill should not trigger false skill.missing_skill_md warnings, got {issues:?}"
+        );
+    }
+
+    #[test]
+    fn check_index_detects_identity_drift_with_unchanged_count() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        let old_dir = store.skill_dir("old");
+        fs::create_dir_all(&old_dir).unwrap();
+        fs::write(old_dir.join("SKILL.md"), "# old").unwrap();
+        crate::db::rebuild_from_store(&store).unwrap();
+
+        // Swap "old" for "new" on disk without rebuilding the index: the skill count
+        // stays at 1, but the index still lists the now-removed "old" skill.
+        fs::remove_dir_all(&old_dir).unwrap();
+        let new_dir = store.skill_dir("new");
+        fs::create_dir_all(&new_dir).unwrap();
+        fs::write(new_dir.join("SKILL.md"), "# new").unwrap();
+
+        let issues = check_index(&store).unwrap();
+        assert!(
+            issues.iter().any(|i| i.code == "index.stale"),
+            "expected index.stale even though the skill count is unchanged (1 -> 1), because the index's identity no longer matches disk"
+        );
     }
 }

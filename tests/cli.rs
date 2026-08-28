@@ -429,6 +429,95 @@ fn switch_agent_does_not_persist_on_sync_failure() {
 }
 
 #[test]
+fn switch_agent_cleans_up_old_agent_symlinks() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+
+    init_project(home.path(), store.path());
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+    with_env(home.path(), store.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    let old_link = home.path().join(".claude/skills/docx");
+    assert!(
+        fs::symlink_metadata(&old_link).is_ok(),
+        "expected use-profile to wire the claude-code symlink first"
+    );
+
+    with_env(home.path(), store.path())
+        .args(["switch-agent", "--agent", "cursor"])
+        .assert()
+        .success();
+
+    assert!(
+        fs::symlink_metadata(&old_link).is_err(),
+        "expected switch-agent to remove the old agent's symlink at {}, but it is still present",
+        old_link.display()
+    );
+}
+
+#[test]
+fn switch_agent_same_target_only_updates_agent_name() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "generic"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+    with_env(home.path(), store.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    let setup_path = home.path().join(".skm.toml");
+    let setup = fs::read_to_string(&setup_path).unwrap().replace("generic", "codex");
+    fs::write(&setup_path, setup).unwrap();
+
+    let link = home.path().join(".agents/skills/docx");
+    assert!(fs::symlink_metadata(&link).is_ok());
+
+    with_env(home.path(), store.path())
+        .args(["switch-agent", "--agent", "generic"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("updating setup to generic"))
+        .stderr(predicate::str::contains("syncing skills").not());
+
+    assert!(
+        fs::symlink_metadata(&link).is_ok(),
+        "expected symlink to remain when only the agent name changes"
+    );
+
+    let content = fs::read_to_string(&setup_path).unwrap();
+    assert!(content.contains("agent = \"generic\""));
+    assert!(!content.contains("codex"));
+}
+
+#[test]
 fn add_requires_init() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();

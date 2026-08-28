@@ -23,7 +23,6 @@ A skill is a directory with a `SKILL.md` file at its root (or nested under a ski
 **Homebrew** ([isaryx/collection](https://github.com/isaryx/homebrew-collection)):
 
 ```bash
-brew tap isaryx/collection
 brew install isaryx/collection/skm
 ```
 

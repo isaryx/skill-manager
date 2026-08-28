@@ -232,12 +232,7 @@ fn init_succeeds_with_accept_existing_skills_flag() {
     fs::write(skill.join("SKILL.md"), "# tdd\n").unwrap();
 
     with_env(home.path(), store.path())
-        .args([
-            "init",
-            "--agent",
-            "claude-code",
-            "--accept-existing-skills",
-        ])
+        .args(["init", "--agent", "claude-code", "--accept-existing-skills"])
         .assert()
         .success();
 
@@ -1416,7 +1411,10 @@ fn sync_preserves_foreign_skill_not_in_profile() {
         .success();
 
     assert!(review.join("SKILL.md").is_file());
-    assert_eq!(fs::read_to_string(review.join("SKILL.md")).unwrap(), "# review\n");
+    assert_eq!(
+        fs::read_to_string(review.join("SKILL.md")).unwrap(),
+        "# review\n"
+    );
     assert!(home.path().join(".claude/skills/docx").is_symlink());
 }
 

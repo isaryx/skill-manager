@@ -42,12 +42,7 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
             force,
             accept_existing_skills,
         } => {
-            init::run_init(
-                cli.store.as_deref(),
-                agent,
-                force,
-                accept_existing_skills,
-            )?;
+            init::run_init(cli.store.as_deref(), agent, force, accept_existing_skills)?;
             0
         }
         Commands::Import {
@@ -117,7 +112,9 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
 
 fn validate_global_flags(cli: &Cli) -> Result<(), SkmError> {
     if cli.dry_run && cli.json {
-        return Err(SkmError::Usage("--dry-run cannot be used with --json".into()));
+        return Err(SkmError::Usage(
+            "--dry-run cannot be used with --json".into(),
+        ));
     }
     if cli.json && !supports_json(&cli.command) {
         return Err(SkmError::Usage(
@@ -145,15 +142,13 @@ fn supports_json(command: &Commands) -> bool {
 }
 
 fn supports_dry_run(command: &Commands) -> bool {
-    matches!(
-        command,
-        Commands::Sync { .. } | Commands::UseProfile { .. }
-    ) || matches!(
-        command,
-        Commands::Skill {
-            action: SkillAction::Rm { .. },
-        }
-    )
+    matches!(command, Commands::Sync { .. } | Commands::UseProfile { .. })
+        || matches!(
+            command,
+            Commands::Skill {
+                action: SkillAction::Rm { .. },
+            }
+        )
 }
 
 pub fn init_logging(verbose: bool) {

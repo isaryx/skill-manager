@@ -330,10 +330,7 @@ pub fn collect_status(
         let Some(current) = resolve_link_target(&link_path) else {
             continue;
         };
-        let want = placement
-            .source
-            .canonicalize()
-            .unwrap_or(placement.source);
+        let want = placement.source.canonicalize().unwrap_or(placement.source);
         if current == want {
             linked.push(PlacementStatus {
                 name: placement.name,

@@ -35,7 +35,7 @@ Health checks, scriptable JSON output, Tier 1 agent adapters, and CLI polish.
 
 - `serde_json` — JSON output for `--json` commands
 
-[0.2.0]: https://github.com/vu.trandaovuong/skill-manager/releases/tag/v0.2.0
+[0.2.0]: https://github.com/isaryx/skill-manager/releases/tag/v0.2.0
 
 ## [0.1.0] - 2026-08-28
 
@@ -60,4 +60,4 @@ First public release of `skm` — one skill library, named profiles, and symlink
 - **Safe sync** — manually installed skills in the agent folder are left untouched
 - **MIT license** — see [LICENSE](LICENSE)
 
-[0.1.0]: https://github.com/vu.trandaovuong/skill-manager/releases/tag/v0.1.0
+[0.1.0]: https://github.com/isaryx/skill-manager/releases/tag/v0.1.0

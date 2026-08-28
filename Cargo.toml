@@ -6,8 +6,8 @@ description = "Manage AI agent skills from one local library — profiles, symli
 authors = ["Vu Tran"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/vu.trandaovuong/skill-manager"
-homepage = "https://github.com/vu.trandaovuong/skill-manager"
+repository = "https://github.com/isaryx/skill-manager"
+homepage = "https://github.com/isaryx/skill-manager"
 
 [[bin]]
 name = "skm"

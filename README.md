@@ -20,7 +20,7 @@ A skill is a directory with a `SKILL.md` file at its root (or nested under a ski
 
 **Platforms:** macOS and Linux (symlink-based installs). Windows is not supported yet (planned for 0.3.0 — see [docs/SPEC.md](docs/SPEC.md)).
 
-**From a release** — download `skm` for your platform from [GitHub Releases](https://github.com/vu.trandaovuong/skill-manager/releases), extract the binary, and put it on your `PATH`.
+**From a release** — download `skm` for your platform from [GitHub Releases](https://github.com/vu.trandaovuong/skill-manager/releases) (`macos-arm64`, `macos-x86_64`, `linux-arm64`, or `linux-x86_64`), extract the binary, and put it on your `PATH`.
 
 **From source** (requires [Rust](https://rustup.rs)):
 

@@ -10,6 +10,7 @@ pub mod resolver;
 pub mod setup;
 pub mod store;
 pub mod sync;
+pub mod tui;
 pub mod util;
 
 use std::env;

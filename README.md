@@ -12,6 +12,8 @@
 
 **Store vs profile:** `skm skill setup` controls which store skills are enabled (disable without deleting). `skm profile setup` picks which enabled skills belong to a profile.
 
+Both open a full-screen picker: `/` to search, `space` to toggle, `enter` to confirm, `q` to quit. Arrow keys and `k`/`j` both move. Keys are listed in the bar at the bottom of the screen.
+
 A skill is a directory with a `SKILL.md` file at its root (or nested under a skill tree).
 
 ## Install

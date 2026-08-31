@@ -91,10 +91,36 @@ Requires initialized store. `--copy` and `--move` are required and mutually excl
 
 ### Profiles & library skills
 
-- `profile setup` — interactive multi-select from **enabled** library skills
+- `profile setup` — pick a profile's skills from the **enabled** library
 - `skill setup` — hide skills via `.skm/disabled.toml` (still in profiles; skipped when wiring)
 - `skill rm` — delete from store and all profiles; TTY confirm or `--force`
 - Disabled skills show `(disabled)` on `profile show`; sync unwires them
+
+`profile setup` also offers any **disabled** skill the profile already references, marked
+`(disabled)`, so editing a profile never silently drops a hidden skill.
+
+#### Interactive picker
+
+`profile setup` and `skill setup` take over the terminal with a searchable checkbox list, and
+restore the previous screen on exit. Both require a TTY (`SKM_STORE`/`--store` and a
+hand-written profile TOML cover automation). Checked means *in the profile* for `profile setup`,
+*enabled* for `skill setup`.
+
+Two modes, shown in the bottom hint bar:
+
+| Mode | Keys |
+|------|------|
+| **List** | `↑`/`↓` or `k`/`j` move (wraps) · `PgUp`/`PgDn` page · `Home`/`g`, `End`/`G` jump · `Space` toggle · `a` toggle all matching rows · `/` search · `Enter` confirm · `Esc` clear the filter, or quit when there is none · `q` quit |
+| **Search** | type to filter · `Backspace` / `Ctrl-U` edit · `↑`/`↓` move · `Tab` toggle · `Enter` or `Esc` leave search, keeping the filter |
+
+The filter is a case-insensitive AND over whitespace-separated terms, matched against the skill
+ID and its `(disabled)` marker. It never changes the selection, so you can search, toggle, search
+again, and confirm once. Quitting (`q`, `Esc`, `Ctrl-C`) writes nothing and exits 1.
+
+The status line above the hint bar reads `<n> selected`, then the list size — `27 items`
+unfiltered, or `12 of 27 match` while filtering — then `↑<n>` / `↓<n>` for the rows off screen
+above and below. Each arrow is dropped when there is nothing that way, so no arrows means the
+whole list is visible.
 
 ### `skm use-profile` / `skm sync`
 

@@ -2,12 +2,11 @@ use std::fs;
 use std::io::{self, IsTerminal};
 use std::path::Path;
 
-use dialoguer::MultiSelect;
-
 use crate::config::{ProfileFile, ProfileSkillEntry};
 use crate::error::SkmError;
 use crate::store::skills::read_disabled_ids;
 use crate::store::{list_pool_ids, StorePaths};
+use crate::tui::{MultiSelect, MultiSelectItem};
 use crate::util::{validate_profile_name, validate_store_skill_id};
 
 pub fn create_profile(
@@ -150,7 +149,15 @@ pub fn write_profile(
     Ok(())
 }
 
-pub fn interactive_setup(store: &StorePaths, selected: &[String]) -> Result<Vec<String>, SkmError> {
+/// Pick the skills for profile `name` in a full-screen list. Returns the chosen store IDs.
+///
+/// The pool is the enabled library plus any disabled skills the profile already references, so
+/// editing a profile never silently drops a skill that happens to be hidden right now.
+pub fn interactive_setup(
+    store: &StorePaths,
+    name: &str,
+    selected: &[String],
+) -> Result<Vec<String>, SkmError> {
     if !io::stdin().is_terminal() {
         return Err(SkmError::NotATty);
     }
@@ -171,32 +178,18 @@ pub fn interactive_setup(store: &StorePaths, selected: &[String]) -> Result<Vec<
 
     let selected_set: std::collections::HashSet<&str> =
         selected.iter().map(String::as_str).collect();
-    let labels: Vec<String> = pool
-        .iter()
-        .map(|id| {
-            if disabled.contains(id) {
-                format!("{id} (disabled)")
-            } else {
-                id.clone()
-            }
-        })
-        .collect();
-    let defaults: Vec<bool> = pool
-        .iter()
-        .map(|id| selected_set.contains(id.as_str()))
-        .collect();
+    let items = pool.iter().map(|id| {
+        let item = MultiSelectItem::new(id).selected(selected_set.contains(id.as_str()));
+        if disabled.contains(id) {
+            item.note("disabled")
+        } else {
+            item
+        }
+    });
 
-    let selection = MultiSelect::new()
-        .with_prompt("Toggle skills (space to enable/disable, enter to confirm)")
-        .items(&labels)
-        .defaults(&defaults)
-        .interact_opt()
-        .map_err(|_| SkmError::SelectionCancelled)?;
-
-    match selection {
-        Some(indices) => Ok(indices.into_iter().map(|i| pool[i].clone()).collect()),
-        None => Err(SkmError::SelectionCancelled),
-    }
+    MultiSelect::new(format!("Skills for profile `{name}`"))
+        .items(items)
+        .interact()
 }
 
 /// Remove matching skill IDs from every profile. Returns updated profile names.

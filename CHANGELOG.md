@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`skm profile setup` and `skm skill setup`** — replaced the inline `dialoguer` multi-select
+  with a full-screen picker on the alternate screen: `/` search filter, `[x]` checkboxes, a
+  bottom hint bar, arrow **and** vim (`k`/`j`, `g`/`G`) navigation, `a` to toggle every matching
+  row, and paging. The filter is a case-insensitive AND over whitespace-separated terms and never
+  disturbs the selection. A status line reports the selection, the list size (`27 items`, or
+  `12 of 27 match` while filtering) and `↑n` / `↓n` for rows off screen. `q` / `Esc` / `Ctrl-C`
+  cancel without writing, and restore the terminal.
+- **`profile setup`** now titles the list with the profile name
+
+### Added
+
+- `src/tui/` — reusable full-screen widgets. `tui::MultiSelect` backs both setup commands and is
+  the intended base for future pickers (see [docs/DESIGN.md](docs/DESIGN.md)). Text it draws is
+  stripped of control characters, so a skill name cannot emit terminal escapes; the IDs written
+  back to the profile are unchanged
+
 ## [0.2.2] - 2026-08-31
 
 Engineer-oriented CLI help, and drop the `skm add` alias.

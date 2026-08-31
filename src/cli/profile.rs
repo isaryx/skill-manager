@@ -30,7 +30,7 @@ pub fn run_profile_setup(store: &StorePaths, name: &str) -> Result<(), SkmError>
         Vec::new()
     };
 
-    let skill_ids = interactive_setup(store, &existing)
+    let skill_ids = interactive_setup(store, name, &existing)
         .map_err(|e| e.op(format!("setting up profile `{name}`")))?;
 
     if !existed {

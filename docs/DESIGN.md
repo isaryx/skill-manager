@@ -121,11 +121,46 @@ resolver/     Pure profile → SkillPlacement
 sync/         reconcile(), symlink walk/apply (sync/links.rs)
 doctor/       Read-only checks → Issue list
 db/           SQLite index; refresh_store_index = adopt + rebuild
-adapters/     AgentAdapter trait, interactive pickers
+adapters/     AgentAdapter trait, agent pickers
+tui/          Reusable full-screen widgets (MultiSelect)
 config/       App config + SetupFile / ProfileFile types
 util/         SKILL.md discovery, hashing, validation
 progress.rs   stderr steps; colored +/- on TTY
 ```
+
+### Interactive TUI (`src/tui/`)
+
+`tui::MultiSelect` is the searchable checkbox list behind `profile setup` and `skill setup`
+(keys and modes: [SPEC.md](SPEC.md#interactive-picker)). Built on `console` (already a
+`dialoguer` dependency) rather than a TUI framework.
+
+```rust
+let keys = MultiSelect::new("Skills for profile `work`")
+    .items(pool.iter().map(|id| MultiSelectItem::new(id).selected(is_selected(id))))
+    .interact()?;   // Err(SelectionCancelled) on q / Esc / Ctrl-C
+```
+
+Items carry a stable `key` (returned on confirm), an optional dim `note`, and their initial
+checked state. Selection lives on the items, so filtering can never disturb it.
+
+Four things worth knowing before extending it:
+
+- **`Screen` owns the alternate screen.** `Drop` restores the terminal, so an error return or a
+  panic inside the event loop cannot strand the user in the alternate buffer.
+- **`read_key_raw`, not `read_key`.** The latter raises `SIGINT` on `Ctrl-C`, which would skip
+  that teardown. `Ctrl-C` arrives as `Key::CtrlC` and cancels like `q`.
+- **State is pure.** `State::handle` and `State::render` are unit-tested without a TTY; only
+  `MultiSelect::interact` touches the terminal. Keep new behavior on that side of the line.
+- **Drawn text is sanitized, returned text is not.** `tui::sanitize` replaces control characters
+  with `U+FFFD` in the title, item `display` and `note` at construction, so caller text cannot
+  move the cursor or clear the screen. `key` is kept verbatim — it is what gets written to the
+  profile file. Anything new that draws caller text goes through `sanitize`; anything that
+  returns it must not.
+
+`render` returns exactly one string per screen row and never emits a trailing newline: writing
+past the last row would scroll the alternate screen and desynchronize the next repaint from the
+top-left origin `Screen::draw` assumes. It sheds the title and spacer rows in short terminals to
+keep the search field, one item row, the status line, and the hint bar.
 
 ### `reconcile_with_setup` pipeline
 
@@ -202,6 +237,12 @@ Helper pattern in `tests/cli.rs`: `with_env(home, store)` sets `HOME`, `XDG_CONF
 2. Wire into `doctor::run_checks`
 3. Integration test in `tests/cli.rs` for human + `--json` output
 4. Document code in [SPEC.md](SPEC.md) doctor table
+
+### New interactive picker
+
+Reuse `tui::MultiSelect` rather than `dialoguer::MultiSelect` so the keys and hint bar stay
+consistent. Add widget behavior as pure `State` methods with unit tests; gate the command on
+`io::stdin().is_terminal()` and return `SkmError::NotATty` off-TTY.
 
 ### New mutating command
 

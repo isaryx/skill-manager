@@ -44,8 +44,12 @@ pub struct SkillMeta {
     pub transfer: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProfileFile {
+    /// Names of profiles whose skills this profile also includes, resolved at placement time.
+    /// Declared before `skill` so TOML serialization emits it above the `[[skill]]` tables.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extends: Vec<String>,
     #[serde(default)]
     pub skill: Vec<ProfileSkillEntry>,
 }

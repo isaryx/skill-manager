@@ -10,6 +10,7 @@ use crate::error::SkmError;
 use crate::progress::display_path;
 use crate::resolver::resolve;
 use crate::setup::{target_dir_for_setup, SelectedSetup};
+use crate::store::extends::{flatten_skill_ids, load_flattened_profile};
 use crate::store::profiles::{list_profiles, load_profile};
 use crate::store::skills::{list_enabled_pool_ids, read_disabled_ids};
 use crate::store::validate::{inspect_store_path, StoreState};
@@ -263,7 +264,25 @@ pub fn check_profiles(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
     for name in list_profiles(store)? {
         let profile = load_profile(store, &name)?;
 
-        if profile.skill.is_empty() {
+        // Doctor reports rather than aborts, so a broken graph becomes an issue, not an error.
+        // It also means `profile.empty` below can only be judged when flattening succeeded.
+        let flat = match flatten_skill_ids(store, &name) {
+            Ok(flat) => Some(flat),
+            Err(err) => {
+                issues.push(
+                    Issue::error(
+                        "profile.extend_broken",
+                        format!("profile `{name}`: {}", err.leaf()),
+                    )
+                    .with_profile(&name),
+                );
+                None
+            }
+        };
+
+        // Emptiness is a property of the resolved set: a profile that only extends others has
+        // no skills of its own and is still perfectly usable.
+        if flat.as_ref().is_some_and(|flat| flat.is_empty()) {
             issues.push(
                 Issue::warn(
                     "profile.empty",
@@ -330,7 +349,7 @@ pub fn check_links(
 ) -> Result<Vec<Issue>, SkmError> {
     let mut issues = Vec::new();
 
-    let profile = match load_profile(store, active_profile) {
+    let profile = match load_flattened_profile(store, active_profile) {
         Ok(profile) => profile,
         Err(_) => return Ok(issues),
     };

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::error::SkmError;
 use crate::util::{discover_all_skill_dirs, path_to_store_skill_id};
 
+pub mod extends;
 pub mod pool;
 pub mod profiles;
 pub mod skills;

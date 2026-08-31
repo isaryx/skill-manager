@@ -58,9 +58,10 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
         Commands::Profile { action } => {
             match action {
                 ProfileAction::Setup { name } => profile::run_profile_setup(&store, &name)?,
+                ProfileAction::Extend { name } => profile::run_profile_extend(&store, &name)?,
                 ProfileAction::Ls => profile::run_profile_ls(&store)?,
-                ProfileAction::Show { name, user } => {
-                    profile::run_profile_show(&store, &name, user)?
+                ProfileAction::Show { name, user, tree } => {
+                    profile::run_profile_show(&store, &name, user, tree)?
                 }
                 ProfileAction::Rm { name } => profile::run_profile_rm(&store, &name)?,
             }

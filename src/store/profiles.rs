@@ -19,10 +19,8 @@ pub fn create_profile(
     validate_skill_ids(skill_ids)?;
 
     let profile = ProfileFile {
-        skill: skill_ids
-            .iter()
-            .map(|id| ProfileSkillEntry { id: id.clone() })
-            .collect(),
+        extends: Vec::new(),
+        skill: skill_entries(skill_ids),
     };
     write_profile(store, name, &profile)
 }
@@ -49,13 +47,36 @@ pub fn set_profile_skills(
     }
     validate_skill_ids(skill_ids)?;
 
-    let profile = ProfileFile {
-        skill: skill_ids
-            .iter()
-            .map(|id| ProfileSkillEntry { id: id.clone() })
-            .collect(),
-    };
+    // Read-modify-write: rebuilding the file from scratch here would drop `extends`.
+    let mut profile = read_profile(&path)?;
+    profile.skill = skill_entries(skill_ids);
     write_profile(store, name, &profile)
+}
+
+/// Replace the profiles `name` extends, leaving its own skill list untouched.
+pub fn set_profile_extends(
+    store: &StorePaths,
+    name: &str,
+    extends: &[String],
+) -> Result<(), SkmError> {
+    store.ensure_initialized()?;
+    validate_profile_name(name)?;
+    let path = store.profile_file(name);
+    if !path.is_file() {
+        return Err(SkmError::ProfileNotFound(name.to_string()));
+    }
+    validate_extends(name, extends)?;
+
+    let mut profile = read_profile(&path)?;
+    profile.extends = extends.to_vec();
+    write_profile(store, name, &profile)
+}
+
+fn skill_entries(skill_ids: &[String]) -> Vec<ProfileSkillEntry> {
+    skill_ids
+        .iter()
+        .map(|id| ProfileSkillEntry { id: id.clone() })
+        .collect()
 }
 
 pub fn list_profiles(store: &StorePaths) -> Result<Vec<String>, SkmError> {
@@ -125,6 +146,11 @@ pub fn read_profile(path: &Path) -> Result<ProfileFile, SkmError> {
     })?;
     let skill_ids: Vec<String> = profile.skill.iter().map(|entry| entry.id.clone()).collect();
     validate_skill_ids(&skill_ids)?;
+    let name = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+    validate_extends(name, &profile.extends)?;
     Ok(profile)
 }
 
@@ -244,6 +270,22 @@ pub fn profiles_referencing_skills(
     Ok(names)
 }
 
+/// Names must be valid profiles, distinct, and never the profile itself. Whether the resulting
+/// graph is acyclic and within the depth limit is checked by `extends::flatten_profile`.
+fn validate_extends(name: &str, extends: &[String]) -> Result<(), SkmError> {
+    let mut seen = std::collections::HashSet::new();
+    for target in extends {
+        validate_profile_name(target)?;
+        if target == name {
+            return Err(SkmError::SelfExtend(name.to_string()));
+        }
+        if !seen.insert(target.clone()) {
+            return Err(SkmError::DuplicateExtend(target.clone()));
+        }
+    }
+    Ok(())
+}
+
 fn validate_skill_ids(skill_ids: &[String]) -> Result<(), SkmError> {
     let mut seen = std::collections::HashSet::new();
     for id in skill_ids {
@@ -261,6 +303,108 @@ mod tests {
     use crate::store::{init_store_layout, StorePaths};
     use std::fs;
     use tempfile::TempDir;
+
+    /// `extends` is a TOML value and `[[skill]]` an array of tables, so the value has to be
+    /// emitted first — the `toml` crate refuses values after tables.
+    #[test]
+    fn profile_with_extends_and_skills_roundtrips() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        create_profile(&store, "work", &["docx".to_string(), "git".to_string()]).unwrap();
+        set_profile_extends(&store, "work", &["base".to_string(), "infra".to_string()]).unwrap();
+
+        let body = fs::read_to_string(store.profile_file("work")).unwrap();
+        assert!(
+            body.find("extends").unwrap() < body.find("[[skill]]").unwrap(),
+            "{body}"
+        );
+
+        let profile = load_profile(&store, "work").unwrap();
+        assert_eq!(profile.extends, vec!["base", "infra"]);
+        assert_eq!(profile.skill.len(), 2);
+    }
+
+    #[test]
+    fn setting_skills_keeps_extends() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        create_profile(&store, "work", &["docx".to_string()]).unwrap();
+        set_profile_extends(&store, "work", &["base".to_string()]).unwrap();
+        set_profile_skills(&store, "work", &["git".to_string()]).unwrap();
+
+        let profile = load_profile(&store, "work").unwrap();
+        assert_eq!(
+            profile.extends,
+            vec!["base"],
+            "extends must survive a skill rewrite"
+        );
+        assert_eq!(profile.skill[0].id, "git");
+    }
+
+    #[test]
+    fn setting_extends_keeps_skills() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        create_profile(&store, "work", &["docx".to_string()]).unwrap();
+        set_profile_extends(&store, "work", &["base".to_string()]).unwrap();
+
+        let profile = load_profile(&store, "work").unwrap();
+        assert_eq!(profile.skill.len(), 1);
+        assert_eq!(profile.skill[0].id, "docx");
+    }
+
+    #[test]
+    fn self_extend_is_rejected() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        create_profile(&store, "work", &[]).unwrap();
+        let err = set_profile_extends(&store, "work", &["work".to_string()]).unwrap_err();
+        assert!(matches!(err, SkmError::SelfExtend(_)), "{err:?}");
+    }
+
+    /// The write path needs its own guard: `set_profile_extends` would otherwise persist a name
+    /// that only fails later, when something tries to read it as a path.
+    #[test]
+    fn set_profile_extends_rejects_names_that_escape_the_profiles_directory() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+        create_profile(&store, "app", &[]).unwrap();
+
+        for hostile in ["../../etc/passwd", "..", "/etc/passwd", "sub/dir", ".skm"] {
+            let err = set_profile_extends(&store, "app", &[hostile.to_string()]).unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    SkmError::InvalidProfileName(_) | SkmError::ReservedName(_)
+                ),
+                "{hostile:?} was not rejected: {err:?}"
+            );
+        }
+
+        // Nothing hostile was written.
+        assert!(load_profile(&store, "app").unwrap().extends.is_empty());
+    }
+
+    #[test]
+    fn duplicate_extends_are_rejected() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        create_profile(&store, "work", &[]).unwrap();
+        let err = set_profile_extends(&store, "work", &["base".to_string(), "base".to_string()])
+            .unwrap_err();
+        assert!(matches!(err, SkmError::DuplicateExtend(_)), "{err:?}");
+    }
 
     #[test]
     fn roundtrip_profile() {

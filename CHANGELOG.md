@@ -20,6 +20,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`skm profile extend <profile>`** — pick which profiles a profile inherits skills from, in the
+  same full-screen picker. `extends` is a live reference: the skill list is flattened at sync
+  time, so editing a base profile updates everything extending it. Own skills come first, then
+  inherited depth-first, deduplicated by ID. A profile whose skills all come from `extends` is
+  valid. Cycles, chains deeper than 8, self-extension and duplicate entries are rejected both when
+  written and when resolved; the picker never offers a profile that would close a cycle, and a
+  selection that would break the graph is rejected before anything is written.
+  `skm profile rm` now refuses while another profile extends the target, and `skm doctor` reports
+  a broken graph as `profile.extend_broken`
+- **`skm profile show`** — marks inherited skills as `git (from base)`, combining with the
+  disabled marker as `git (from base, disabled)`
+- **`skm profile show <profile> --tree`** — prints the extend graph instead of the flat list, so
+  the *path* a skill arrived by is visible, not just its origin. `(*)` marks a profile subtree or
+  skill already accounted for above, and the resolved count is reported alongside how many of
+  those are disabled and therefore not wired. Unlike the flat listing it renders a broken graph,
+  marking each `(cycle)`, `(not found)` or `(too deep)` in place before exiting with the same code
+  the flat listing would
 - `src/tui/` — reusable full-screen widgets. `tui::MultiSelect` backs both setup commands and is
   the intended base for future pickers (see [docs/DESIGN.md](docs/DESIGN.md)). Text it draws is
   stripped of control characters, so a skill name cannot emit terminal escapes; the IDs written

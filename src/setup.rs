@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::adapters::{get_adapter, resolve_target_dir, SetupLevel};
 use crate::config::{default_setup, read_setup, write_setup, SetupFile};
 use crate::error::SkmError;
-use crate::store::profiles::load_profile;
+use crate::store::extends::flatten_skill_ids;
 use crate::store::StorePaths;
 
 #[derive(Debug, Clone)]
@@ -106,9 +106,12 @@ pub fn clear_active_profile_if_empty(
     store: &StorePaths,
     profile_name: &str,
 ) -> Result<(), SkmError> {
-    let profile = load_profile(store, profile_name)?;
-    if !profile.skill.is_empty() {
-        return Ok(());
+    // Emptiness is a property of the resolved set, so a profile whose skills all come from
+    // `extends` stays active. A broken extend link leaves us unable to tell, so do nothing
+    // rather than deactivating a profile that may well be fine.
+    match flatten_skill_ids(store, profile_name) {
+        Ok(skills) if skills.is_empty() => {}
+        _ => return Ok(()),
     }
 
     use crate::config::{project_setup_path, read_setup, user_setup_path};

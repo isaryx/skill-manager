@@ -102,6 +102,19 @@ _arguments "${_arguments_options[@]}" : \
 ':name -- Profile name:_default' \
 && ret=0
 ;;
+(extend)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':name -- Profile name:_default' \
+&& ret=0
+;;
 (ls)
 _arguments "${_arguments_options[@]}" : \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
@@ -118,14 +131,15 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'--tree[Print the extend graph as a tree instead of a flat skill list]' \
 '-u[Use user-level config when checking which profile is active]' \
 '--user[Use user-level config when checking which profile is active]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
-'-h[Print help]' \
-'--help[Print help]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
 ':name -- Profile name:_default' \
 && ret=0
 ;;
@@ -155,6 +169,10 @@ _arguments "${_arguments_options[@]}" : \
         curcontext="${curcontext%:*:*}:skm-profile-help-command-$line[1]:"
         case $line[1] in
             (setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(extend)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
@@ -416,6 +434,10 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
+(extend)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
 (ls)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
@@ -571,11 +593,17 @@ _skm__subcmd__help__subcmd__ls_commands() {
 _skm__subcmd__help__subcmd__profile_commands() {
     local commands; commands=(
 'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
+'extend:Choose which profiles this one inherits skills from (interactive)' \
 'ls:List profile names' \
 'show:Show skills in a profile' \
 'rm:Remove a profile' \
     )
     _describe -t commands 'skm help profile commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__profile__subcmd__extend_commands] )) ||
+_skm__subcmd__help__subcmd__profile__subcmd__extend_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help profile extend commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__help__subcmd__profile__subcmd__ls_commands] )) ||
 _skm__subcmd__help__subcmd__profile__subcmd__ls_commands() {
@@ -665,6 +693,7 @@ _skm__subcmd__ls_commands() {
 _skm__subcmd__profile_commands() {
     local commands; commands=(
 'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
+'extend:Choose which profiles this one inherits skills from (interactive)' \
 'ls:List profile names' \
 'show:Show skills in a profile' \
 'rm:Remove a profile' \
@@ -672,16 +701,27 @@ _skm__subcmd__profile_commands() {
     )
     _describe -t commands 'skm profile commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__profile__subcmd__extend_commands] )) ||
+_skm__subcmd__profile__subcmd__extend_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile extend commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__profile__subcmd__help_commands] )) ||
 _skm__subcmd__profile__subcmd__help_commands() {
     local commands; commands=(
 'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
+'extend:Choose which profiles this one inherits skills from (interactive)' \
 'ls:List profile names' \
 'show:Show skills in a profile' \
 'rm:Remove a profile' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'skm profile help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__profile__subcmd__help__subcmd__extend_commands] )) ||
+_skm__subcmd__profile__subcmd__help__subcmd__extend_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm profile help extend commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__profile__subcmd__help__subcmd__help_commands] )) ||
 _skm__subcmd__profile__subcmd__help__subcmd__help_commands() {

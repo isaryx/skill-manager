@@ -181,12 +181,43 @@ pub enum ProfileAction {
         /// Profile name
         name: String,
     },
+    /// Choose which profiles this one inherits skills from (interactive)
+    #[command(
+        long_about = "Pick the profiles whose skills this profile also includes, and which it \
+                      therefore `extends`. Creates the profile if it does not exist, like \
+                      `setup`.\n\n\
+                      `extends` is a live reference: the skill list is flattened when the \
+                      profile is synced, so later edits to a base profile apply here too. \
+                      Profiles that already extend this one are not offered, since that would \
+                      create a cycle.",
+        after_help = "Chains are limited to 8 levels deep. Use `skm profile show` to see which \
+                      profile each skill comes from."
+    )]
+    Extend {
+        /// Profile name
+        name: String,
+    },
     /// List profile names
     Ls,
     /// Show skills in a profile
+    #[command(
+        long_about = "List the skills a profile resolves to, including everything it inherits \
+                      through `extends`. Inherited skills are marked `(from <profile>)`.\n\n\
+                      With --tree, print the extend graph instead: skills nest under the profile \
+                      that declares them, and `(*)` marks a profile subtree or skill already \
+                      accounted for above and so not counted twice. --tree \
+                      also renders a broken graph, marking each `(cycle)`, `(not found)`, \
+                      `(too deep)` or `(unreadable)` in place, then exits with the same code the \
+                      flat listing would.",
+        after_help = "Stdout is one skill per line; --tree replaces that with the tree and its \
+                      skill count."
+    )]
     Show {
         /// Profile name
         name: String,
+        /// Print the extend graph as a tree instead of a flat skill list
+        #[arg(long)]
+        tree: bool,
         /// Use user-level config when checking which profile is active
         #[arg(short = 'u', long)]
         user: bool,

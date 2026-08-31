@@ -26,7 +26,7 @@ Many commands accept `--user` / `-u` for `~/.skm.toml`.
 skm init [--agent AGENT] [--force] [--accept-existing-skills]
 skm import <dir> --copy|--move [--as NAME]
 
-skm profile setup|ls|show|rm <name>
+skm profile setup|extend|ls|show|rm <name>
 skm skill setup|ls|rm <id> [--force]
 skm ls [-s|--skill | -p|--profile]
 
@@ -92,6 +92,7 @@ Requires initialized store. `--copy` and `--move` are required and mutually excl
 ### Profiles & library skills
 
 - `profile setup` — pick a profile's skills from the **enabled** library
+- `profile extend` — pick which **profiles** this profile inherits skills from
 - `skill setup` — hide skills via `.skm/disabled.toml` (still in profiles; skipped when wiring)
 - `skill rm` — delete from store and all profiles; TTY confirm or `--force`
 - Disabled skills show `(disabled)` on `profile show`; sync unwires them
@@ -99,9 +100,110 @@ Requires initialized store. `--copy` and `--move` are required and mutually excl
 `profile setup` also offers any **disabled** skill the profile already references, marked
 `(disabled)`, so editing a profile never silently drops a hidden skill.
 
+#### Profile inheritance (`extends`)
+
+`skm profile extend <profile>` opens the same picker over profile names and writes
+`extends = ["base", …]` into the profile file. It creates the profile if missing, like `setup`.
+
+`extends` is a **live reference, not a copy.** The skill list is flattened every time the profile
+is resolved, so editing a base profile immediately changes everything extending it.
+
+Flattening rules:
+
+- Own skills first, then inherited depth-first in `extends` order
+- Deduplicated by skill ID; the first occurrence wins, so a directly declared skill is attributed
+  to the profile itself even when a base also lists it
+- A diamond (two profiles extending a common base) contributes that base's skills once
+- A profile with no skills of its own is valid; `use-profile` and `doctor` judge emptiness on the
+  **flattened** set
+
+Rejected, at write time and again at resolve time since profile files are hand-editable:
+
+| Condition | Error | Exit |
+|---|---|---|
+| Profile extends itself | `profile \`a\` cannot extend itself` | 2 |
+| Same profile listed twice | `duplicate extended profile: a` | 2 |
+| Cycle | `extend cycle between profiles: a → b → a` | 2 |
+| Chain deeper than **8** hops | `extend chain is deeper than 8: …` | 2 |
+| Extends a profile that does not exist | `profile \`a\` extends missing profile \`b\`` | 1 |
+
+The depth limit is a comprehension guard, not what makes resolution terminate — cycle detection
+does that. Realistic hierarchies (`base → org → team → personal`) are about three hops.
+
+**Conflicting skills.** Flattening resolves ID-level duplicates but not placement-name
+collisions, which are handled by the existing flat-naming rules:
+
+| Case | Behavior |
+|---|---|
+| Same skill ID declared directly and inherited | One placement; attributed to the profile itself |
+| Same ID inherited from two bases (diamond) | One placement |
+| Different IDs sharing a leaf (`a/tdd` + `b/tdd`) | Both disambiguate to `a__tdd` / `b__tdd` |
+| Two IDs that disambiguate to the same name | Exit 2, `resolve conflict for <name>` |
+| Inherited skill that is disabled | Reported `(from base, disabled)`; not wired |
+| Placement name taken by a non-skm entry | That placement is skipped; reported as `link.conflict` |
+
+Two consequences specific to `extends`:
+
+- **Placement names depend on profile composition.** `eng` alone places `engineering/tdd` as
+  `tdd`; a profile extending both `eng` and an `ops` profile places `engineering__tdd` and
+  `ops__tdd`. Extending a second profile can therefore rename skills already in the agent
+  directory.
+- **Two profiles that each resolve can be unresolvable together.** The conflict names the
+  colliding placement but not the profiles that contributed it; `skm profile show <name>` gives
+  the origin of each skill.
+
+There is **no way to exclude a skill inherited from a base** — `extends` is union-only, with no
+negation or override.
+
+The picker does not offer profiles that already reach this one, since extending them would close
+a cycle. `skm profile rm` refuses while another profile extends the target, naming the extenders,
+mirroring the existing refusal to remove the active profile.
+
+`skm profile show` prints the flattened list and marks inherited entries: `git (from base)`,
+combining with the disabled marker as `git (from base, disabled)`. The `extends` line itself goes
+to stderr so stdout stays one skill per line.
+
+#### `profile show --tree`
+
+`--tree` prints the extend graph instead of the flat list. The flat view marks *which* profile a
+skill came from; the tree also shows the **path** — whether `work` extends `shared` directly or
+inherits it through `base`, which the flat view cannot express.
+
+```
+work
+├── pdf
+├── base
+│   ├── docx
+│   └── shared
+│       ├── git
+│       └── writing/adr (disabled)
+└── infra
+    ├── tf
+    └── shared (*)
+
+5 skills resolved, 1 disabled and not wired
+```
+
+The graph is a DAG, not a tree, so:
+
+- `(*)` marks a node already accounted for above — a profile subtree rendered elsewhere, or a
+  skill an earlier profile already contributed. Those are not counted twice.
+- The count equals the line count of the flat listing. It is **not** the number of symlinks
+  created: disabled skills resolve but are never wired, which is why they are counted separately.
+
+Unlike the flat listing, `--tree` **renders a broken graph** before failing, marking each problem
+in place — `(cycle)`, `(not found)`, `(too deep)`, `(unreadable)` — and continuing through the
+siblings. Markers are short fixed labels; the full error (a TOML parse failure, say) is printed
+after the tree rather than inside a node, so the tree keeps its shape. This is
+the view to reach for when `use-profile` refuses a profile. It then exits with the same code the
+flat listing would for that graph (2 for a cycle or over-deep chain, 1 for a missing profile).
+
+`--tree` replaces the one-skill-per-line stdout with the tree and its count, so scripts should not
+pass it. The `(extends …)` stderr note is suppressed, since the tree already shows it.
+
 #### Interactive picker
 
-`profile setup` and `skill setup` take over the terminal with a searchable checkbox list, and
+`profile setup`, `profile extend` and `skill setup` take over the terminal with a searchable checkbox list, and
 restore the previous screen on exit. Both require a TTY (`SKM_STORE`/`--store` and a
 hand-written profile TOML cover automation). Checked means *in the profile* for `profile setup`,
 *enabled* for `skill setup`.
@@ -159,10 +261,11 @@ Read-only health report. Setup selection same as `sync`.
 | `store.missing` / `store.invalid` | error | Store layout |
 | `config.unknown_agent` | error | Unknown `placement.agent` |
 | `profile.missing_ref` | error | Profile references missing skill |
+| `profile.extend_broken` | error | Cycle, over-deep chain, or missing profile in `extends` |
 | `index.stale` | warn | Index count ≠ disk |
 | `skill.missing_skill_md` | warn | Dir looks like skill, no `SKILL.md` |
 | `meta.orphan` / `link.broken` / `link.stale` | warn | Orphan meta or bad symlinks |
-| `profile.empty` | warn | Zero skills in profile |
+| `profile.empty` | warn | Zero skills after flattening `extends` |
 | `meta.missing` | info | No meta — run `skm scan` |
 | `profile.disabled_ref` | info | Profile includes disabled skill |
 | `link.extra` | info | Store-owned symlink not in active profile |

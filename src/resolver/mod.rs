@@ -144,6 +144,7 @@ mod tests {
     fn resolves_known_skills() {
         let (_tmp, store) = make_store_with_skill("docx");
         let profile = ProfileFile {
+            extends: Vec::new(),
             skill: vec![ProfileSkillEntry {
                 id: "docx".to_string(),
             }],
@@ -158,6 +159,7 @@ mod tests {
     fn nested_store_id_uses_leaf_placement_name() {
         let (_tmp, store) = make_store_with_skill("engineering/tdd");
         let profile = ProfileFile {
+            extends: Vec::new(),
             skill: vec![ProfileSkillEntry {
                 id: "engineering/tdd".to_string(),
             }],
@@ -179,6 +181,7 @@ mod tests {
     fn missing_skill_errors() {
         let (_tmp, store) = make_store_with_skill("docx");
         let profile = ProfileFile {
+            extends: Vec::new(),
             skill: vec![ProfileSkillEntry {
                 id: "missing".to_string(),
             }],
@@ -192,6 +195,7 @@ mod tests {
         let (_tmp, store) = make_store_with_skill("docx");
         let disabled = HashSet::from(["docx".to_string()]);
         let profile = ProfileFile {
+            extends: Vec::new(),
             skill: vec![ProfileSkillEntry {
                 id: "docx".to_string(),
             }],
@@ -227,7 +231,7 @@ mod tests {
     #[test]
     fn empty_profile_errors() {
         let (_tmp, store) = make_store_with_skill("docx");
-        let profile = ProfileFile { skill: vec![] };
+        let profile = ProfileFile::default();
         let err = resolve(&profile, &store, &HashSet::new()).unwrap_err();
         assert!(matches!(err, ResolveError::EmptyProfile));
     }
@@ -236,6 +240,7 @@ mod tests {
     fn duplicate_store_ids_conflict() {
         let (_tmp, store) = make_store_with_skill("docx");
         let profile = ProfileFile {
+            extends: Vec::new(),
             skill: vec![
                 ProfileSkillEntry {
                     id: "docx".to_string(),
@@ -254,6 +259,7 @@ mod tests {
         let (_tmp, store) = make_store_with_skills(&["engineering/tdd", "other/tdd"]);
         let disabled = HashSet::from(["other/tdd".to_string()]);
         let profile = ProfileFile {
+            extends: Vec::new(),
             skill: vec![
                 ProfileSkillEntry {
                     id: "engineering/tdd".to_string(),

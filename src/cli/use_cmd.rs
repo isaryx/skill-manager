@@ -3,7 +3,7 @@ use std::env;
 use crate::error::SkmError;
 use crate::progress;
 use crate::setup::{select_setup, set_active_profile};
-use crate::store::profiles::load_profile;
+use crate::store::extends::flatten_skill_ids;
 use crate::store::StorePaths;
 use crate::sync::{reconcile_for_profile, ReconcileOptions};
 use crate::util::validate_profile_name;
@@ -18,9 +18,10 @@ pub fn run_use_profile(
     let cwd = env::current_dir()?;
     let mut setup = select_setup(&cwd, force_user)?;
 
-    let loaded =
-        load_profile(store, profile).map_err(|e| e.op(format!("loading profile `{profile}`")))?;
-    if loaded.skill.is_empty() {
+    // Flattened, so a profile that only extends others is not "empty".
+    let skills = flatten_skill_ids(store, profile)
+        .map_err(|e| e.op(format!("loading profile `{profile}`")))?;
+    if skills.is_empty() {
         return Err(SkmError::EmptyProfile);
     }
 

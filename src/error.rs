@@ -58,6 +58,30 @@ pub enum SkmError {
     #[error("duplicate skill id in profile: {0}")]
     DuplicateSkillId(String),
 
+    #[error("profile `{0}` cannot extend itself")]
+    SelfExtend(String),
+
+    #[error("duplicate extended profile: {0}")]
+    DuplicateExtend(String),
+
+    #[error("extend cycle between profiles: {0}")]
+    ExtendCycle(String),
+
+    #[error("extend chain is deeper than {limit}: {chain}")]
+    ExtendTooDeep { limit: usize, chain: String },
+
+    #[error("profile `{profile}` extends missing profile `{missing}`")]
+    ExtendNotFound { profile: String, missing: String },
+
+    #[error("cannot remove profile `{profile}`; extended by {extenders}")]
+    ExtendedProfileRemoval { profile: String, extenders: String },
+
+    #[error(
+        "no profiles available to extend; a profile cannot extend itself, nor anything that \
+         already extends it"
+    )]
+    NoExtendCandidates,
+
     #[error("skill library is empty; import skills with `skm import`")]
     EmptyPool,
 
@@ -120,6 +144,10 @@ impl SkmError {
             | SkmError::ResolveConflict(_)
             | SkmError::InvalidProfileName(_)
             | SkmError::InvalidSkillId(_)
+            | SkmError::SelfExtend(_)
+            | SkmError::DuplicateExtend(_)
+            | SkmError::ExtendCycle(_)
+            | SkmError::ExtendTooDeep { .. }
             | SkmError::RefuseNonInteractiveRm => 2,
             _ => 1,
         }

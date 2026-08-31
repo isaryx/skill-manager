@@ -88,6 +88,9 @@ _skm() {
             skm__subcmd__help,use-profile)
                 cmd="skm__subcmd__help__subcmd__use__subcmd__profile"
                 ;;
+            skm__subcmd__help__subcmd__profile,extend)
+                cmd="skm__subcmd__help__subcmd__profile__subcmd__extend"
+                ;;
             skm__subcmd__help__subcmd__profile,ls)
                 cmd="skm__subcmd__help__subcmd__profile__subcmd__ls"
                 ;;
@@ -109,6 +112,9 @@ _skm() {
             skm__subcmd__help__subcmd__skill,setup)
                 cmd="skm__subcmd__help__subcmd__skill__subcmd__setup"
                 ;;
+            skm__subcmd__profile,extend)
+                cmd="skm__subcmd__profile__subcmd__extend"
+                ;;
             skm__subcmd__profile,help)
                 cmd="skm__subcmd__profile__subcmd__help"
                 ;;
@@ -123,6 +129,9 @@ _skm() {
                 ;;
             skm__subcmd__profile,show)
                 cmd="skm__subcmd__profile__subcmd__show"
+                ;;
+            skm__subcmd__profile__subcmd__help,extend)
+                cmd="skm__subcmd__profile__subcmd__help__subcmd__extend"
                 ;;
             skm__subcmd__profile__subcmd__help,help)
                 cmd="skm__subcmd__profile__subcmd__help__subcmd__help"
@@ -298,8 +307,22 @@ _skm() {
             return 0
             ;;
         skm__subcmd__help__subcmd__profile)
-            opts="setup ls show rm"
+            opts="setup extend ls show rm"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__help__subcmd__profile__subcmd__extend)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
@@ -568,7 +591,7 @@ _skm() {
             return 0
             ;;
         skm__subcmd__profile)
-            opts="-v -h --verbose --store --json --dry-run --color --help setup ls show rm help"
+            opts="-v -h --verbose --store --json --dry-run --color --help setup extend ls show rm help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -589,9 +612,45 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        skm__subcmd__profile__subcmd__help)
-            opts="setup ls show rm help"
+        skm__subcmd__profile__subcmd__extend)
+            opts="-v -h --verbose --store --json --dry-run --color --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --store)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__profile__subcmd__help)
+            opts="setup extend ls show rm help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__profile__subcmd__help__subcmd__extend)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
@@ -740,7 +799,7 @@ _skm() {
             return 0
             ;;
         skm__subcmd__profile__subcmd__show)
-            opts="-u -v -h --user --verbose --store --json --dry-run --color --help"
+            opts="-u -v -h --tree --user --verbose --store --json --dry-run --color --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

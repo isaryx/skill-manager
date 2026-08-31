@@ -14,7 +14,8 @@ Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.m
 | **Library** | All skill dirs under `$STORE/` (flat or nested). |
 | **Skill ID** | Store-relative path to a skill dir (`docx`, `engineering/tdd`). |
 | **Bundle** | Skill tree rooted at one store prefix; one meta file at bundle root (`local.toml` covers `local/*`). |
-| **Profile** | Named skill selection in `.skm/profiles/<name>.toml`. |
+| **Profile** | Named skill selection in `.skm/profiles/<name>.toml`. May `extends` other profiles. |
+| **Flattened profile** | A profile's own skills plus everything it extends, deduplicated by ID. |
 | **Enabled skill** | Not listed in `.skm/disabled.toml`. |
 | **Target** | Agent skills directory (adapter-specific). |
 | **Placement** | One symlink: flat `name` in target → canonical store path. |
@@ -116,7 +117,7 @@ main.rs  →  lib::run(Cli)  →  cli/<command>.rs handlers
 ```
 cli/          Command handlers, clap (cli/mod.rs), JSON (cli/output.rs)
 setup.rs      Setup file selection, active profile writes
-store/        StorePaths, discovery, profiles, pool import, disabled, validate
+store/        StorePaths, discovery, profiles, extends graph, pool import, disabled, validate
 resolver/     Pure profile → SkillPlacement
 sync/         reconcile(), symlink walk/apply (sync/links.rs)
 doctor/       Read-only checks → Issue list
@@ -161,6 +162,54 @@ Four things worth knowing before extending it:
 past the last row would scroll the alternate screen and desynchronize the next repaint from the
 top-left origin `Screen::draw` assumes. It sheds the title and spacer rows in short terminals to
 keep the search field, one item row, the status line, and the hint bar.
+
+### Profile inheritance (`store/extends.rs`)
+
+`extends` is a live reference (semantics and limits: [SPEC.md](SPEC.md#profile-inheritance-extends)).
+`flatten_profile` walks the graph and returns `FlatSkill { id, from }`, where `from` is the profile
+a skill was inherited from — that attribution is what `profile show` prints.
+
+**The resolver stays I/O-free.** Rather than teach `resolve` about the graph, callers use
+`extends::load_flattened_profile`, which returns a plain `ProfileFile` with the graph already
+collapsed into `skill`. Keeps `resolver` unit-testable in isolation.
+
+**Which view to use.** Operations that *edit* profile files (`profile setup`, `skill rm`) work on
+the direct list; operations that *resolve placements* (`sync`, `use-profile`, `status`, `doctor`
+link checks) work on the flattened list. `set_profile_skills` and `set_profile_extends` are both
+read-modify-write for this reason — rebuilding the file from scratch would drop the other field.
+
+**Tree view.** `build_tree` is a second, deliberately error-tolerant walk returning a `Tree`
+(`root`, `resolved`, `disabled`, `error`). It marks a cycle, missing profile or over-deep chain in
+place and keeps going, so `--tree` can render a graph that `flatten_profile` rejects outright.
+Returning the first error rather than swallowing it lets `profile show --tree` print the tree and
+*then* fail with the same exit code the flat listing gives for that graph. `render_tree` is pure
+(`node`, `color`) and unit-tested against exact expected lines.
+
+`TreeNode::notes` is `Vec<&'static str>` on purpose: a closed vocabulary of short labels. Putting
+error text in a node would break the tree, since a TOML parse error is multi-line with caret art.
+`NodeKind` states whether a node is a profile or a skill rather than leaving consumers to infer it
+from having no children — an empty profile is also a childless leaf.
+
+Because `build_tree` duplicates the traversal, `the_tree_and_the_flat_listing_agree_on_every_healthy_shape`
+pins the two walks against each other across chain, diamond, fan-out, empty-profile and
+repeated-skill graphs. Any drift between them shows up there.
+
+**Validating before writing.** `flatten_with_extends` walks the graph with the root's `extends`
+replaced by a hypothetical list, and tolerates a root that does not exist yet. `profile extend`
+uses it to reject a cycle or an over-deep chain *before* `set_profile_extends`; writing first
+would persist a selection that is then rejected, leaving the profile broken on disk.
+
+**Depth is checked before the `expanded` short-circuit** in `Walk::visit`. The other order makes
+the verdict depend on which branch `extends` happens to list first, because a profile already
+reached by a short route would skip the check.
+
+**Cycle detection.** `Walk::visit` is recursive on purpose. `path` holds the chain being expanded
+and catches any edge back into it; `expanded` is only memoization so a diamond is walked once.
+Correctness depends on recursion: `visit` does not return until a subtree is fully expanded, so a
+route that re-enters a profile meanwhile still finds it on `path`. An iterative walk with one
+shared visited set lacks that property and can skip the branch where a cycle is visible. Recursion
+is bounded — and therefore safe — only because `MAX_EXTEND_DEPTH` caps the depth, which is what
+makes that limit load-bearing rather than cosmetic.
 
 ### `reconcile_with_setup` pipeline
 
@@ -230,6 +279,13 @@ Helper pattern in `tests/cli.rs`: `with_env(home, store)` sets `HOME`, `XDG_CONF
 3. Unit test `target_dir` for project + user levels
 4. Integration test: `init --agent <id>` + `use-profile` → symlink under expected path
 5. Document in [SPEC-AGENTS.md](SPEC-AGENTS.md) and README agent table
+
+### New profile-graph consumer
+
+Decide whether the operation edits files (direct list) or resolves placements (flattened list),
+then use `load_profile` or `extends::load_flattened_profile` accordingly. Anything that resolves
+must tolerate a broken graph: `doctor` reports `profile.extend_broken` instead of aborting, and
+`clear_active_profile_if_empty` declines to act when flattening fails.
 
 ### New doctor check
 

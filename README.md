@@ -14,6 +14,29 @@
 
 Both open a full-screen picker: `/` to search, `space` to toggle, `enter` to confirm, `q` to quit. Arrow keys and `k`/`j` both move. Keys are listed in the bar at the bottom of the screen.
 
+**Profiles can extend other profiles.** `skm profile extend work` picks the profiles `work` inherits from; its skill list is the union, flattened when you sync. Editing a base profile updates everything extending it. `skm profile show` marks where each skill came from:
+
+```
+docx
+git (from base)
+```
+
+`skm profile show work --tree` shows the whole graph, including the path each skill arrived by:
+
+```
+work
+├── pdf
+├── base
+│   ├── docx
+│   └── shared
+│       └── git
+└── infra
+    ├── tf
+    └── shared (*)
+
+4 skills resolved
+```
+
 A skill is a directory with a `SKILL.md` file at its root (or nested under a skill tree).
 
 ## Install
@@ -87,6 +110,7 @@ skm doctor --json    # for scripts (includes link.conflict when a profile skill 
 | `skm ls` | List skills and profiles (`-s`/`--skill` or `-p`/`--profile` to filter) |
 | `skm skill ls` / `setup` / `rm` | List, enable/disable, or remove skills in the store |
 | `skm profile setup/ls/show/rm` | Create and manage profiles |
+| `skm profile extend <profile>` | Pick which profiles this one inherits skills from |
 | `skm use-profile <profile>` | Activate a profile and sync links to the agent folder |
 | `skm switch-agent` | Change the target agent in your config |
 | `skm sync` | Refresh skill links and index without changing the active profile |

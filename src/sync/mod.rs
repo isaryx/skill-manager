@@ -9,7 +9,7 @@ use crate::error::SkmError;
 use crate::progress;
 use crate::resolver::{resolve, SkillPlacement};
 use crate::setup::{select_setup, target_dir_for_setup, SelectedSetup};
-use crate::store::profiles::load_profile;
+use crate::store::extends::load_flattened_profile;
 use crate::store::skills::read_disabled_ids;
 use crate::store::{ensure_store_subdirs, StorePaths};
 use crate::util::validate_profile_name;
@@ -83,7 +83,7 @@ pub fn reconcile_with_setup(
     })?;
 
     progress::step(format!("loading profile `{active}`"));
-    let profile = load_profile(store, active)?;
+    let profile = load_flattened_profile(store, active)?;
     let disabled = read_disabled_ids(store)?;
     let placements = resolve(&profile, store, &disabled).map_err(SkmError::from)?;
 
@@ -324,7 +324,7 @@ pub fn collect_status(
         return Ok(StatusReport { linked, conflicts });
     };
 
-    let profile = load_profile(store, active)?;
+    let profile = load_flattened_profile(store, active)?;
     let disabled = read_disabled_ids(store)?;
     let placements = resolve(&profile, store, &disabled).map_err(SkmError::from)?;
 

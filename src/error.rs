@@ -174,3 +174,30 @@ fn print_error_verbose_inner(err: &SkmError) {
         other => eprintln!("{other}"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn usage_and_resolve_conflict_are_exit_two() {
+        assert_eq!(SkmError::Usage("x".into()).exit_code(), 2);
+        assert_eq!(SkmError::ResolveConflict("tdd".into()).exit_code(), 2);
+        assert_eq!(SkmError::DuplicateSkillId("docx".into()).exit_code(), 2);
+        assert_eq!(SkmError::InvalidSkillId("Bad".into()).exit_code(), 2);
+        assert_eq!(SkmError::RefuseNonInteractiveRm.exit_code(), 2);
+    }
+
+    #[test]
+    fn wrapped_errors_use_source_exit_code() {
+        let err = SkmError::ResolveConflict("tdd".into()).op("syncing skills");
+        assert_eq!(err.exit_code(), 2);
+        assert!(matches!(err.leaf(), SkmError::ResolveConflict(_)));
+    }
+
+    #[test]
+    fn domain_failures_are_exit_one() {
+        assert_eq!(SkmError::EmptyProfile.exit_code(), 1);
+        assert_eq!(SkmError::StoreNotInitialized.exit_code(), 1);
+    }
+}

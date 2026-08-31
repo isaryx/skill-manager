@@ -255,6 +255,32 @@ mod tests {
         assert!(validate_store_skill_id("engineering/tdd").is_ok());
         assert!(validate_store_skill_id("docx").is_ok());
         assert!(validate_store_skill_id("../tdd").is_err());
+        assert!(validate_store_skill_id("engineering//tdd").is_err());
+        assert!(validate_store_skill_id("Docx").is_err());
+    }
+
+    #[test]
+    fn reserved_and_leading_dot_names_rejected() {
+        assert!(matches!(
+            validate_store_entry_name(".skm"),
+            Err(SkmError::ReservedName(_))
+        ));
+        assert!(matches!(
+            validate_store_entry_name(".hidden"),
+            Err(SkmError::ReservedName(_))
+        ));
+    }
+
+    #[test]
+    fn hash_directory_is_stable_for_same_tree() {
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path().join("skill");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("SKILL.md"), "# x\n").unwrap();
+        let a = hash_directory(&dir).unwrap();
+        let b = hash_directory(&dir).unwrap();
+        assert_eq!(a, b);
+        assert!(a.starts_with("sha256:"));
     }
 
     #[test]

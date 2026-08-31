@@ -128,3 +128,89 @@ pub fn resolve_store_root(cli_store: Option<&Path>) -> PathBuf {
     }
     default_store_root()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+    use tempfile::TempDir;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    struct EnvGuard {
+        key: &'static str,
+        previous: Option<String>,
+    }
+
+    impl EnvGuard {
+        fn set(key: &'static str, value: &str) -> Self {
+            let previous = std::env::var(key).ok();
+            unsafe { std::env::set_var(key, value) };
+            Self { key, previous }
+        }
+
+        fn remove(key: &'static str) -> Self {
+            let previous = std::env::var(key).ok();
+            unsafe { std::env::remove_var(key) };
+            Self { key, previous }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            match &self.previous {
+                Some(value) => unsafe { std::env::set_var(self.key, value) },
+                None => unsafe { std::env::remove_var(self.key) },
+            }
+        }
+    }
+
+    #[test]
+    fn cli_store_beats_env() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _env = EnvGuard::set("SKM_STORE", "/from-env");
+        let cli = PathBuf::from("/from-cli");
+        assert_eq!(resolve_store_root(Some(&cli)), cli);
+    }
+
+    #[test]
+    fn env_beats_app_config() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let tmp = TempDir::new().unwrap();
+        let _xdg = EnvGuard::set(
+            "XDG_CONFIG_HOME",
+            tmp.path().join("config").to_str().unwrap(),
+        );
+        write_app_config(&tmp.path().join("from-config")).unwrap();
+        let _env = EnvGuard::set("SKM_STORE", "/from-env");
+        assert_eq!(resolve_store_root(None), PathBuf::from("/from-env"));
+    }
+
+    #[test]
+    fn app_config_used_when_env_unset() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let tmp = TempDir::new().unwrap();
+        let store = tmp.path().join("from-config");
+        let _xdg = EnvGuard::set(
+            "XDG_CONFIG_HOME",
+            tmp.path().join("config").to_str().unwrap(),
+        );
+        let _env = EnvGuard::remove("SKM_STORE");
+        write_app_config(&store).unwrap();
+        assert_eq!(resolve_store_root(None), store);
+    }
+
+    #[test]
+    fn empty_skm_store_falls_through() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let tmp = TempDir::new().unwrap();
+        let store = tmp.path().join("from-config");
+        let _xdg = EnvGuard::set(
+            "XDG_CONFIG_HOME",
+            tmp.path().join("config").to_str().unwrap(),
+        );
+        let _env = EnvGuard::set("SKM_STORE", "");
+        write_app_config(&store).unwrap();
+        assert_eq!(resolve_store_root(None), store);
+    }
+}

@@ -90,6 +90,24 @@ mod tests {
         assert!(use_color(&std::io::stdout(), ColorWhen::Always));
     }
 
+    #[test]
+    fn empty_no_color_does_not_disable() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _guard = EnvGuard::set("NO_COLOR", "");
+        let _clicolor = EnvGuard::remove("CLICOLOR");
+        let _force = EnvGuard::remove("CLICOLOR_FORCE");
+        assert!(auto_color(true));
+    }
+
+    #[test]
+    fn clicolor_force_enables_when_not_a_tty() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _no_color = EnvGuard::remove("NO_COLOR");
+        let _clicolor = EnvGuard::remove("CLICOLOR");
+        let _force = EnvGuard::set("CLICOLOR_FORCE", "1");
+        assert!(auto_color(false));
+    }
+
     struct EnvGuard {
         key: &'static str,
         previous: Option<String>,

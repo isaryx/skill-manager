@@ -266,6 +266,7 @@ fn validate_skill_ids(skill_ids: &[String]) -> Result<(), SkmError> {
 mod tests {
     use super::*;
     use crate::store::{init_store_layout, StorePaths};
+    use std::fs;
     use tempfile::TempDir;
 
     #[test]
@@ -330,5 +331,21 @@ mod tests {
 
         let err = load_profile(&store, "bad").unwrap_err();
         assert!(matches!(err, SkmError::InvalidSkillId(_)));
+    }
+
+    #[test]
+    fn read_profile_rejects_duplicate_skill_ids() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        fs::write(
+            store.profile_file("dup"),
+            "[[skill]]\nid = \"docx\"\n\n[[skill]]\nid = \"docx\"\n",
+        )
+        .unwrap();
+
+        let err = load_profile(&store, "dup").unwrap_err();
+        assert!(matches!(err, SkmError::DuplicateSkillId(id) if id == "docx"));
     }
 }

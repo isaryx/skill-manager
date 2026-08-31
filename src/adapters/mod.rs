@@ -286,6 +286,24 @@ fn interactive_select_agent_impl(
     }
 }
 
+fn switch_agent_menu_labels(
+    current: &str,
+    level: SetupLevel,
+    project_root: &Path,
+) -> Result<Vec<String>, SkmError> {
+    let current_canonical = canonical_agent_id(current);
+    INIT_AGENTS
+        .iter()
+        .map(|&agent| {
+            let mut label = agent_select_label(agent, level, project_root)?;
+            if agent == current_canonical {
+                label.push_str(" \x1b[2m(current)\x1b[0m");
+            }
+            Ok(label)
+        })
+        .collect()
+}
+
 fn interactive_switch_agent_select(
     current: &str,
     level: SetupLevel,
@@ -301,16 +319,7 @@ fn interactive_switch_agent_select(
         .position(|&agent| agent == current_canonical)
         .ok_or_else(|| SkmError::UnknownAgent(current.to_string()))?;
 
-    let labels: Vec<String> = INIT_AGENTS
-        .iter()
-        .map(|&agent| {
-            let mut label = agent_select_label(agent, level, project_root)?;
-            if agent == current_canonical {
-                label.push_str(" \x1b[2m(current)\x1b[0m");
-            }
-            Ok(label)
-        })
-        .collect::<Result<_, SkmError>>()?;
+    let labels = switch_agent_menu_labels(current, level, project_root)?;
 
     let prompt = "Target agent";
     let term = Term::stderr();
@@ -377,21 +386,36 @@ mod tests {
 
     #[test]
     fn switch_agent_label_marks_current_agent() {
-        let labels: Vec<String> = INIT_AGENTS
-            .iter()
-            .map(|&agent| {
-                let mut label =
-                    agent_select_label(agent, SetupLevel::Project, Path::new("/tmp/proj")).unwrap();
-                if agent == "cursor" {
-                    label.push_str(" \x1b[2m(current)\x1b[0m");
-                }
-                label
-            })
-            .collect();
+        let labels =
+            switch_agent_menu_labels("cursor", SetupLevel::Project, Path::new("/tmp/proj"))
+                .unwrap();
 
         let cursor_idx = INIT_AGENTS.iter().position(|&a| a == "cursor").unwrap();
         assert!(labels[cursor_idx].contains("(current)"));
         assert!(!labels[0].contains("(current)"));
+    }
+
+    #[test]
+    fn switch_agent_label_maps_codex_alias_to_generic_current() {
+        let labels =
+            switch_agent_menu_labels("codex", SetupLevel::Project, Path::new("/tmp/proj")).unwrap();
+        let generic_idx = INIT_AGENTS.iter().position(|&a| a == "generic").unwrap();
+        assert!(labels[generic_idx].contains("(current)"));
+    }
+
+    #[test]
+    fn cursor_uses_cursor_skills_path() {
+        let adapter = CursorAdapter;
+        let project = Path::new("/tmp/proj");
+        assert_eq!(
+            adapter.target_dir(SetupLevel::Project, project),
+            project.join(".cursor/skills")
+        );
+        let home = home_dir();
+        assert_eq!(
+            adapter.target_dir(SetupLevel::User, project),
+            home.join(".cursor/skills")
+        );
     }
 
     #[test]

@@ -1425,18 +1425,51 @@ fn generic_agent_places_into_agents_skills() {
 }
 
 #[test]
-fn store_override_via_env() {
+fn store_cli_flag_overrides_env() {
     let home = TempDir::new().unwrap();
-    let store = TempDir::new().unwrap();
+    let env_store = TempDir::new().unwrap();
+    let flag_store = TempDir::new().unwrap();
 
-    with_env(home.path(), store.path())
-        .args(["init", "--agent", "claude-code"])
+    with_env(home.path(), env_store.path())
+        .args([
+            "--store",
+            flag_store.path().to_str().unwrap(),
+            "init",
+            "--agent",
+            "claude-code",
+        ])
         .assert()
         .success();
 
-    assert!(store.path().join(".skm").is_dir());
-    assert!(home.path().join(".skm.toml").is_file());
-    assert!(app_config_path(home.path()).is_file());
+    assert!(flag_store.path().join(".skm").is_dir());
+    assert!(!env_store.path().join(".skm").exists());
+}
+
+#[test]
+fn store_uses_app_config_when_env_unset() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    init_project(home.path(), store.path());
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+
+    skm()
+        .env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env_remove("SKM_STORE")
+        .current_dir(home.path())
+        .args(["skill", "ls"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("docx"));
 }
 
 #[test]
@@ -2640,4 +2673,246 @@ fn no_color_disables_ansi_on_sync_progress() {
         .assert()
         .success()
         .stderr(predicate::str::is_match(r"^[^\x1b]*$").unwrap());
+}
+
+#[test]
+fn json_stdout_has_no_ansi_when_color_always() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args(["--color", "always", "doctor", "--json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::is_match(r"^[^\x1b]*$").unwrap());
+}
+
+#[test]
+fn doctor_json_reports_unknown_agent() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    fs::write(
+        home.path().join(".skm.toml"),
+        "version = 1\n[placement]\nagent = \"windsurf\"\n",
+    )
+    .unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("config.unknown_agent"));
+}
+
+#[test]
+fn doctor_json_reports_link_extra() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    write_skill(src.path(), "git");
+    init_project(home.path(), store.path());
+    for name in ["docx", "git"] {
+        with_env(home.path(), store.path())
+            .args(["import", src.path().join(name).to_str().unwrap(), "--copy"])
+            .assert()
+            .success();
+    }
+    write_profile(store.path(), "work", &["docx", "git"]);
+    with_env(home.path(), store.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("link.extra"));
+}
+
+#[test]
+fn use_profile_placement_name_collision_exits_two() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    for id in ["team/tdd", "other/tdd", "team__tdd"] {
+        let dir = store.path().join(id);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("SKILL.md"), format!("# {id}\n")).unwrap();
+    }
+    write_profile(
+        store.path(),
+        "clash",
+        &["team/tdd", "other/tdd", "team__tdd"],
+    );
+
+    with_env(home.path(), store.path())
+        .args(["use-profile", "clash"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("resolve conflict"));
+}
+
+#[test]
+fn sync_unwires_when_all_profile_skills_are_disabled() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    init_project(home.path(), store.path());
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+    with_env(home.path(), store.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+    assert!(home.path().join(".claude/skills/docx").is_symlink());
+
+    write_disabled(store.path(), &["docx"]);
+    with_env(home.path(), store.path())
+        .args(["sync"])
+        .assert()
+        .success();
+    assert!(!home.path().join(".claude/skills/docx").exists());
+}
+
+#[test]
+fn import_rejects_reserved_as_name() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "demo");
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("demo").to_str().unwrap(),
+            "--copy",
+            "--as",
+            ".hidden",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("reserved name"));
+}
+
+#[test]
+fn import_rejects_invalid_as_name() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "demo");
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("demo").to_str().unwrap(),
+            "--copy",
+            "--as",
+            "Bad Name",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid skill id"));
+}
+
+#[test]
+fn import_rejects_existing_destination() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "demo");
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("demo").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("demo").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("already exists"));
+}
+
+#[test]
+fn sync_rejects_malformed_setup() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    fs::write(home.path().join(".skm.toml"), "not = toml {{").unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["sync"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid config"));
+}
+
+#[test]
+fn skill_ls_rejects_malformed_disabled_file() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    fs::write(store.path().join(".skm/disabled.toml"), "ids = not-a-list").unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["skill", "ls"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("invalid disabled skills file")
+                .or(predicate::str::contains("invalid skill store")),
+        );
+}
+
+#[test]
+fn gemini_cli_places_symlinks_under_gemini_skills() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "gemini-cli"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+    with_env(home.path(), store.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    assert!(home.path().join(".gemini/skills/docx").is_symlink());
 }

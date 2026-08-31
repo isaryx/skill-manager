@@ -89,14 +89,18 @@ pub fn resolve(
         }
     }
 
+    let store_ids: Vec<String> = store_ids
+        .into_iter()
+        .filter(|id| !disabled.contains(id))
+        .collect();
+    if store_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
     let placement_names = assign_placement_names(&store_ids)?;
 
     let mut placements = Vec::new();
     for (store_id, name) in store_ids.into_iter().zip(placement_names) {
-        if disabled.contains(&store_id) {
-            continue;
-        }
-
         let source = store.skill_dir(&store_id);
         if !source.is_dir() || !source.join("SKILL.md").is_file() {
             return Err(ResolveError::NotFound(store_id));
@@ -120,14 +124,20 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-    fn make_store_with_skill(id: &str) -> (TempDir, StorePaths) {
+    fn make_store_with_skills(ids: &[&str]) -> (TempDir, StorePaths) {
         let tmp = TempDir::new().unwrap();
         let store = StorePaths::new(tmp.path().to_path_buf());
         init_store_layout(&store).unwrap();
-        let dir = store.skill_dir(id);
-        fs::create_dir_all(&dir).unwrap();
-        fs::write(dir.join("SKILL.md"), "# test").unwrap();
+        for id in ids {
+            let dir = store.skill_dir(id);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("SKILL.md"), "# test").unwrap();
+        }
         (tmp, store)
+    }
+
+    fn make_store_with_skill(id: &str) -> (TempDir, StorePaths) {
+        make_store_with_skills(&[id])
     }
 
     #[test]
@@ -220,5 +230,42 @@ mod tests {
         let profile = ProfileFile { skill: vec![] };
         let err = resolve(&profile, &store, &HashSet::new()).unwrap_err();
         assert!(matches!(err, ResolveError::EmptyProfile));
+    }
+
+    #[test]
+    fn duplicate_store_ids_conflict() {
+        let (_tmp, store) = make_store_with_skill("docx");
+        let profile = ProfileFile {
+            skill: vec![
+                ProfileSkillEntry {
+                    id: "docx".to_string(),
+                },
+                ProfileSkillEntry {
+                    id: "docx".to_string(),
+                },
+            ],
+        };
+        let err = resolve(&profile, &store, &HashSet::new()).unwrap_err();
+        assert!(matches!(err, ResolveError::Conflict(id) if id == "docx"));
+    }
+
+    #[test]
+    fn disabled_peer_does_not_force_disambiguation() {
+        let (_tmp, store) = make_store_with_skills(&["engineering/tdd", "other/tdd"]);
+        let disabled = HashSet::from(["other/tdd".to_string()]);
+        let profile = ProfileFile {
+            skill: vec![
+                ProfileSkillEntry {
+                    id: "engineering/tdd".to_string(),
+                },
+                ProfileSkillEntry {
+                    id: "other/tdd".to_string(),
+                },
+            ],
+        };
+        let placements = resolve(&profile, &store, &disabled).unwrap();
+        assert_eq!(placements.len(), 1);
+        assert_eq!(placements[0].store_id, "engineering/tdd");
+        assert_eq!(placements[0].name, "tdd");
     }
 }

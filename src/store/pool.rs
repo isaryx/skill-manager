@@ -231,6 +231,7 @@ fn prune_empty_parents(store_root: &Path, removed: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::SkmError;
     use crate::store::{init_store_layout, StorePaths};
     use tempfile::TempDir;
 
@@ -253,5 +254,21 @@ mod tests {
             "expected the bundle root's own skill id to be reported alongside its nested child, got {ids:?}"
         );
         assert!(ids.contains(&"parent/child".to_string()));
+    }
+
+    #[test]
+    fn add_skill_rejects_existing_destination() {
+        let store_tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(store_tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        let src_tmp = TempDir::new().unwrap();
+        let src = src_tmp.path().join("demo");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("SKILL.md"), "# demo").unwrap();
+
+        add_skill(&store, &src, TransferMode::Copy, None).unwrap();
+        let err = add_skill(&store, &src, TransferMode::Copy, None).unwrap_err();
+        assert!(matches!(err, SkmError::DestinationExists(_)));
     }
 }

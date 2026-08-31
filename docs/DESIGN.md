@@ -97,7 +97,7 @@ Agent skill dirs are **flat**. `resolver::assign_placement_names`:
 - Unique leaf → leaf name (`engineering/tdd` → `tdd`)
 - Colliding leaves → `__` between segments (`a/tdd` + `b/tdd` → `a__tdd`, `b__tdd`)
 - Duplicate store IDs in one profile → error
-- Disabled skills filtered before existence check; empty result after filter is allowed in resolver but `reconcile` still requires non-empty profile
+- Disabled skills filtered before naming and existence check; empty result after filter is allowed in resolver (`use-profile` still rejects a profile with zero skill entries)
 
 ---
 

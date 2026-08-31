@@ -500,6 +500,66 @@ mod tests {
     }
 
     #[test]
+    fn check_store_invalid_when_skm_is_a_file() {
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join(".skm"), "not a directory").unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        let issues = check_store(&store);
+        assert_eq!(issues.len(), 1);
+        assert_eq!(issues[0].code, "store.invalid");
+    }
+
+    #[test]
+    fn check_meta_reports_orphan_meta_file() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+        fs::write(store.meta_file("ghost"), "version = 1\n").unwrap();
+
+        let issues = check_meta(&store).unwrap();
+        assert!(issues.iter().any(|i| i.code == "meta.orphan"));
+    }
+
+    #[test]
+    fn check_profiles_reports_empty_profile() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+        crate::store::profiles::ensure_profile(&store, "empty").unwrap();
+
+        let issues = check_profiles(&store).unwrap();
+        assert!(issues.iter().any(|i| i.code == "profile.empty"));
+    }
+
+    #[test]
+    fn check_profiles_reports_disabled_ref() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+        let dir = store.skill_dir("docx");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("SKILL.md"), "# docx").unwrap();
+        crate::store::skills::write_disabled_ids(&store, &["docx".to_string()]).unwrap();
+        crate::store::profiles::create_profile(&store, "work", &["docx".to_string()]).unwrap();
+
+        let issues = check_profiles(&store).unwrap();
+        assert!(issues.iter().any(|i| i.code == "profile.disabled_ref"));
+    }
+
+    #[test]
+    fn check_config_unknown_agent() {
+        let tmp = TempDir::new().unwrap();
+        let selected = crate::setup::SelectedSetup {
+            path: tmp.path().join(".skm.toml"),
+            setup: crate::config::default_setup("windsurf"),
+            level: crate::adapters::SetupLevel::Project,
+            project_root: tmp.path().to_path_buf(),
+        };
+        let issues = check_config(&selected);
+        assert!(issues.iter().any(|i| i.code == "config.unknown_agent"));
+    }
+
+    #[test]
     fn check_index_detects_identity_drift_with_unchanged_count() {
         let tmp = TempDir::new().unwrap();
         let store = StorePaths::new(tmp.path().to_path_buf());

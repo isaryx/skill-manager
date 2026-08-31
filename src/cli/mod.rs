@@ -23,10 +23,26 @@ pub use agent::Agent;
 #[command(
     name = "skm",
     version,
-    about = "Manage AI agent skills from one local library",
-    long_about = "Keep skills in one store, organize them into profiles, and link them into \
-                  agent folders (Claude Code, Cursor, generic for Codex/Cursor/Gemini/Copilot). \
-                  Run `skm sync` to refresh links."
+    about = "Manage AI agent skills from one local store",
+    long_about = "Keep canonical skill directories in a store, select them with profiles, and \
+                  symlink the active profile into the agent skills directory (Claude Code, \
+                  Cursor, or the generic Agent Skills layout).",
+    after_help = "Examples:\n  \
+                  skm init --agent claude-code\n  \
+                  skm import ./my-skill --copy && skm profile setup work && skm use-profile work\n\n\
+                  Pass --help for the full workflow, automation flags, and exit codes.",
+    after_long_help = "Examples:\n  \
+                       skm init --agent claude-code\n  \
+                       skm import ./my-skill --copy\n  \
+                       skm profile setup work && skm use-profile work\n\n\
+                       Automation:\n  \
+                       Select the store with SKM_STORE or --store.\n  \
+                       --json works with `status`, `ls`, `skill ls`, and `doctor`; data goes to \
+                       stdout, progress and errors to stderr.\n  \
+                       --dry-run works with `sync`, `use-profile`, and `skill rm`.\n  \
+                       Exit codes: 0 success, 1 runtime or health failure, 2 usage or resolve \
+                       conflict.\n\n\
+                       Docs and issues: https://github.com/isaryx/skill-manager"
 )]
 pub struct Cli {
     /// Enable verbose logging on stderr
@@ -56,6 +72,14 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Set up the skill store and project config (`.skm.toml`)
+    #[command(
+        long_about = "Initialize the skill store and write project configuration to \
+                      `./.skm.toml`.\n\n\
+                      Existing project or hand-installed skills are preserved. Name conflicts \
+                      are reported by `skm status` and `skm doctor`.",
+        after_help = "Automation:\n  For non-interactive use, pass --agent. If the target agent \
+                      directory already contains skills, also pass --accept-existing-skills."
+    )]
     Init {
         /// Target agent for this project
         #[arg(long)]
@@ -67,18 +91,17 @@ pub enum Commands {
         #[arg(long = "accept-existing-skills")]
         accept_existing_skills: bool,
     },
-    /// Import a skill directory into the library
-    #[command(visible_aliases = ["add"])]
+    /// Import a skill directory into the store
     Import {
         /// Path to the skill directory
         dir: PathBuf,
-        /// Copy the skill into the library (keeps the original)
+        /// Copy the skill into the store (keeps the original)
         #[arg(long, conflicts_with = "move_")]
         copy: bool,
-        /// Move the skill into the library (removes the original)
+        /// Move the skill into the store (removes the original)
         #[arg(long = "move", conflicts_with = "copy")]
         move_: bool,
-        /// Name to use in the library
+        /// Name to use in the store
         #[arg(long = "as", alias = "as-name")]
         as_name: Option<String>,
     },
@@ -87,7 +110,7 @@ pub enum Commands {
         #[command(subcommand)]
         action: ProfileAction,
     },
-    /// Manage skills in the library
+    /// Manage skills in the store
     Skill {
         #[command(subcommand)]
         action: SkillAction,
@@ -117,7 +140,16 @@ pub enum Commands {
         #[arg(short = 'u', long)]
         user: bool,
     },
-    /// Show the target agent, active profile, linked skills, and placement conflicts
+    /// Show agent, active profile, linked skills, and name conflicts
+    #[command(
+        long_about = "Read-only report of this project's skill wiring.\n\n\
+                      Prints the target agent, active profile, Linked store-owned symlinks that \
+                      match the profile, and Conflicts where a profile skill is blocked by a \
+                      non-skm entry at that name.\n\n\
+                      Does not create or repair links. Missing or broken links are not listed; \
+                      use `skm doctor`.",
+        after_help = "Requires `./.skm.toml` unless --user. Supports --json."
+    )]
     Status {
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]
@@ -168,11 +200,17 @@ pub enum ProfileAction {
 
 #[derive(Subcommand, Debug)]
 pub enum SkillAction {
-    /// List enabled skills in the library
+    /// List enabled skills in the store
     Ls,
-    /// Choose which library skills are enabled (interactive; all enabled by default)
+    /// Choose which store skills are enabled (interactive; all enabled by default)
     Setup,
-    /// Permanently remove a skill from the library
+    /// Permanently remove a skill from the store
+    #[command(
+        long_about = "Permanently remove a skill from the store and update profiles that \
+                      reference it.",
+        after_help = "Automation:\n  Non-interactive use requires --force. Use --dry-run to \
+                      inspect the affected profiles and links first."
+    )]
     Rm {
         /// Store skill ID to remove
         id: String,

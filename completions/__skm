@@ -36,11 +36,11 @@ __skm() {
         case $line[1] in
             (init)
 _arguments "${_arguments_options[@]}" : \
-'--agent=[Target agent for this project]:AGENT:((claude-code\:""
-cursor\:""
-generic\:"Agent Skills layout (.agents/skills); used by Codex, Cursor, Gemini CLI"
-gemini-cli\:""
-copilot-cli\:"Copilot CLI native path (.github/skills); also reads .agents/skills"))' \
+'--agent=[Target agent for this project]:AGENT:((claude-code\:"Claude Code (.claude/skills)"
+cursor\:"Cursor (.cursor/skills)"
+generic\:"Agent Skills (.agents/skills); Codex, Cursor, Gemini CLI, Copilot CLI"
+gemini-cli\:"Gemini CLI (.gemini/skills)"
+copilot-cli\:"Copilot CLI (.github/skills; ~/.copilot/skills with --user)"))' \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '--force[Overwrite an existing \`.skm.toml\`]' \
@@ -55,27 +55,11 @@ copilot-cli\:"Copilot CLI native path (.github/skills); also reads .agents/skill
 ;;
 (import)
 _arguments "${_arguments_options[@]}" : \
-'--as=[Name to use in the library]:AS_NAME:_default' \
+'--as=[Name to use in the store]:AS_NAME:_default' \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
-'(--move)--copy[Copy the skill into the library (keeps the original)]' \
-'(--copy)--move[Move the skill into the library (removes the original)]' \
-'-v[Enable verbose logging on stderr]' \
-'--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
-'-h[Print help]' \
-'--help[Print help]' \
-':dir -- Path to the skill directory:_files' \
-&& ret=0
-;;
-(add)
-_arguments "${_arguments_options[@]}" : \
-'--as=[Name to use in the library]:AS_NAME:_default' \
-'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
-'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
-'(--move)--copy[Copy the skill into the library (keeps the original)]' \
-'(--copy)--move[Move the skill into the library (removes the original)]' \
+'(--move)--copy[Copy the skill into the store (keeps the original)]' \
+'(--copy)--move[Move the skill into the store (removes the original)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
@@ -251,8 +235,8 @@ _arguments "${_arguments_options[@]}" : \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
-'-h[Print help]' \
-'--help[Print help]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
 ':id -- Store skill ID to remove:_default' \
 && ret=0
 ;;
@@ -309,11 +293,11 @@ _arguments "${_arguments_options[@]}" : \
 ;;
 (switch-agent)
 _arguments "${_arguments_options[@]}" : \
-'--agent=[Agent to switch to]:AGENT:((claude-code\:""
-cursor\:""
-generic\:"Agent Skills layout (.agents/skills); used by Codex, Cursor, Gemini CLI"
-gemini-cli\:""
-copilot-cli\:"Copilot CLI native path (.github/skills); also reads .agents/skills"))' \
+'--agent=[Agent to switch to]:AGENT:((claude-code\:"Claude Code (.claude/skills)"
+cursor\:"Cursor (.cursor/skills)"
+generic\:"Agent Skills (.agents/skills); Codex, Cursor, Gemini CLI, Copilot CLI"
+gemini-cli\:"Gemini CLI (.gemini/skills)"
+copilot-cli\:"Copilot CLI (.github/skills; ~/.copilot/skills with --user)"))' \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
@@ -350,8 +334,8 @@ _arguments "${_arguments_options[@]}" : \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
-'-h[Print help]' \
-'--help[Print help]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
 && ret=0
 ;;
 (ls)
@@ -521,14 +505,13 @@ esac
 __skm_commands() {
     local commands; commands=(
 'init:Set up the skill store and project config (\`.skm.toml\`)' \
-'import:Import a skill directory into the library' \
-'add:Import a skill directory into the library' \
+'import:Import a skill directory into the store' \
 'profile:Create and manage profiles' \
-'skill:Manage skills in the library' \
+'skill:Manage skills in the store' \
 'use-profile:Activate a profile and sync skill links' \
 'switch-agent:Change the target agent in your config' \
 'sync:Refresh skill links without changing the active profile' \
-'status:Show the target agent, active profile, linked skills, and placement conflicts' \
+'status:Show agent, active profile, linked skills, and name conflicts' \
 'ls:List skills and profiles in the store' \
 'scan:Refresh the on-disk skill index' \
 'doctor:Read-only health report for the store, profiles, and skill links' \
@@ -545,13 +528,13 @@ _skm__subcmd__doctor_commands() {
 _skm__subcmd__help_commands() {
     local commands; commands=(
 'init:Set up the skill store and project config (\`.skm.toml\`)' \
-'import:Import a skill directory into the library' \
+'import:Import a skill directory into the store' \
 'profile:Create and manage profiles' \
-'skill:Manage skills in the library' \
+'skill:Manage skills in the store' \
 'use-profile:Activate a profile and sync skill links' \
 'switch-agent:Change the target agent in your config' \
 'sync:Refresh skill links without changing the active profile' \
-'status:Show the target agent, active profile, linked skills, and placement conflicts' \
+'status:Show agent, active profile, linked skills, and name conflicts' \
 'ls:List skills and profiles in the store' \
 'scan:Refresh the on-disk skill index' \
 'doctor:Read-only health report for the store, profiles, and skill links' \
@@ -622,9 +605,9 @@ _skm__subcmd__help__subcmd__scan_commands() {
 (( $+functions[_skm__subcmd__help__subcmd__skill_commands] )) ||
 _skm__subcmd__help__subcmd__skill_commands() {
     local commands; commands=(
-'ls:List enabled skills in the library' \
-'setup:Choose which library skills are enabled (interactive; all enabled by default)' \
-'rm:Permanently remove a skill from the library' \
+'ls:List enabled skills in the store' \
+'setup:Choose which store skills are enabled (interactive; all enabled by default)' \
+'rm:Permanently remove a skill from the store' \
     )
     _describe -t commands 'skm help skill commands' commands "$@"
 }
@@ -753,9 +736,9 @@ _skm__subcmd__scan_commands() {
 (( $+functions[_skm__subcmd__skill_commands] )) ||
 _skm__subcmd__skill_commands() {
     local commands; commands=(
-'ls:List enabled skills in the library' \
-'setup:Choose which library skills are enabled (interactive; all enabled by default)' \
-'rm:Permanently remove a skill from the library' \
+'ls:List enabled skills in the store' \
+'setup:Choose which store skills are enabled (interactive; all enabled by default)' \
+'rm:Permanently remove a skill from the store' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'skm skill commands' commands "$@"
@@ -763,9 +746,9 @@ _skm__subcmd__skill_commands() {
 (( $+functions[_skm__subcmd__skill__subcmd__help_commands] )) ||
 _skm__subcmd__skill__subcmd__help_commands() {
     local commands; commands=(
-'ls:List enabled skills in the library' \
-'setup:Choose which library skills are enabled (interactive; all enabled by default)' \
-'rm:Permanently remove a skill from the library' \
+'ls:List enabled skills in the store' \
+'setup:Choose which store skills are enabled (interactive; all enabled by default)' \
+'rm:Permanently remove a skill from the store' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'skm skill help commands' commands "$@"

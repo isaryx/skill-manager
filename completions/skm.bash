@@ -16,9 +16,6 @@ _skm() {
             ",$1")
                 cmd="skm"
                 ;;
-            skm,add)
-                cmd="skm__subcmd__import"
-                ;;
             skm,doctor)
                 cmd="skm__subcmd__doctor"
                 ;;
@@ -173,7 +170,7 @@ _skm() {
 
     case "${cmd}" in
         skm)
-            opts="-v -h -V --verbose --store --json --dry-run --color --help --version init import add profile skill use-profile switch-agent sync status ls scan doctor help"
+            opts="-v -h -V --verbose --store --json --dry-run --color --help --version init import profile skill use-profile switch-agent sync status ls scan doctor help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

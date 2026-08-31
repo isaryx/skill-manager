@@ -57,6 +57,71 @@ fn init_project(home: &Path, store: &Path) {
 }
 
 #[test]
+fn agent_help_documents_skills_directory_per_agent() {
+    skm().args(["init", "--help"]).assert().success().stdout(
+        predicate::str::contains(".claude/skills")
+            .and(predicate::str::contains(".cursor/skills"))
+            .and(predicate::str::contains(".agents/skills"))
+            .and(predicate::str::contains(".gemini/skills"))
+            .and(predicate::str::contains(".github/skills")),
+    );
+}
+
+#[test]
+fn short_help_explains_engineering_workflow() {
+    skm().arg("-h").assert().success().stdout(
+        predicate::str::contains("one local store")
+            .and(predicate::str::contains("skm init --agent claude-code"))
+            .and(predicate::str::contains("SKM_STORE"))
+            .and(predicate::str::contains("--json"))
+            .and(predicate::str::contains("Pass --help")),
+    );
+}
+
+#[test]
+fn help_explains_engineering_workflow() {
+    skm().arg("--help").assert().success().stdout(
+        predicate::str::contains("canonical skill directories in a store")
+            .and(predicate::str::contains("symlink"))
+            .and(predicate::str::contains("skm init --agent claude-code"))
+            .and(predicate::str::contains("SKM_STORE"))
+            .and(predicate::str::contains("Exit codes"))
+            .and(predicate::str::contains(
+                "https://github.com/isaryx/skill-manager",
+            )),
+    );
+}
+
+#[test]
+fn command_help_documents_non_interactive_requirements() {
+    skm()
+        .args(["init", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "For non-interactive use, pass --agent",
+        ));
+
+    skm()
+        .args(["skill", "rm", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Non-interactive use requires --force",
+        ));
+}
+
+#[test]
+fn status_help_documents_read_only_report() {
+    skm().args(["status", "--help"]).assert().success().stdout(
+        predicate::str::contains("Read-only")
+            .and(predicate::str::contains("non-skm"))
+            .and(predicate::str::contains("Requires `./.skm.toml`"))
+            .and(predicate::str::contains("--json")),
+    );
+}
+
+#[test]
 fn init_creates_store_and_setup() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
@@ -1913,23 +1978,22 @@ fn ls_lists_skills_and_profiles() {
 }
 
 #[test]
-fn import_add_alias_accepted() {
+fn add_command_removed() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
-    let src = TempDir::new().unwrap();
-    write_skill(src.path(), "docx");
     init_project(home.path(), store.path());
 
     with_env(home.path(), store.path())
-        .args(["add", src.path().join("docx").to_str().unwrap(), "--copy"])
+        .args(["add", "./docx", "--copy"])
         .assert()
-        .success();
+        .failure()
+        .code(2);
 
-    with_env(home.path(), store.path())
-        .args(["skill", "ls"])
+    skm()
+        .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("docx"));
+        .stdout(predicate::str::contains("[alias: add]").not());
 }
 
 #[test]

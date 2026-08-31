@@ -1,6 +1,6 @@
 # Design
 
-**CLI:** `skm` · **Version:** 0.2.1
+**CLI:** `skm` · **Version:** 0.2.2
 
 Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.md). CLI conventions: [../guides/cli-guidelines.md](../guides/cli-guidelines.md).
 
@@ -216,6 +216,7 @@ Prefer routing placement changes through `reconcile()` or `refresh_store_index` 
 | 0.1.0 | Shipped | Core CLI, 3 agents |
 | 0.2.0 | Shipped | `doctor`, `--json`, Tier 1 agents, scan adopt |
 | 0.2.1 | Shipped | Remove `codex` adapter; `switch-agent` same-target fix; `generic` client docs |
+| 0.2.2 | Shipped | Drop `skm add`; engineer-oriented `--help` |
 | 0.3.0 | Planned | Windows binary, GitHub import |
 | Later | — | Tier 2 agents, `freeze`, variants, skill groups |
 

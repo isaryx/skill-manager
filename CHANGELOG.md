@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-31
+
+Engineer-oriented CLI help, and drop the `skm add` alias.
+
+### Removed
+
+- **`skm add`** — use `skm import`
+
+### Changed
+
+- **`skm -h` / `--help`** — store, profiles, and symlink model; examples; automation (`SKM_STORE`, `--json` stdout vs stderr, `--dry-run`, exit codes); docs URL
+- **`skm status --help`** — read-only; Linked vs Conflicts (non-skm name clash); requires `./.skm.toml` unless `--user`; missing or broken links are `skm doctor`
+- **`--agent` values** — skills directory per agent, including Copilot project vs `--user`
+- **README** — store wording, scripting/CI, Copilot user path
+- Completions regenerated from clap
+
+[0.2.2]: https://github.com/isaryx/skill-manager/releases/tag/v0.2.2
+
 ## [0.2.1] - 2026-08-28
 
 Agent adapter cleanup and `switch-agent` fix when agents share a skills directory.

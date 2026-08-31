@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.2.1 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
+**Version:** 0.2.2 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 
@@ -24,7 +24,7 @@ Many commands accept `--user` / `-u` for `~/.skm.toml`.
 
 ```bash
 skm init [--agent AGENT] [--force] [--accept-existing-skills]
-skm import <dir> --copy|--move [--as NAME]    # alias: skm add
+skm import <dir> --copy|--move [--as NAME]
 
 skm profile setup|ls|show|rm <name>
 skm skill setup|ls|rm <id> [--force]

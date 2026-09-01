@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use crate::color::ColorWhen;
 
 pub mod agent;
+pub mod destroy;
 pub mod doctor;
 pub mod import;
 pub mod init;
@@ -11,13 +12,13 @@ pub mod ls;
 pub mod output;
 pub mod profile;
 pub mod scan;
+pub mod setup_agents;
 pub mod skill;
 pub mod status;
-pub mod switch_agent;
 pub mod sync;
 pub mod use_cmd;
 
-pub use agent::Agent;
+pub use agent::{unique_agent_ids, Agent};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -28,7 +29,7 @@ pub use agent::Agent;
                   symlink the active profile into the agent skills directory (Claude Code, \
                   Cursor, or the generic Agent Skills layout).",
     after_help = "Examples:\n  \
-                  skm init --agent claude-code\n  \
+                  skm init --agent claude-code,cursor\n  \
                   skm import ./my-skill --copy && skm profile setup work && skm use-profile work\n\n\
                   Pass --help for the full workflow, automation flags, and exit codes.",
     after_long_help = "Examples:\n  \
@@ -39,7 +40,7 @@ pub use agent::Agent;
                        Select the store with SKM_STORE or --store.\n  \
                        --json works with `status`, `ls`, `skill ls`, and `doctor`; data goes to \
                        stdout, progress and errors to stderr.\n  \
-                       --dry-run works with `sync`, `use-profile`, and `skill rm`.\n  \
+                       --dry-run works with `sync`, `use-profile`, `skill rm`, and `destroy`.\n  \
                        Exit codes: 0 success, 1 runtime or health failure, 2 usage or resolve \
                        conflict.\n\n\
                        Docs and issues: https://github.com/isaryx/skill-manager"
@@ -57,7 +58,7 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
 
-    /// Preview changes without writing (`sync`, `use-profile`, `skill rm` only)
+    /// Preview changes without writing (`sync`, `use-profile`, `skill rm`, `destroy` only)
     #[arg(long, global = true)]
     pub dry_run: bool,
 
@@ -77,13 +78,16 @@ pub enum Commands {
                       `./.skm.toml`.\n\n\
                       Existing project or hand-installed skills are preserved. Name conflicts \
                       are reported by `skm status` and `skm doctor`.",
-        after_help = "Automation:\n  For non-interactive use, pass --agent. If the target agent \
-                      directory already contains skills, also pass --accept-existing-skills."
+        after_help = "Automation:\n  For non-interactive use, pass --agent (repeat it, or \
+                      comma-separate, for several agents). If a target agent directory already \
+                      contains skills, also pass --accept-existing-skills.\n  An existing \
+                      `./.skm.toml` is refused; use `skm setup-agents` and `skm use-profile`. \
+                      Pass --force to overwrite the file."
     )]
     Init {
-        /// Target agent for this project
-        #[arg(long)]
-        agent: Option<Agent>,
+        /// Target agents for this project (repeatable, comma-separated)
+        #[arg(long = "agent", value_name = "AGENT", value_delimiter = ',')]
+        agent: Vec<Agent>,
         /// Overwrite an existing `.skm.toml`
         #[arg(long)]
         force: bool,
@@ -116,23 +120,47 @@ pub enum Commands {
         action: SkillAction,
     },
     /// Activate a profile and sync skill links
-    #[command(name = "use-profile")]
+    #[command(
+        name = "use-profile",
+        long_about = "Activate a profile and sync skill links.\n\n\
+                      Omit PROFILE to choose interactively from the available profiles."
+    )]
     UseProfile {
-        /// Profile name
-        profile: String,
+        /// Profile name; omit to choose interactively
+        profile: Option<String>,
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]
         user: bool,
     },
-    /// Change the target agent in your config
-    #[command(name = "switch-agent")]
-    SwitchAgent {
-        /// Agent to switch to
-        #[arg(long)]
-        agent: Option<Agent>,
+    /// Choose which agents your config places skills into
+    #[command(
+        name = "setup-agents",
+        alias = "switch-agent",
+        long_about = "Replace the set of target agents in the setup file.\n\n\
+                      Without --agent, pick them from a checkbox list pre-checked with the \
+                      current agents. Agents you uncheck have their store-owned links removed."
+    )]
+    SetupAgents {
+        /// Target agents (repeatable, comma-separated); omit to pick interactively
+        #[arg(long = "agent", value_name = "AGENT", value_delimiter = ',')]
+        agent: Vec<Agent>,
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]
         user: bool,
+    },
+    /// Tear down this project's skm setup (`.skm.toml` and store-owned links)
+    #[command(
+        long_about = "Remove `./.skm.toml`, unwire store-owned skill links in every known \
+                      project agent directory, and drop the managed git exclude block.\n\n\
+                      Does not delete the skill store, profiles, or project/hand-installed \
+                      skills. Requires `./.skm.toml` in the current directory.",
+        after_help = "Automation:\n  Non-interactive use requires --force. Use --dry-run to \
+                      preview without writing."
+    )]
+    Destroy {
+        /// Destroy without confirmation (required when stdin is not a TTY)
+        #[arg(long)]
+        force: bool,
     },
     /// Refresh skill links without changing the active profile
     Sync {
@@ -181,7 +209,7 @@ pub enum ProfileAction {
         /// Profile name
         name: String,
     },
-    /// Choose which profiles this one inherits skills from (interactive)
+    /// Choose which profiles this one inherits skills from (interactive; creates the profile if missing)
     #[command(
         long_about = "Pick the profiles whose skills this profile also includes, and which it \
                       therefore `extends`. Creates the profile if it does not exist, like \

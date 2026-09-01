@@ -2,9 +2,16 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct StatusJson<'a> {
+    pub agents: Vec<StatusAgentJson<'a>>,
+    pub profile: Option<&'a str>,
+}
+
+/// One target agent's placements. Reported per agent because a foreign entry can block a skill
+/// in one agent's directory while it links fine in another's.
+#[derive(Debug, Serialize)]
+pub struct StatusAgentJson<'a> {
     pub agent: &'a str,
     pub skills_path: String,
-    pub profile: Option<&'a str>,
     pub skills: Vec<StatusSkillJson>,
     pub conflicts: Vec<StatusConflictJson>,
 }

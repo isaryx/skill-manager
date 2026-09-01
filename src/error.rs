@@ -7,7 +7,10 @@ pub enum SkmError {
     #[error("store not initialized; run `skm init`")]
     StoreNotInitialized,
 
-    #[error("config file already exists: {0}")]
+    #[error(
+        "config file already exists: {0}; change agents with `skm setup-agents`; activate a \
+         profile with `skm use-profile <name>`"
+    )]
     SetupExists(PathBuf),
 
     #[error("config file not found: {0}")]
@@ -43,8 +46,14 @@ pub enum SkmError {
     #[error("unknown agent: {0}")]
     UnknownAgent(String),
 
+    #[error("config lists no target agents; run `skm setup-agents`")]
+    NoTargetAgents,
+
     #[error("profile not found: {0}")]
     ProfileNotFound(String),
+
+    #[error("no profiles available; create one with `skm profile setup <name>`")]
+    NoProfiles,
 
     #[error("profile is empty; add skills with `skm profile setup`")]
     EmptyProfile,
@@ -112,6 +121,9 @@ pub enum SkmError {
     #[error("refusing to remove without --force")]
     RefuseNonInteractiveRm,
 
+    #[error("refusing to destroy without --force")]
+    RefuseNonInteractiveDestroy,
+
     #[error("{0}")]
     Usage(String),
 
@@ -148,7 +160,8 @@ impl SkmError {
             | SkmError::DuplicateExtend(_)
             | SkmError::ExtendCycle(_)
             | SkmError::ExtendTooDeep { .. }
-            | SkmError::RefuseNonInteractiveRm => 2,
+            | SkmError::RefuseNonInteractiveRm
+            | SkmError::RefuseNonInteractiveDestroy => 2,
             _ => 1,
         }
     }
@@ -214,6 +227,7 @@ mod tests {
         assert_eq!(SkmError::DuplicateSkillId("docx".into()).exit_code(), 2);
         assert_eq!(SkmError::InvalidSkillId("Bad".into()).exit_code(), 2);
         assert_eq!(SkmError::RefuseNonInteractiveRm.exit_code(), 2);
+        assert_eq!(SkmError::RefuseNonInteractiveDestroy.exit_code(), 2);
     }
 
     #[test]

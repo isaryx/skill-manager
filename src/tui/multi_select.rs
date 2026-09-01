@@ -22,6 +22,9 @@ pub struct MultiSelectItem {
     /// `key` made safe to draw. Sanitizing once here keeps it off the render path.
     display: String,
     note: Option<String>,
+    /// Whether `note` marks the row as lesser (e.g. a disabled skill), dimming the whole row.
+    /// A neutral note set with [`MultiSelectItem::hint`] leaves the row at full brightness.
+    dim_row: bool,
     selected: bool,
 }
 
@@ -33,13 +36,25 @@ impl MultiSelectItem {
             display: sanitize(&key),
             key,
             note: None,
+            dim_row: false,
             selected: false,
         }
     }
 
-    /// Dim parenthesized suffix (e.g. `disabled`). Matched by the search query.
+    /// Parenthesized suffix marking the row as lesser (e.g. `disabled`), which dims the whole
+    /// row. Matched by the search query.
     pub fn note(mut self, note: impl Into<String>) -> Self {
         self.note = Some(sanitize(&note.into()));
+        self.dim_row = true;
+        self
+    }
+
+    /// Parenthesized suffix carrying neutral detail (e.g. where a row places files). Unlike
+    /// [`MultiSelectItem::note`] it does not dim the row, so a list where every row has one
+    /// still reads as a list of equals. Matched by the search query.
+    pub fn hint(mut self, hint: impl Into<String>) -> Self {
+        self.note = Some(sanitize(&hint.into()));
+        self.dim_row = false;
         self
     }
 
@@ -442,7 +457,7 @@ impl State {
 
         let label = if on_cursor {
             self.bold(&text)
-        } else if item.note.is_some() {
+        } else if item.dim_row {
             self.dim(&text)
         } else {
             text

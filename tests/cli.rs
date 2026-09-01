@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command as ProcessCommand;
 
 use assert_cmd::Command;
 use predicates::prelude::*;
@@ -56,6 +57,54 @@ fn init_project(home: &Path, store: &Path) {
         .success();
 }
 
+fn git(project: &Path, args: &[&str]) {
+    assert!(git_succeeds(project, args), "git {args:?} failed");
+}
+
+fn git_available() -> bool {
+    ProcessCommand::new("git")
+        .arg("--version")
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
+fn git_succeeds(project: &Path, args: &[&str]) -> bool {
+    ProcessCommand::new("git")
+        .current_dir(project)
+        .args(args)
+        .status()
+        .is_ok_and(|status| status.success())
+}
+
+fn git_exclude(project: &Path) -> PathBuf {
+    let output = ProcessCommand::new("git")
+        .current_dir(project)
+        .args([
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-path",
+            "info/exclude",
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    PathBuf::from(String::from_utf8(output.stdout).unwrap().trim())
+}
+
+/// The `git_available()` gates in the local-exclude tests degrade to a silent pass when git is
+/// missing, and the test harness has no stable way to report a skip — an `eprintln!` is captured
+/// for passing tests, so those gates cannot announce themselves.
+///
+/// This is the one test that fails instead. A git-less machine gets a single clear signal rather
+/// than a handful of quiet green ticks over assertions that never ran.
+#[test]
+fn git_is_available_for_the_local_exclude_tests() {
+    assert!(
+        git_available(),
+        "git not found: the local-exclude tests cannot run and will report as passing"
+    );
+}
+
 #[test]
 fn agent_help_documents_skills_directory_per_agent() {
     skm().args(["init", "--help"]).assert().success().stdout(
@@ -87,6 +136,12 @@ fn help_explains_engineering_workflow() {
             .and(predicate::str::contains("SKM_STORE"))
             .and(predicate::str::contains("Exit codes"))
             .and(predicate::str::contains(
+                "`sync`, `use-profile`, `skill rm`, `destroy` only",
+            ))
+            .and(predicate::str::contains(
+                "--dry-run works with `sync`, `use-profile`, `skill rm`, and `destroy`",
+            ))
+            .and(predicate::str::contains(
                 "https://github.com/isaryx/skill-manager",
             )),
     );
@@ -108,6 +163,26 @@ fn command_help_documents_non_interactive_requirements() {
         .success()
         .stdout(predicate::str::contains(
             "Non-interactive use requires --force",
+        ));
+
+    skm()
+        .args(["use-profile", "--help"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("[PROFILE]")
+                .and(predicate::str::contains("choose interactively")),
+        );
+}
+
+#[test]
+fn profile_extend_help_says_it_creates_a_missing_profile() {
+    skm()
+        .args(["profile", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "extend  Choose which profiles this one inherits skills from (interactive; creates the profile if missing)",
         ));
 }
 
@@ -188,7 +263,34 @@ fn init_refuses_overwrite_without_force() {
         .args(["init", "--agent", "claude-code"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains(".skm.toml"));
+        .stderr(
+            predicate::str::contains(".skm.toml")
+                .and(predicate::str::contains("setup-agents"))
+                .and(predicate::str::contains("use-profile")),
+        );
+}
+
+/// Off-TTY `init` without `--agent` would otherwise fail with NotATty from the picker. The
+/// existing-setup check has to win so a second `init` never opens that list.
+#[test]
+fn init_refuses_existing_setup_before_prompting_for_agents() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+
+    with_env(home.path(), store.path())
+        .args(["init"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("already exists")
+                .and(predicate::str::contains("setup-agents"))
+                .and(predicate::str::contains("TTY").not()),
+        );
 }
 
 #[test]
@@ -342,7 +444,7 @@ fn init_user_and_project_subcommands_removed() {
 }
 
 #[test]
-fn switch_agent_updates_setup_file() {
+fn setup_agents_updates_setup_file() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
 
@@ -352,10 +454,10 @@ fn switch_agent_updates_setup_file() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "cursor"])
+        .args(["setup-agents", "--agent", "cursor"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("switched agent to cursor"));
+        .stdout(predicate::str::contains("target agents: cursor"));
 
     let content = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
     assert!(content.contains("cursor"));
@@ -363,7 +465,7 @@ fn switch_agent_updates_setup_file() {
 }
 
 #[test]
-fn switch_agent_reports_unchanged_agent() {
+fn setup_agents_reports_unchanged_agent() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
 
@@ -373,26 +475,26 @@ fn switch_agent_reports_unchanged_agent() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "cursor"])
+        .args(["setup-agents", "--agent", "cursor"])
         .assert()
         .success()
-        .stderr(predicate::str::contains("agent unchanged: cursor"));
+        .stderr(predicate::str::contains("target agents unchanged: cursor"));
 }
 
 #[test]
-fn switch_agent_requires_setup_file() {
+fn setup_agents_requires_setup_file() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "cursor"])
+        .args(["setup-agents", "--agent", "cursor"])
         .assert()
         .failure()
         .stderr(predicate::str::contains(".skm.toml"));
 }
 
 #[test]
-fn switch_agent_requires_tty_without_agents() {
+fn setup_agents_requires_tty_without_agents() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
 
@@ -402,14 +504,14 @@ fn switch_agent_requires_tty_without_agents() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["switch-agent"])
+        .args(["setup-agents"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("TTY"));
 }
 
 #[test]
-fn switch_agent_rejects_invalid_agent() {
+fn setup_agents_rejects_invalid_agent() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
 
@@ -419,7 +521,7 @@ fn switch_agent_rejects_invalid_agent() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "windsurf"])
+        .args(["setup-agents", "--agent", "windsurf"])
         .assert()
         .failure()
         .code(2)
@@ -427,7 +529,7 @@ fn switch_agent_rejects_invalid_agent() {
 }
 
 #[test]
-fn switch_agent_preserves_active_profile() {
+fn setup_agents_preserves_active_profile() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
     let src = TempDir::new().unwrap();
@@ -449,7 +551,7 @@ fn switch_agent_preserves_active_profile() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "cursor"])
+        .args(["setup-agents", "--agent", "cursor"])
         .assert()
         .success();
 
@@ -459,7 +561,7 @@ fn switch_agent_preserves_active_profile() {
 }
 
 #[test]
-fn switch_agent_does_not_persist_on_sync_failure() {
+fn setup_agents_does_not_persist_on_sync_failure() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
     let src = TempDir::new().unwrap();
@@ -483,7 +585,7 @@ fn switch_agent_does_not_persist_on_sync_failure() {
     write_profile(store.path(), "work", &["nope"]);
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "cursor"])
+        .args(["setup-agents", "--agent", "cursor"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("not found in store"));
@@ -494,7 +596,7 @@ fn switch_agent_does_not_persist_on_sync_failure() {
 }
 
 #[test]
-fn switch_agent_cleans_up_old_agent_symlinks() {
+fn setup_agents_cleans_up_old_agent_symlinks() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
     let src = TempDir::new().unwrap();
@@ -522,7 +624,7 @@ fn switch_agent_cleans_up_old_agent_symlinks() {
     );
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "cursor"])
+        .args(["setup-agents", "--agent", "cursor"])
         .assert()
         .success();
 
@@ -534,7 +636,7 @@ fn switch_agent_cleans_up_old_agent_symlinks() {
 }
 
 #[test]
-fn switch_agent_same_target_only_updates_agent_name() {
+fn setup_agents_same_target_only_updates_agent_name() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
     let src = TempDir::new().unwrap();
@@ -568,7 +670,7 @@ fn switch_agent_same_target_only_updates_agent_name() {
     assert!(fs::symlink_metadata(&link).is_ok());
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "generic"])
+        .args(["setup-agents", "--agent", "generic"])
         .assert()
         .success()
         .stderr(predicate::str::contains("updating setup to generic"))
@@ -580,7 +682,7 @@ fn switch_agent_same_target_only_updates_agent_name() {
     );
 
     let content = fs::read_to_string(&setup_path).unwrap();
-    assert!(content.contains("agent = \"generic\""));
+    assert!(content.contains("agents = [\"generic\"]"));
     assert!(!content.contains("codex"));
 }
 
@@ -990,7 +1092,7 @@ fn use_and_sync_place_symlinks() {
         .args(["status"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Target agent:"))
+        .stdout(predicate::str::contains("Target agents:"))
         .stdout(predicate::str::contains("Active profile:"))
         .stdout(predicate::str::contains("infra"))
         .stdout(predicate::str::contains("claude-code"))
@@ -1068,6 +1170,284 @@ fn project_setup_uses_project_targets() {
     let link = project.path().join(".claude/skills/docx");
     assert!(link.is_symlink());
     assert!(!home.path().join(".claude/skills/docx").exists());
+}
+
+#[test]
+fn local_excludes_are_isolated_between_projects_sharing_a_store() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project_a = TempDir::new().unwrap();
+    let project_b = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+
+    for project in [&project_a, &project_b] {
+        git(project.path(), &["init", "--quiet"]);
+        with_env(home.path(), store.path())
+            .current_dir(project.path())
+            .args(["init", "--agent", "claude-code"])
+            .assert()
+            .success();
+        write_skill(&project.path().join(".claude/skills"), "project-skill");
+        with_env(home.path(), store.path())
+            .current_dir(project.path())
+            .args(["use-profile", "work"])
+            .assert()
+            .success()
+            .stderr(predicate::str::contains("updating local git exclude"));
+        assert!(git_succeeds(
+            project.path(),
+            &["check-ignore", "--quiet", ".claude/skills/docx"]
+        ));
+        assert!(!git_succeeds(
+            project.path(),
+            &["check-ignore", "--quiet", ".claude/skills/project-skill"]
+        ));
+        // Patterns are anchored, so a same-named path elsewhere in the repo is untouched.
+        write_skill(&project.path().join("vendor/skills"), "docx");
+        assert!(!git_succeeds(
+            project.path(),
+            &["check-ignore", "--quiet", "vendor/skills/docx"]
+        ));
+    }
+
+    let a_before = fs::read_to_string(git_exclude(project_a.path())).unwrap();
+    let b = fs::read_to_string(git_exclude(project_b.path())).unwrap();
+    assert!(a_before.contains("/.claude/skills/docx"), "{a_before}");
+    assert!(b.contains("/.claude/skills/docx"), "{b}");
+    assert!(!project_a.path().join(".gitignore").exists());
+    assert!(!project_a.path().join(".claude/skills/.gitignore").exists());
+    assert!(!project_b.path().join(".gitignore").exists());
+    assert!(!project_b.path().join(".claude/skills/.gitignore").exists());
+
+    with_env(home.path(), store.path())
+        .current_dir(project_b.path())
+        .args(["sync"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("updating local git exclude").not());
+    assert_eq!(
+        fs::read_to_string(git_exclude(project_a.path())).unwrap(),
+        a_before
+    );
+}
+
+#[test]
+fn ignore_links_opt_out_removes_only_the_managed_exclude_block() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+    git(project.path(), &["init", "--quiet"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    let exclude = git_exclude(project.path());
+    fs::write(
+        &exclude,
+        format!("*.local\n\n{}", fs::read_to_string(&exclude).unwrap()),
+    )
+    .unwrap();
+    let setup = project.path().join(".skm.toml");
+    let body = fs::read_to_string(&setup).unwrap().replace(
+        "agents = [\"claude-code\"]",
+        "agents = [\"claude-code\"]\nignore_links = false",
+    );
+    fs::write(setup, body).unwrap();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["sync"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("updating local git exclude"));
+
+    let body = fs::read_to_string(exclude).unwrap();
+    assert_eq!(body, "*.local\n");
+    assert!(!project.path().join(".gitignore").exists());
+
+    git(project.path(), &["add", ".claude/skills/docx"]);
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("link.tracked").not());
+}
+
+/// Two tracked links and one untracked, so a `tracked_paths` that only ever reported its first
+/// argument — or that reported every argument — would fail here. A single-link fixture cannot
+/// tell those apart from the correct answer.
+#[test]
+fn doctor_warns_for_every_tracked_store_owned_link_and_no_others() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    for skill in ["docx", "git", "pdf"] {
+        write_skill(store.path(), skill);
+    }
+    write_profile(store.path(), "work", &["docx", "git", "pdf"]);
+    git(project.path(), &["init", "--quiet"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+    // `-f` because the managed exclude block is doing its job.
+    git(
+        project.path(),
+        &["add", "-f", ".claude/skills/docx", ".claude/skills/git"],
+    );
+
+    let output = with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .failure();
+    let stdout = String::from_utf8(output.get_output().stdout.clone()).unwrap();
+
+    assert_eq!(
+        stdout.matches("\"code\":\"link.tracked\"").count(),
+        2,
+        "{stdout}"
+    );
+    assert!(stdout.contains("git rm --cached"), "{stdout}");
+    for tracked in [".claude/skills/docx", ".claude/skills/git"] {
+        assert!(stdout.contains(tracked), "{tracked} missing from {stdout}");
+    }
+    assert!(!stdout.contains(".claude/skills/pdf"), "{stdout}");
+}
+
+#[test]
+fn sync_dry_run_does_not_change_local_exclude() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_skill(store.path(), "git");
+    write_profile(store.path(), "work", &["docx"]);
+    git(project.path(), &["init", "--quiet"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    let exclude = git_exclude(project.path());
+    let before = fs::read_to_string(&exclude).unwrap();
+    write_profile(store.path(), "work", &["docx", "git"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["sync", "--dry-run"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains(
+            "(dry-run) updating local git exclude",
+        ))
+        .stderr(predicate::str::contains(
+            "(dry-run) exclude + /.claude/skills/git",
+        ));
+
+    assert_eq!(fs::read_to_string(exclude).unwrap(), before);
+    assert!(!project.path().join(".claude/skills/git").exists());
+}
+
+#[test]
+fn sync_outside_git_does_not_create_a_gitignore() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    assert!(!project.path().join(".git").exists());
+    assert!(!project.path().join(".gitignore").exists());
+    assert!(!project.path().join(".claude/skills/.gitignore").exists());
+}
+
+#[test]
+fn setup_agents_replaces_old_paths_in_local_exclude() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+    git(project.path(), &["init", "--quiet"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["setup-agents", "--agent", "cursor"])
+        .assert()
+        .success();
+
+    let exclude = fs::read_to_string(git_exclude(project.path())).unwrap();
+    assert!(exclude.contains("/.cursor/skills/docx"), "{exclude}");
+    assert!(!exclude.contains("/.claude/skills/docx"), "{exclude}");
 }
 
 #[test]
@@ -1373,6 +1753,41 @@ fn use_profile_rejects_empty_profile() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("profile is empty"));
+}
+
+#[test]
+fn use_profile_without_name_requires_a_tty() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .args(["use-profile"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(
+            predicate::str::contains("profile name is required")
+                .and(predicate::str::contains("skm use-profile <profile>"))
+                .and(predicate::str::contains("TTY")),
+        );
+}
+
+#[test]
+fn use_profile_without_name_reports_when_no_profiles_exist() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args(["use-profile"])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("no profiles available")
+                .and(predicate::str::contains("skm profile setup <name>")),
+        );
 }
 
 #[test]
@@ -3474,4 +3889,871 @@ fn profile_show_tree_exits_two_on_a_cycle_like_the_flat_listing() {
             .assert()
             .code(2);
     }
+}
+
+/// SPEC (`docs/SPEC.md`, local-exclude test table): a user-level skills directory is not inside
+/// the project worktree, so syncing from a git project that has no project setup must leave that
+/// project's exclude alone. `HOME` is not a repo here either, so nothing is written there.
+///
+/// This is the case `target.strip_prefix(&worktree.root)` guards: without it, a user-level sync
+/// would write store paths from outside the repo into whichever repo the cwd happened to be in.
+#[test]
+fn user_level_sync_in_a_git_project_writes_no_local_exclude() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+
+    // A user-level setup at `~/.skm.toml`, and deliberately none in the project.
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+    git(project.path(), &["init", "--quiet"]);
+    assert!(!project.path().join(".skm.toml").exists());
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("updating local git exclude").not());
+
+    // The link landed under HOME, so the project worktree has nothing to exclude.
+    assert!(home.path().join(".claude/skills/docx").is_symlink());
+    assert!(!project.path().join(".claude").exists());
+
+    // Read leniently: some git versions ship a default `info/exclude`, and the invariant is that
+    // skm did not add to it, not that the file is absent.
+    let body = fs::read_to_string(git_exclude(project.path())).unwrap_or_default();
+    assert!(!body.contains("skm-managed"), "{body}");
+    assert!(!body.contains("docx"), "{body}");
+    assert!(!project.path().join(".gitignore").exists());
+    assert!(!home.path().join(".git").exists());
+    assert!(!home.path().join(".gitignore").exists());
+}
+
+/// The no-write rule is not only "do not add a block". Empty patterns used to mean "remove the
+/// managed block", which is the `ignore_links = false` opt-out. A user-level sync from a project
+/// that already has a block must not take that path.
+#[test]
+fn user_level_sync_does_not_remove_an_existing_project_exclude() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+    git(project.path(), &["init", "--quiet"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    let exclude = git_exclude(project.path());
+    let before = fs::read_to_string(&exclude).unwrap();
+    assert!(before.contains("/.claude/skills/docx"), "{before}");
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work", "--user"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("updating local git exclude").not());
+
+    assert_eq!(fs::read_to_string(&exclude).unwrap(), before);
+    assert!(home.path().join(".claude/skills/docx").is_symlink());
+    assert!(project.path().join(".claude/skills/docx").is_symlink());
+}
+
+/// The links are the command; the exclude is a convenience. A block skm cannot parse is left
+/// byte-for-byte alone and reconcile carries on, so a hand-mangled `info/exclude` cannot make skm
+/// unusable in a repo. The warning has to name the file: in a linked worktree it lives under
+/// `.git/worktrees/<name>/`, which nobody finds by guessing.
+#[test]
+fn a_malformed_exclude_block_warns_but_still_wires_links() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_skill(store.path(), "git");
+    write_profile(store.path(), "work", &["docx"]);
+    git(project.path(), &["init", "--quiet"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    // Drop the END marker, the way a careless hand-edit would.
+    let exclude = git_exclude(project.path());
+    let broken: String = fs::read_to_string(&exclude)
+        .unwrap()
+        .lines()
+        .filter(|line| *line != "# END skm-managed")
+        .map(|line| format!("{line}\n"))
+        .collect();
+    fs::write(&exclude, &broken).unwrap();
+
+    // A second skill, so the sync below has wiring left to do.
+    write_profile(store.path(), "work", &["docx", "git"]);
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["sync"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("warning:"))
+        .stderr(predicate::str::contains("malformed"))
+        .stderr(predicate::str::contains(
+            exclude.to_string_lossy().to_string(),
+        ))
+        .stderr(predicate::str::contains("updating local git exclude").not());
+
+    assert!(project.path().join(".claude/skills/git").is_symlink());
+    assert!(project.path().join(".claude/skills/docx").is_symlink());
+    assert_eq!(fs::read_to_string(&exclude).unwrap(), broken);
+}
+
+// ---- multiple target agents ---------------------------------------------------------------
+
+/// `home` is both HOME and the project root in these tests, so an agent's project-level skills
+/// directory hangs directly off it.
+fn agent_link(home: &Path, agent_dir: &str, skill: &str) -> PathBuf {
+    home.join(agent_dir).join("skills").join(skill)
+}
+
+fn setup_body(home: &Path) -> String {
+    fs::read_to_string(home.join(".skm.toml")).unwrap()
+}
+
+/// Import one skill, put it in profile `work`, and activate it.
+fn activate_docx(home: &Path, store: &Path) {
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    with_env(home, store)
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store, "work", &["docx"]);
+    with_env(home, store)
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn init_accepts_repeated_agent_flags_and_links_into_each() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code", "--agent", "cursor"])
+        .assert()
+        .success();
+
+    assert!(setup_body(home.path()).contains("agents = [\"claude-code\", \"cursor\"]"));
+
+    activate_docx(home.path(), store.path());
+
+    assert!(agent_link(home.path(), ".claude", "docx").is_symlink());
+    assert!(agent_link(home.path(), ".cursor", "docx").is_symlink());
+}
+
+#[test]
+fn init_accepts_comma_separated_agents() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code,gemini-cli"])
+        .assert()
+        .success();
+
+    assert!(setup_body(home.path()).contains("agents = [\"claude-code\", \"gemini-cli\"]"));
+}
+
+#[test]
+fn init_drops_a_repeated_agent() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "cursor", "--agent", "cursor"])
+        .assert()
+        .success();
+
+    assert!(setup_body(home.path()).contains("agents = [\"cursor\"]"));
+}
+
+/// Two ids naming the same directory must not both be placed into: the second pass would unwire
+/// what the first had just wired.
+#[test]
+fn init_collapses_agents_that_share_a_directory() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "generic"])
+        .assert()
+        .success();
+    // `codex` is a config-only alias of `generic`, so both name `.agents/skills`.
+    fs::write(
+        home.path().join(".skm.toml"),
+        "version = 1\n[placement]\nagents = [\"generic\", \"codex\"]\n",
+    )
+    .unwrap();
+
+    activate_docx(home.path(), store.path());
+
+    assert!(agent_link(home.path(), ".agents", "docx").is_symlink());
+}
+
+#[test]
+fn setup_agents_adds_an_agent_and_syncs_into_its_directory() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    activate_docx(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args(["setup-agents", "--agent", "claude-code,cursor"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "target agents: claude-code, cursor",
+        ));
+
+    assert!(agent_link(home.path(), ".claude", "docx").is_symlink());
+    assert!(agent_link(home.path(), ".cursor", "docx").is_symlink());
+}
+
+#[test]
+fn setup_agents_unwires_only_the_dropped_agent() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code,cursor"])
+        .assert()
+        .success();
+    activate_docx(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args(["setup-agents", "--agent", "cursor"])
+        .assert()
+        .success();
+
+    let dropped = agent_link(home.path(), ".claude", "docx");
+    assert!(
+        fs::symlink_metadata(&dropped).is_err(),
+        "expected the dropped agent's link at {} to be removed",
+        dropped.display()
+    );
+    assert!(agent_link(home.path(), ".cursor", "docx").is_symlink());
+    assert!(setup_body(home.path()).contains("agents = [\"cursor\"]"));
+}
+
+/// Dropping an agent needs no sync: the directories that remain are already wired.
+#[test]
+fn setup_agents_skips_sync_when_only_dropping_agents() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code,cursor"])
+        .assert()
+        .success();
+    activate_docx(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args(["setup-agents", "--agent", "cursor"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("syncing skills").not());
+}
+
+#[test]
+fn switch_agent_still_works_as_an_alias() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+
+    with_env(home.path(), store.path())
+        .args(["switch-agent", "--agent", "cursor"])
+        .assert()
+        .success();
+
+    assert!(setup_body(home.path()).contains("agents = [\"cursor\"]"));
+}
+
+/// Setups written before multi-agent support say `agent = "..."`. They must keep working, and
+/// the next write should leave the file in the current shape.
+#[test]
+fn legacy_single_agent_config_is_read_and_migrated_on_write() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    init_project(home.path(), store.path());
+    fs::write(
+        home.path().join(".skm.toml"),
+        "version = 1\n[placement]\nagent = \"claude-code\"\n",
+    )
+    .unwrap();
+
+    activate_docx(home.path(), store.path());
+
+    assert!(agent_link(home.path(), ".claude", "docx").is_symlink());
+    let body = setup_body(home.path());
+    assert!(body.contains("agents = [\"claude-code\"]"), "{body}");
+}
+
+#[test]
+fn status_lists_every_target_agent_with_its_skills() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code,cursor"])
+        .assert()
+        .success();
+    activate_docx(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args(["status"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Target agents:"))
+        .stdout(predicate::str::contains(".claude/skills"))
+        .stdout(predicate::str::contains(".cursor/skills"))
+        .stdout(predicate::str::contains("docx"));
+}
+
+#[test]
+fn status_json_reports_one_entry_per_agent() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code,cursor"])
+        .assert()
+        .success();
+    activate_docx(home.path(), store.path());
+
+    let output = with_env(home.path(), store.path())
+        .args(["status", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let report: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    let agents = report["agents"].as_array().unwrap();
+    assert_eq!(agents.len(), 2);
+    assert_eq!(agents[0]["agent"], "claude-code");
+    assert_eq!(agents[0]["skills_path"], ".claude/skills");
+    assert_eq!(agents[0]["skills"][0]["name"], "docx");
+    assert_eq!(agents[1]["agent"], "cursor");
+    assert_eq!(agents[1]["skills"][0]["name"], "docx");
+    assert_eq!(report["profile"], "work");
+}
+
+#[test]
+fn doctor_json_reports_every_target_agent() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code,cursor"])
+        .assert()
+        .success();
+    activate_docx(home.path(), store.path());
+
+    let output = with_env(home.path(), store.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let report: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    assert_eq!(
+        report["agents"].as_array().unwrap(),
+        &vec![
+            serde_json::json!("claude-code"),
+            serde_json::json!("cursor")
+        ]
+    );
+}
+
+#[test]
+fn doctor_names_the_agent_whose_directory_holds_an_extra_link() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code,cursor"])
+        .assert()
+        .success();
+    activate_docx(home.path(), store.path());
+
+    // A store-owned link the active profile does not ask for, in one agent's directory only.
+    let extra = store.path().join("docx");
+    std::os::unix::fs::symlink(&extra, agent_link(home.path(), ".cursor", "extra")).unwrap();
+
+    let output = with_env(home.path(), store.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let report: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    let extra_issues: Vec<&serde_json::Value> = report["issues"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|issue| issue["code"] == "link.extra")
+        .collect();
+    assert_eq!(extra_issues.len(), 1);
+    assert_eq!(extra_issues[0]["agent"], "cursor");
+}
+
+#[test]
+fn local_exclude_covers_every_agent_directory() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    git(project.path(), &["init", "--quiet"]);
+
+    init_project(home.path(), store.path());
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code,cursor"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    let body = fs::read_to_string(git_exclude(project.path())).unwrap();
+    assert!(body.contains("/.claude/skills/docx"), "{body}");
+    assert!(body.contains("/.cursor/skills/docx"), "{body}");
+}
+
+#[test]
+fn setup_agents_drops_the_removed_agent_from_local_exclude() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    git(project.path(), &["init", "--quiet"]);
+
+    init_project(home.path(), store.path());
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code,cursor"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["setup-agents", "--agent", "cursor"])
+        .assert()
+        .success();
+
+    let body = fs::read_to_string(git_exclude(project.path())).unwrap();
+    assert!(!body.contains("/.claude/skills/docx"), "{body}");
+    assert!(body.contains("/.cursor/skills/docx"), "{body}");
+}
+
+#[test]
+fn destroy_requires_a_project_setup() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy", "--force"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("config file not found"));
+}
+
+#[test]
+fn destroy_refuses_without_force_off_tty() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy"])
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains(
+            "refusing to destroy without --force",
+        ));
+
+    assert!(project.path().join(".skm.toml").is_file());
+}
+
+#[test]
+fn destroy_warns_when_setup_has_no_active_profile() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy", "--force"])
+        .assert()
+        .success()
+        .stderr(
+            predicate::str::contains("warning:").and(predicate::str::contains("profile not found")),
+        );
+
+    assert!(!project.path().join(".skm.toml").exists());
+}
+
+#[test]
+fn destroy_warns_when_active_profile_is_missing_from_the_store() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    fs::write(
+        project.path().join(".skm.toml"),
+        "version = 1\n[placement]\nagents = [\"claude-code\"]\n[profile]\nactive = \"gone\"\n",
+    )
+    .unwrap();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy", "--force"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("profile not found: gone"));
+
+    assert!(!project.path().join(".skm.toml").exists());
+}
+
+#[test]
+fn destroy_force_unwires_links_removes_exclude_and_setup() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+    git(project.path(), &["init", "--quiet"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    write_skill(&project.path().join(".claude/skills"), "project-skill");
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    let exclude = git_exclude(project.path());
+    fs::write(
+        &exclude,
+        format!("*.local\n\n{}", fs::read_to_string(&exclude).unwrap()),
+    )
+    .unwrap();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy", "--force"])
+        .assert()
+        .success();
+
+    assert!(!project.path().join(".skm.toml").exists());
+    assert!(!project.path().join(".claude/skills/docx").exists());
+    assert!(project
+        .path()
+        .join(".claude/skills/project-skill/SKILL.md")
+        .is_file());
+    assert!(store.path().join("docx/SKILL.md").is_file());
+    assert!(home.path().join(".skm.toml").is_file());
+
+    let body = fs::read_to_string(&exclude).unwrap();
+    assert_eq!(body, "*.local\n");
+    assert!(!body.contains("skm-managed"), "{body}");
+    assert!(!project.path().join(".gitignore").exists());
+}
+
+#[test]
+fn destroy_dry_run_writes_nothing() {
+    if !git_available() {
+        return;
+    }
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+    git(project.path(), &["init", "--quiet"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    let setup = fs::read_to_string(project.path().join(".skm.toml")).unwrap();
+    let exclude = fs::read_to_string(git_exclude(project.path())).unwrap();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy", "--dry-run"])
+        .assert()
+        .success()
+        .stderr(
+            predicate::str::contains("(dry-run) removing")
+                .and(predicate::str::contains(".skm.toml")),
+        );
+
+    assert_eq!(
+        fs::read_to_string(project.path().join(".skm.toml")).unwrap(),
+        setup
+    );
+    assert!(project.path().join(".claude/skills/docx").is_symlink());
+    assert_eq!(
+        fs::read_to_string(git_exclude(project.path())).unwrap(),
+        exclude
+    );
+}
+
+#[test]
+fn destroy_help_says_it_keeps_the_store() {
+    skm().args(["destroy", "--help"]).assert().success().stdout(
+        predicate::str::contains(".skm.toml")
+            .and(predicate::str::contains("store-owned"))
+            .and(predicate::str::contains("Does not delete the skill store"))
+            .and(predicate::str::contains("every known")),
+    );
+}
+
+#[test]
+fn destroy_unwires_links_when_agents_list_is_empty() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    write_skill(&project.path().join(".claude/skills"), "project-skill");
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    fs::write(
+        project.path().join(".skm.toml"),
+        "version = 1\n[placement]\nagents = []\n",
+    )
+    .unwrap();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy", "--force"])
+        .assert()
+        .success();
+
+    assert!(!project.path().join(".skm.toml").exists());
+    assert!(!project.path().join(".claude/skills/docx").exists());
+    assert!(project
+        .path()
+        .join(".claude/skills/project-skill/SKILL.md")
+        .is_file());
+    assert!(store.path().join("docx/SKILL.md").is_file());
+}
+
+#[test]
+fn destroy_unwires_links_left_in_an_unlisted_agent_dir() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    fs::write(
+        project.path().join(".skm.toml"),
+        "version = 1\n[placement]\nagents = [\"cursor\"]\n",
+    )
+    .unwrap();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy", "--force"])
+        .assert()
+        .success();
+
+    assert!(!project.path().join(".skm.toml").exists());
+    assert!(!project.path().join(".claude/skills/docx").exists());
+}
+
+#[test]
+fn destroy_warns_on_unknown_agent_and_still_unwires_known_dirs() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+    write_skill(store.path(), "docx");
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["use-profile", "work"])
+        .assert()
+        .success();
+
+    fs::write(
+        project.path().join(".skm.toml"),
+        "version = 1\n[placement]\nagents = [\"not-an-agent\"]\n",
+    )
+    .unwrap();
+
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["destroy", "--force"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("unknown agent `not-an-agent`"));
+
+    assert!(!project.path().join(".skm.toml").exists());
+    assert!(!project.path().join(".claude/skills/docx").exists());
 }

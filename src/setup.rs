@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use crate::adapters::{get_adapter, resolve_target_dir, SetupLevel};
+use crate::adapters::{
+    canonical_agent_id, get_adapter, resolve_target_dirs, AgentTarget, SetupLevel,
+};
 use crate::config::{default_setup, read_setup, write_setup, SetupFile};
 use crate::error::SkmError;
 use crate::store::extends::flatten_skill_ids;
@@ -95,6 +97,22 @@ pub fn select_project_setup(cwd: &Path) -> Result<SelectedSetup, SkmError> {
     })
 }
 
+/// Load `./.skm.toml` without validating agents, so a broken setup can still be torn down.
+pub fn select_project_setup_raw(cwd: &Path) -> Result<SelectedSetup, SkmError> {
+    let project_path = crate::config::project_setup_path(cwd);
+    if !project_path.is_file() {
+        return Err(SkmError::SetupNotFound(project_path));
+    }
+
+    let setup = crate::config::read_setup_raw(&project_path)?;
+    Ok(SelectedSetup {
+        path: project_path,
+        setup,
+        level: SetupLevel::Project,
+        project_root: cwd.to_path_buf(),
+    })
+}
+
 pub fn set_active_profile(setup: &mut SelectedSetup, profile_name: &str) -> Result<(), SkmError> {
     setup.setup.profile.active = Some(profile_name.to_string());
     write_setup(&setup.path, &setup.setup)?;
@@ -130,22 +148,37 @@ pub fn clear_active_profile_if_empty(
     Ok(())
 }
 
-pub fn set_setup_agent(setup: &mut SetupFile, agent: &str) -> Result<(), SkmError> {
-    get_adapter(agent)?;
-    setup.placement.agent = agent.to_string();
+/// Replace the setup's target agents, canonicalizing aliases and dropping repeats so the
+/// written file says exactly what will be placed into.
+pub fn set_setup_agents(setup: &mut SetupFile, agents: &[String]) -> Result<(), SkmError> {
+    if agents.is_empty() {
+        return Err(SkmError::NoTargetAgents);
+    }
+
+    let mut canonical: Vec<String> = Vec::with_capacity(agents.len());
+    for agent in agents {
+        get_adapter(agent)?;
+        let agent = canonical_agent_id(agent).to_string();
+        if !canonical.contains(&agent) {
+            canonical.push(agent);
+        }
+    }
+
+    setup.placement.agents = canonical;
     Ok(())
 }
 
-pub fn write_project_setup(cwd: &Path, agent: &str) -> Result<PathBuf, SkmError> {
+pub fn write_project_setup(cwd: &Path, agents: &[String]) -> Result<PathBuf, SkmError> {
     let path = crate::config::project_setup_path(cwd);
-    let setup = default_setup(agent);
+    let setup = default_setup(agents);
     write_setup(&path, &setup)?;
     Ok(path)
 }
 
-pub fn target_dir_for_setup(setup: &SelectedSetup) -> Result<(String, PathBuf), SkmError> {
-    resolve_target_dir(
-        &setup.setup.placement.agent,
+/// Every agent directory this setup places into, in config order.
+pub fn target_dirs_for_setup(setup: &SelectedSetup) -> Result<Vec<AgentTarget>, SkmError> {
+    resolve_target_dirs(
+        &setup.setup.placement.resolved_agents(),
         setup.level,
         &setup.project_root,
     )

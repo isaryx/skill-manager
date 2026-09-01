@@ -1,3 +1,4 @@
+mod exclude;
 mod links;
 
 use std::collections::{HashMap, HashSet};
@@ -7,13 +8,15 @@ use std::path::{Path, PathBuf};
 use crate::db::refresh_store_index;
 use crate::error::SkmError;
 use crate::progress;
+use crate::progress::display_path;
 use crate::resolver::{resolve, SkillPlacement};
-use crate::setup::{select_setup, target_dir_for_setup, SelectedSetup};
+use crate::setup::{select_setup, target_dirs_for_setup, SelectedSetup};
 use crate::store::extends::load_flattened_profile;
 use crate::store::skills::read_disabled_ids;
 use crate::store::{ensure_store_subdirs, StorePaths};
 use crate::util::validate_profile_name;
 
+pub(crate) use exclude::tracked_paths;
 pub(crate) use links::{
     is_foreign_occupant, is_store_owned_symlink, resolve_symlink_target as resolve_link_target,
     walk_store_owned_symlinks,
@@ -36,8 +39,12 @@ pub struct PlacementConflict {
     pub store_id: String,
 }
 
+/// One target agent's view of the active profile: what is linked, and what a foreign entry
+/// blocks. Reported per agent because the same profile can land differently in each directory.
 #[derive(Debug, Clone)]
-pub struct StatusReport {
+pub struct AgentStatus {
+    pub agent: String,
+    pub target: PathBuf,
     pub linked: Vec<PlacementStatus>,
     pub conflicts: Vec<PlacementConflict>,
 }
@@ -87,21 +94,43 @@ pub fn reconcile_with_setup(
     let disabled = read_disabled_ids(store)?;
     let placements = resolve(&profile, store, &disabled).map_err(SkmError::from)?;
 
-    let (_agent, target) = target_dir_for_setup(selected)?;
+    let targets = target_dirs_for_setup(selected)?;
     let store_root = store.canonical_root();
+    // With one agent the diff lines speak for themselves; with several, the same skill name is
+    // reported once per directory, so say which directory each run of lines belongs to.
+    let announce_agents = targets.len() > 1;
 
     if options.dry_run {
-        let (to_wire, to_unwire, skipped) =
-            compute_link_changes(&target, &placements, &store_root)?;
-        for name in to_unwire {
-            progress::unwired(&name, true);
+        let mut excludes = Vec::with_capacity(targets.len());
+        for target in &targets {
+            if announce_agents {
+                progress::step(format!("{}: {}", target.agent, display_path(&target.dir)));
+            }
+            let (to_wire, to_unwire, skipped) =
+                compute_link_changes(&target.dir, &placements, &store_root)?;
+            let skipped_set: HashSet<&str> = skipped.iter().map(String::as_str).collect();
+            let names: Vec<String> = placements
+                .iter()
+                .filter(|placement| !skipped_set.contains(placement.name.as_str()))
+                .map(|placement| placement.name.clone())
+                .collect();
+            for name in to_unwire {
+                progress::unwired(&name, true);
+            }
+            for name in skipped {
+                progress::skipped_conflict(&name, true);
+            }
+            for name in to_wire {
+                progress::wired(&name, true);
+            }
+            excludes.push((target.dir.clone(), names));
         }
-        for name in skipped {
-            progress::skipped_conflict(&name, true);
-        }
-        for name in to_wire {
-            progress::wired(&name, true);
-        }
+        exclude::sync_local_exclude(
+            &selected.project_root,
+            &excludes,
+            selected.setup.placement.ignore_links,
+            true,
+        )?;
         return Ok(());
     }
 
@@ -109,15 +138,38 @@ pub fn reconcile_with_setup(
     progress::step("refreshing skill index");
     refresh_store_index(store)?;
 
-    fs::create_dir_all(&target)?;
-
-    remove_dangling_store_symlinks(&target, &store_root)?;
+    // Every directory is created and excluded before any link is written, so `git status` never
+    // sees a store-owned link that the exclude block does not yet cover.
+    let mut excludes = Vec::with_capacity(targets.len());
+    for target in &targets {
+        fs::create_dir_all(&target.dir)?;
+        let wired_names: Vec<String> = placements
+            .iter()
+            .filter(|placement| {
+                !is_foreign_occupant(&target.dir.join(&placement.name), &store_root)
+            })
+            .map(|placement| placement.name.clone())
+            .collect();
+        excludes.push((target.dir.clone(), wired_names));
+    }
+    exclude::sync_local_exclude(
+        &selected.project_root,
+        &excludes,
+        selected.setup.placement.ignore_links,
+        false,
+    )?;
 
     let desired_names: HashSet<&str> = placements.iter().map(|p| p.name.as_str()).collect();
 
-    clean_target(&target, &store_root, &desired_names, false)?;
-    prune_empty_skill_dirs(&target)?;
-    apply_placements(&target, &placements, &store_root, false)?;
+    for target in &targets {
+        if announce_agents {
+            progress::step(format!("{}: {}", target.agent, display_path(&target.dir)));
+        }
+        remove_dangling_store_symlinks(&target.dir, &store_root)?;
+        clean_target(&target.dir, &store_root, &desired_names, false)?;
+        prune_empty_skill_dirs(&target.dir)?;
+        apply_placements(&target.dir, &placements, &store_root, false)?;
+    }
 
     Ok(())
 }
@@ -189,16 +241,54 @@ pub fn compute_link_changes(
 /// Remove every store-owned symlink under `target` and prune emptied directories.
 /// Used when leaving an agent's skills directory entirely (e.g. `switch-agent`), so
 /// skm-managed links don't linger, orphaned and invisible, in the previous agent's dir.
-pub fn unwire_all(target: &Path, store_root: &Path) -> Result<(), SkmError> {
+pub fn unwire_all(target: &Path, store_root: &Path, dry_run: bool) -> Result<(), SkmError> {
     if !target.is_dir() {
         return Ok(());
     }
     walk_store_owned_symlinks(target, store_root, |path, rel| {
-        progress::unwired(&rel, false);
-        fs::remove_file(path)?;
+        progress::unwired(&rel, dry_run);
+        if !dry_run {
+            fs::remove_file(path)?;
+        }
         Ok(())
     })?;
+    if dry_run {
+        return Ok(());
+    }
     prune_empty_skill_dirs(target)
+}
+
+/// Drop the managed exclude block. Destroy uses this so leftover patterns cannot outlive
+/// `.skm.toml`. `ignore_links = false` is the same rewrite.
+pub fn clear_managed_exclude(project_root: &Path, dry_run: bool) -> Result<(), SkmError> {
+    exclude::sync_local_exclude(project_root, &[], false, dry_run)
+}
+
+/// Rewrite the managed exclude block from the links that currently exist under the setup's
+/// target directories.
+///
+/// Used when the agent set changes without a sync: paths belonging to a dropped agent have to
+/// leave the block, while the agents that remain keep theirs. Basing it on the links actually
+/// on disk means the block never claims to cover a link that was never written.
+pub fn refresh_local_exclude(selected: &SelectedSetup, store_root: &Path) -> Result<(), SkmError> {
+    let targets = target_dirs_for_setup(selected)?;
+    let mut excludes = Vec::with_capacity(targets.len());
+    for target in &targets {
+        let mut names = Vec::new();
+        if target.dir.is_dir() {
+            walk_store_owned_symlinks(&target.dir, store_root, |_, rel| {
+                names.push(rel);
+                Ok(())
+            })?;
+        }
+        excludes.push((target.dir.clone(), names));
+    }
+    exclude::sync_local_exclude(
+        &selected.project_root,
+        &excludes,
+        selected.setup.placement.ignore_links,
+        false,
+    )
 }
 
 fn remove_dangling_store_symlinks(target: &Path, store_root: &Path) -> Result<(), SkmError> {
@@ -313,50 +403,63 @@ fn apply_placements(
 pub fn collect_status(
     store: &StorePaths,
     selected: &SelectedSetup,
-) -> Result<StatusReport, SkmError> {
+) -> Result<Vec<AgentStatus>, SkmError> {
     let store_root = store.canonical_root();
-    let (_agent, target) = target_dir_for_setup(selected)?;
+    let targets = target_dirs_for_setup(selected)?;
 
-    let mut linked = Vec::new();
-    let mut conflicts = Vec::new();
+    let mut reports: Vec<AgentStatus> = targets
+        .into_iter()
+        .map(|target| AgentStatus {
+            agent: target.agent,
+            target: target.dir,
+            linked: Vec::new(),
+            conflicts: Vec::new(),
+        })
+        .collect();
 
     let Some(active) = selected.setup.profile.active.as_deref() else {
-        return Ok(StatusReport { linked, conflicts });
+        return Ok(reports);
     };
 
     let profile = load_flattened_profile(store, active)?;
     let disabled = read_disabled_ids(store)?;
     let placements = resolve(&profile, store, &disabled).map_err(SkmError::from)?;
 
-    for placement in placements {
-        let link_path = target.join(&placement.name);
-        if is_foreign_occupant(&link_path, &store_root) {
-            conflicts.push(PlacementConflict {
-                name: placement.name.clone(),
-                store_id: placement.store_id,
-            });
-            continue;
+    for report in &mut reports {
+        for placement in &placements {
+            let link_path = report.target.join(&placement.name);
+            if is_foreign_occupant(&link_path, &store_root) {
+                report.conflicts.push(PlacementConflict {
+                    name: placement.name.clone(),
+                    store_id: placement.store_id.clone(),
+                });
+                continue;
+            }
+
+            if !is_store_owned_symlink(&link_path, &store_root) {
+                continue;
+            }
+
+            let Some(current) = resolve_link_target(&link_path) else {
+                continue;
+            };
+            let want = placement
+                .source
+                .canonicalize()
+                .unwrap_or_else(|_| placement.source.clone());
+            if current == want {
+                report.linked.push(PlacementStatus {
+                    name: placement.name.clone(),
+                    source: current,
+                });
+            }
         }
 
-        if !is_store_owned_symlink(&link_path, &store_root) {
-            continue;
-        }
-
-        let Some(current) = resolve_link_target(&link_path) else {
-            continue;
-        };
-        let want = placement.source.canonicalize().unwrap_or(placement.source);
-        if current == want {
-            linked.push(PlacementStatus {
-                name: placement.name,
-                source: current,
-            });
-        }
+        report.linked.sort_by(|a, b| a.name.cmp(&b.name));
+        report.conflicts.sort_by(|a, b| a.name.cmp(&b.name));
     }
 
-    linked.sort_by(|a, b| a.name.cmp(&b.name));
-    conflicts.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(StatusReport { linked, conflicts })
+    Ok(reports)
 }
 
 #[cfg(test)]

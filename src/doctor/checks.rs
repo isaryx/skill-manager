@@ -9,13 +9,15 @@ use crate::db::{list_skills, open_index};
 use crate::error::SkmError;
 use crate::progress::display_path;
 use crate::resolver::resolve;
-use crate::setup::{target_dir_for_setup, SelectedSetup};
+use crate::setup::{target_dirs_for_setup, SelectedSetup};
 use crate::store::extends::{flatten_skill_ids, load_flattened_profile};
 use crate::store::profiles::{list_profiles, load_profile};
 use crate::store::skills::{list_enabled_pool_ids, read_disabled_ids};
 use crate::store::validate::{inspect_store_path, StoreState};
 use crate::store::{discover_skill_ids, has_skill_meta, StorePaths};
-use crate::sync::{is_foreign_occupant, resolve_link_target, walk_store_owned_symlinks};
+use crate::sync::{
+    is_foreign_occupant, resolve_link_target, tracked_paths, walk_store_owned_symlinks,
+};
 use crate::util::{is_path_inside, is_skill_bundle, is_skill_dir, path_to_store_skill_id};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -37,6 +39,9 @@ pub struct Issue {
     pub skill: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    /// Set on issues that belong to one target agent's skills directory.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
 }
 
 impl Issue {
@@ -48,6 +53,7 @@ impl Issue {
             profile: None,
             skill: None,
             path: None,
+            agent: None,
         }
     }
 
@@ -59,6 +65,7 @@ impl Issue {
             profile: None,
             skill: None,
             path: None,
+            agent: None,
         }
     }
 
@@ -70,6 +77,7 @@ impl Issue {
             profile: None,
             skill: None,
             path: None,
+            agent: None,
         }
     }
 
@@ -85,6 +93,11 @@ impl Issue {
 
     fn with_path(mut self, path: impl Into<String>) -> Self {
         self.path = Some(path.into());
+        self
+    }
+
+    fn with_agent(mut self, agent: impl Into<String>) -> Self {
+        self.agent = Some(agent.into());
         self
     }
 }
@@ -322,14 +335,23 @@ pub fn check_profiles(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
 pub fn check_config(selected: &SelectedSetup) -> Vec<Issue> {
     let mut issues = Vec::new();
 
-    if get_adapter(&selected.setup.placement.agent).is_err() {
+    if selected.setup.placement.agents.is_empty() {
         issues.push(Issue::error(
-            "config.unknown_agent",
-            format!(
-                "unknown agent `{}` in config",
-                selected.setup.placement.agent
-            ),
+            "config.no_agents",
+            "config lists no target agents; run `skm setup-agents`",
         ));
+    }
+
+    for agent in &selected.setup.placement.agents {
+        if get_adapter(agent).is_err() {
+            issues.push(
+                Issue::error(
+                    "config.unknown_agent",
+                    format!("unknown agent `{agent}` in config"),
+                )
+                .with_agent(agent),
+            );
+        }
     }
 
     if selected.setup.profile.active.is_none() {
@@ -362,64 +384,95 @@ pub fn check_links(
 
     let desired_names: HashSet<&str> = placements.iter().map(|p| p.name.as_str()).collect();
     let store_root = store.canonical_root();
-    let (_agent, target) = target_dir_for_setup(selected)?;
-    if !target.is_dir() {
-        return Ok(issues);
+
+    // Links are collected across every agent so the tracked-file check below costs one `git
+    // ls-files` for the whole project rather than one per agent.
+    let mut owned_links = Vec::new();
+
+    for target in target_dirs_for_setup(selected)? {
+        if !target.dir.is_dir() {
+            continue;
+        }
+        let agent = target.agent.as_str();
+
+        for placement in &placements {
+            let link_path = target.dir.join(&placement.name);
+            if is_foreign_occupant(&link_path, &store_root) {
+                issues.push(
+                    Issue::info(
+                        "link.conflict",
+                        format!(
+                            "skill `{name}` in profile is conflicted by a non-skm entry in \
+                             {agent}'s skills directory",
+                            name = placement.name
+                        ),
+                    )
+                    .with_skill(&placement.store_id)
+                    .with_profile(active_profile)
+                    .with_path(display_path(&link_path))
+                    .with_agent(agent),
+                );
+            }
+        }
+
+        walk_store_owned_symlinks(&target.dir, &store_root, |path, rel| {
+            owned_links.push(path.to_path_buf());
+            let Some(resolved) = resolve_link_target(path) else {
+                issues.push(
+                    Issue::warn(
+                        "link.broken",
+                        format!("broken symlink `{rel}` in {agent}'s skills directory"),
+                    )
+                    .with_path(display_path(path))
+                    .with_agent(agent),
+                );
+                return Ok(());
+            };
+
+            if !is_path_inside(&store_root, &resolved) {
+                issues.push(
+                    Issue::warn(
+                        "link.stale",
+                        format!("symlink `{rel}` points outside the skill store"),
+                    )
+                    .with_path(display_path(path))
+                    .with_agent(agent),
+                );
+                return Ok(());
+            }
+
+            if !desired_names.contains(rel.as_str()) {
+                issues.push(
+                    Issue::info(
+                        "link.extra",
+                        format!("symlink `{rel}` is not in the active profile"),
+                    )
+                    .with_path(display_path(path))
+                    .with_agent(agent),
+                );
+            }
+
+            Ok(())
+        })?;
     }
 
-    for placement in &placements {
-        let link_path = target.join(&placement.name);
-        if is_foreign_occupant(&link_path, &store_root) {
+    if selected.setup.placement.ignore_links {
+        for path in tracked_paths(&selected.project_root, &owned_links) {
+            let relative = path
+                .strip_prefix(&selected.project_root)
+                .unwrap_or(&path)
+                .to_string_lossy();
             issues.push(
-                Issue::info(
-                    "link.conflict",
+                Issue::warn(
+                    "link.tracked",
                     format!(
-                        "skill `{name}` in profile is conflicted by a non-skm entry",
-                        name = placement.name
+                        "store-owned skill link `{relative}` is tracked; run `git rm --cached -- {relative}`"
                     ),
                 )
-                .with_skill(&placement.store_id)
-                .with_profile(active_profile)
-                .with_path(display_path(&link_path)),
+                .with_path(display_path(&path)),
             );
         }
     }
-
-    walk_store_owned_symlinks(&target, &store_root, |path, rel| {
-        let Some(resolved) = resolve_link_target(path) else {
-            issues.push(
-                Issue::warn(
-                    "link.broken",
-                    format!("broken symlink `{rel}` in agent skills directory"),
-                )
-                .with_path(display_path(path)),
-            );
-            return Ok(());
-        };
-
-        if !is_path_inside(&store_root, &resolved) {
-            issues.push(
-                Issue::warn(
-                    "link.stale",
-                    format!("symlink `{rel}` points outside the skill store"),
-                )
-                .with_path(display_path(path)),
-            );
-            return Ok(());
-        }
-
-        if !desired_names.contains(rel.as_str()) {
-            issues.push(
-                Issue::info(
-                    "link.extra",
-                    format!("symlink `{rel}` is not in the active profile"),
-                )
-                .with_path(display_path(path)),
-            );
-        }
-
-        Ok(())
-    })?;
 
     Ok(issues)
 }
@@ -565,17 +618,44 @@ mod tests {
         assert!(issues.iter().any(|i| i.code == "profile.disabled_ref"));
     }
 
+    /// A `SelectedSetup` for `agents`, rooted at `root`.
+    fn selected_setup_for(root: &Path, agents: &[&str]) -> SelectedSetup {
+        let agents: Vec<String> = agents.iter().map(|agent| agent.to_string()).collect();
+        SelectedSetup {
+            path: root.join(".skm.toml"),
+            setup: crate::config::default_setup(&agents),
+            level: crate::adapters::SetupLevel::Project,
+            project_root: root.to_path_buf(),
+        }
+    }
+
     #[test]
     fn check_config_unknown_agent() {
         let tmp = TempDir::new().unwrap();
-        let selected = crate::setup::SelectedSetup {
-            path: tmp.path().join(".skm.toml"),
-            setup: crate::config::default_setup("windsurf"),
-            level: crate::adapters::SetupLevel::Project,
-            project_root: tmp.path().to_path_buf(),
-        };
+        let selected = selected_setup_for(tmp.path(), &["windsurf"]);
         let issues = check_config(&selected);
         assert!(issues.iter().any(|i| i.code == "config.unknown_agent"));
+    }
+
+    #[test]
+    fn check_config_reports_each_unknown_agent_with_its_name() {
+        let tmp = TempDir::new().unwrap();
+        let selected = selected_setup_for(tmp.path(), &["claude-code", "windsurf", "zed"]);
+        let issues = check_config(&selected);
+        let unknown: Vec<&str> = issues
+            .iter()
+            .filter(|issue| issue.code == "config.unknown_agent")
+            .map(|issue| issue.agent.as_deref().unwrap())
+            .collect();
+        assert_eq!(unknown, vec!["windsurf", "zed"]);
+    }
+
+    #[test]
+    fn check_config_reports_empty_agent_list() {
+        let tmp = TempDir::new().unwrap();
+        let selected = selected_setup_for(tmp.path(), &[]);
+        let issues = check_config(&selected);
+        assert!(issues.iter().any(|i| i.code == "config.no_agents"));
     }
 
     #[test]

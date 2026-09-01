@@ -36,7 +36,7 @@ __skm() {
         case $line[1] in
             (init)
 _arguments "${_arguments_options[@]}" : \
-'--agent=[Target agent for this project]:AGENT:((claude-code\:"Claude Code (.claude/skills)"
+'*--agent=[Target agents for this project (repeatable, comma-separated)]:AGENT:((claude-code\:"Claude Code (.claude/skills)"
 cursor\:"Cursor (.cursor/skills)"
 generic\:"Agent Skills (.agents/skills); Codex, Cursor, Gemini CLI, Copilot CLI"
 gemini-cli\:"Gemini CLI (.gemini/skills)"
@@ -304,14 +304,14 @@ _arguments "${_arguments_options[@]}" : \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
-'-h[Print help]' \
-'--help[Print help]' \
-':profile -- Profile name:_default' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'::profile -- Profile name; omit to choose interactively:_default' \
 && ret=0
 ;;
-(switch-agent)
+(setup-agents)
 _arguments "${_arguments_options[@]}" : \
-'--agent=[Agent to switch to]:AGENT:((claude-code\:"Claude Code (.claude/skills)"
+'*--agent=[Target agents (repeatable, comma-separated); omit to pick interactively]:AGENT:((claude-code\:"Claude Code (.claude/skills)"
 cursor\:"Cursor (.cursor/skills)"
 generic\:"Agent Skills (.agents/skills); Codex, Cursor, Gemini CLI, Copilot CLI"
 gemini-cli\:"Gemini CLI (.gemini/skills)"
@@ -320,6 +320,19 @@ copilot-cli\:"Copilot CLI (.github/skills; ~/.copilot/skills with --user)"))' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(destroy)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'--force[Destroy without confirmation (required when stdin is not a TTY)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
@@ -486,7 +499,11 @@ esac
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
-(switch-agent)
+(setup-agents)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(destroy)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
@@ -531,7 +548,8 @@ __skm_commands() {
 'profile:Create and manage profiles' \
 'skill:Manage skills in the store' \
 'use-profile:Activate a profile and sync skill links' \
-'switch-agent:Change the target agent in your config' \
+'setup-agents:Choose which agents your config places skills into' \
+'destroy:Tear down this project'\''s skm setup (\`.skm.toml\` and store-owned links)' \
 'sync:Refresh skill links without changing the active profile' \
 'status:Show agent, active profile, linked skills, and name conflicts' \
 'ls:List skills and profiles in the store' \
@@ -540,6 +558,11 @@ __skm_commands() {
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands '_skm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__destroy_commands] )) ||
+_skm__subcmd__destroy_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm destroy commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__doctor_commands] )) ||
 _skm__subcmd__doctor_commands() {
@@ -554,7 +577,8 @@ _skm__subcmd__help_commands() {
 'profile:Create and manage profiles' \
 'skill:Manage skills in the store' \
 'use-profile:Activate a profile and sync skill links' \
-'switch-agent:Change the target agent in your config' \
+'setup-agents:Choose which agents your config places skills into' \
+'destroy:Tear down this project'\''s skm setup (\`.skm.toml\` and store-owned links)' \
 'sync:Refresh skill links without changing the active profile' \
 'status:Show agent, active profile, linked skills, and name conflicts' \
 'ls:List skills and profiles in the store' \
@@ -563,6 +587,11 @@ _skm__subcmd__help_commands() {
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'skm help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__destroy_commands] )) ||
+_skm__subcmd__help__subcmd__destroy_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help destroy commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__help__subcmd__doctor_commands] )) ||
 _skm__subcmd__help__subcmd__doctor_commands() {
@@ -593,7 +622,7 @@ _skm__subcmd__help__subcmd__ls_commands() {
 _skm__subcmd__help__subcmd__profile_commands() {
     local commands; commands=(
 'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
-'extend:Choose which profiles this one inherits skills from (interactive)' \
+'extend:Choose which profiles this one inherits skills from (interactive; creates the profile if missing)' \
 'ls:List profile names' \
 'show:Show skills in a profile' \
 'rm:Remove a profile' \
@@ -630,6 +659,11 @@ _skm__subcmd__help__subcmd__scan_commands() {
     local commands; commands=()
     _describe -t commands 'skm help scan commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__help__subcmd__setup-agents_commands] )) ||
+_skm__subcmd__help__subcmd__setup-agents_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help setup-agents commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__help__subcmd__skill_commands] )) ||
 _skm__subcmd__help__subcmd__skill_commands() {
     local commands; commands=(
@@ -658,11 +692,6 @@ _skm__subcmd__help__subcmd__skill__subcmd__setup_commands() {
 _skm__subcmd__help__subcmd__status_commands() {
     local commands; commands=()
     _describe -t commands 'skm help status commands' commands "$@"
-}
-(( $+functions[_skm__subcmd__help__subcmd__switch-agent_commands] )) ||
-_skm__subcmd__help__subcmd__switch-agent_commands() {
-    local commands; commands=()
-    _describe -t commands 'skm help switch-agent commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__help__subcmd__sync_commands] )) ||
 _skm__subcmd__help__subcmd__sync_commands() {
@@ -693,7 +722,7 @@ _skm__subcmd__ls_commands() {
 _skm__subcmd__profile_commands() {
     local commands; commands=(
 'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
-'extend:Choose which profiles this one inherits skills from (interactive)' \
+'extend:Choose which profiles this one inherits skills from (interactive; creates the profile if missing)' \
 'ls:List profile names' \
 'show:Show skills in a profile' \
 'rm:Remove a profile' \
@@ -710,7 +739,7 @@ _skm__subcmd__profile__subcmd__extend_commands() {
 _skm__subcmd__profile__subcmd__help_commands() {
     local commands; commands=(
 'setup:Choose skills for a profile (interactive; creates the profile if missing)' \
-'extend:Choose which profiles this one inherits skills from (interactive)' \
+'extend:Choose which profiles this one inherits skills from (interactive; creates the profile if missing)' \
 'ls:List profile names' \
 'show:Show skills in a profile' \
 'rm:Remove a profile' \
@@ -773,6 +802,11 @@ _skm__subcmd__scan_commands() {
     local commands; commands=()
     _describe -t commands 'skm scan commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__setup-agents_commands] )) ||
+_skm__subcmd__setup-agents_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm setup-agents commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__skill_commands] )) ||
 _skm__subcmd__skill_commands() {
     local commands; commands=(
@@ -832,11 +866,6 @@ _skm__subcmd__skill__subcmd__setup_commands() {
 _skm__subcmd__status_commands() {
     local commands; commands=()
     _describe -t commands 'skm status commands' commands "$@"
-}
-(( $+functions[_skm__subcmd__switch-agent_commands] )) ||
-_skm__subcmd__switch-agent_commands() {
-    local commands; commands=()
-    _describe -t commands 'skm switch-agent commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__sync_commands] )) ||
 _skm__subcmd__sync_commands() {

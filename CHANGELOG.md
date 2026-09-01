@@ -7,8 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-01
+
+Multiple target agents per setup, profile inheritance, local git excludes, and `skm destroy`.
+
 ### Changed
 
+- **Multiple target agents per config (breaking)** — `[placement]` now takes a list:
+  `agents = ["claude-code", "cursor"]`. Every listed agent gets its own symlinks, so one profile
+  can serve several tools at once. Setups written with the old single `agent = "…"` are still
+  read, and rewritten as a list the next time skm writes the file. `--agent` on `skm init` is
+  repeatable and comma-separated (`--agent claude-code,cursor`); repeats and ids that resolve to
+  the same directory (`codex` and `generic`) are collapsed, so no directory is placed into twice.
+- **`skm switch-agent` is now `skm setup-agents`** (the old name remains as an alias). Without
+  `--agent` it opens the same full-screen checkbox list as `skm init`, pre-checked with the
+  current agents. Agents added to the set get skills synced into their directory (TTY prompt;
+  auto off-TTY when a profile is active); agents removed from it have their store-owned links
+  unwired, and the managed git exclude block is rebuilt from the links still on disk. Dropping
+  agents alone no longer triggers a sync, and reordering the same set is treated as unchanged.
+- **`skm status`** heads its output with `Target agents:` and one line per agent. With more than
+  one agent, **Linked** and **Conflicts** are grouped under a per-agent heading, since a name can
+  be conflicted in one agent's directory and linked in another's.
+- **`--json` (breaking)** — `status` now reports
+  `{ agents: [{ agent, skills_path, skills, conflicts }], profile }` instead of a single flat
+  agent, and `doctor` reports `agents: [...]` in place of `agent`. Doctor issues raised against
+  one agent's skills directory carry that agent in a new `agent` field.
+- **`skm doctor`** reports `config.unknown_agent` once per unknown agent, and the new
+  `config.no_agents` error when the list is empty.
 - **`skm profile setup` and `skm skill setup`** — replaced the inline `dialoguer` multi-select
   with a full-screen picker on the alternate screen: `/` search filter, `[x]` checkboxes, a
   bottom hint bar, arrow **and** vim (`k`/`j`, `g`/`G`) navigation, `a` to toggle every matching
@@ -17,12 +42,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `12 of 27 match` while filtering) and `↑n` / `↓n` for rows off screen. `q` / `Esc` / `Ctrl-C`
   cancel without writing, and restore the terminal.
 - **`profile setup`** now titles the list with the profile name
+- **`skm init`** refuses an existing `./.skm.toml` before the agent picker or store work. The
+  error points at `skm setup-agents` and `skm use-profile`. `--force` still overwrites.
+- **`skm use-profile`** accepts an optional profile name. Without one, a TTY opens a simple
+  single-select list of available profiles, marking and defaulting to the active profile.
 
 ### Added
 
+- **`skm destroy`** — tear down this project's `./.skm.toml`: confirm on a TTY (`--force`
+  off-TTY), unwire store-owned skill links in every known project agent directory (not only
+  agents listed in the file), remove the managed git exclude block, then delete the setup file.
+  The skill store, profiles, and foreign skills are not touched. `--dry-run` previews without
+  writing. A missing `[profile].active` (or a name with no profile in the store) prints
+  `warning: profile not found`.
+
+- **Local Git excludes for linked skills** — project syncs maintain a clone-local managed block in
+  `.git/info/exclude`, preventing store-owned symlinks from being committed without changing the
+  project `.gitignore`. Enabled by default; set `[placement].ignore_links = false` to opt out.
+  When the exclude actually changes, `sync` / `use-profile` / `setup-agents` log
+  `updating local git exclude`. Patterns are anchored to the worktree root, so they never match a
+  same-named path elsewhere in the repo. If the managed block has been edited into something skm
+  cannot parse, it is left alone with a warning and reconcile continues — the links still get
+  wired. `skm doctor` reports already tracked links as `link.tracked`.
 - **`skm profile extend <profile>`** — pick which profiles a profile inherits skills from, in the
-  same full-screen picker. `extends` is a live reference: the skill list is flattened at sync
-  time, so editing a base profile updates everything extending it. Own skills come first, then
+  same full-screen picker. Creates the profile if it does not exist, like `setup`. `extends` is a
+  live reference: the skill list is flattened at sync time, so editing a base profile updates
+  everything extending it. Own skills come first, then
   inherited depth-first, deduplicated by ID. A profile whose skills all come from `extends` is
   valid. Cycles, chains deeper than 8, self-extension and duplicate entries are rejected both when
   written and when resolved; the picker never offers a profile that would close a cycle, and a
@@ -41,6 +86,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the intended base for future pickers (see [docs/DESIGN.md](docs/DESIGN.md)). Text it draws is
   stripped of control characters, so a skill name cannot emit terminal escapes; the IDs written
   back to the profile are unchanged
+
+### Fixed
+
+- A `--user` sync from a git project no longer deletes that project's managed exclude block.
+  Empty patterns still remove the block when `ignore_links = false`; they no longer mean "this
+  command had no in-worktree targets".
+- `skm setup-agents` writes the new agent list before unwiring dropped directories, so a failed
+  config write cannot resurrect those links on the next sync. A failed sync still leaves the
+  previous list in place.
+
+[0.3.0]: https://github.com/isaryx/skill-manager/releases/tag/v0.3.0
 
 ## [0.2.2] - 2026-08-31
 

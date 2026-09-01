@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.2.2 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
+**Version:** 0.3.0 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 
@@ -15,7 +15,7 @@ Global flags:
 | `--verbose` / `-v` | Debug logs on stderr |
 | `--store <path>` | Override store (`SKM_STORE`) |
 | `--json` | **Only** `status`, `ls`, `skill ls`, `doctor` — otherwise exit 2 |
-| `--dry-run` | **Only** `sync`, `use-profile`, `skill rm` — preview; no writes |
+| `--dry-run` | **Only** `sync`, `use-profile`, `skill rm`, `destroy` — preview; no writes |
 | `--color auto\|always\|never` | Human output styling (`auto` respects `NO_COLOR`) |
 
 `--dry-run` and `--json` cannot be combined.
@@ -23,15 +23,16 @@ Global flags:
 Many commands accept `--user` / `-u` for `~/.skm.toml`.
 
 ```bash
-skm init [--agent AGENT] [--force] [--accept-existing-skills]
+skm init [--agent AGENT]... [--force] [--accept-existing-skills]
 skm import <dir> --copy|--move [--as NAME]
 
 skm profile setup|extend|ls|show|rm <name>
 skm skill setup|ls|rm <id> [--force]
 skm ls [-s|--skill | -p|--profile]
 
-skm use-profile <profile>
-skm switch-agent [--agent AGENT]
+skm use-profile [profile]
+skm setup-agents [--agent AGENT]...        # alias: switch-agent
+skm destroy [--force]
 skm sync
 skm status
 skm scan
@@ -39,6 +40,8 @@ skm doctor [--json]
 ```
 
 Agents: `generic` (Codex, Cursor, Gemini CLI, Copilot CLI), `claude-code`, `cursor`, `gemini-cli`, `copilot-cli`. Existing configs with `placement.agent = "codex"` still work.
+
+`--agent` is repeatable and comma-separated (`--agent claude-code,cursor`); repeats and ids that resolve to the same directory are collapsed. Omitted on a TTY, the agents are picked from a checkbox list.
 
 ---
 
@@ -51,7 +54,8 @@ Agents: `generic` (Codex, Cursor, Gemini CLI, Copilot CLI), `claude-code`, `curs
 ```toml
 version = 1
 [placement]
-agent = "claude-code"
+agents = ["claude-code", "cursor"]   # one entry per target agent
+# ignore_links = true   # default when omitted; set false to opt out
 [profile]
 active = "work"
 ```
@@ -76,9 +80,15 @@ Store path: `--store` → `SKM_STORE` → app config → `~/.skill-store`.
 
 ### `skm init`
 
-Creates/validates store, writes app config if needed, writes `./.skm.toml` with `placement.agent`. Refuses existing setup unless `--force` (preserves `[profile].active`).
+Creates/validates store, writes app config if needed, writes `./.skm.toml` with `placement.agents`. Refuses an existing `./.skm.toml` **before** prompting for agents or touching the store, unless `--force`. The error names `skm setup-agents` (change agents) and `skm use-profile` (activate a profile). `--force` overwrites the file and preserves `[profile].active`.
 
-If the agent skills directory already has entries (project-bundled or hand-installed skills), `init` prompts on a TTY to continue. Off-TTY, pass `--accept-existing-skills` to proceed. `skm` only manages its own symlinks and will not remove foreign entries; names already taken are skipped during sync.
+If any target agent's skills directory already has entries (project-bundled or hand-installed skills), `init` prompts once on a TTY, naming those directories, to continue. Off-TTY, pass `--accept-existing-skills` to proceed. `skm` only manages its own symlinks and will not remove foreign entries; names already taken are skipped during sync.
+
+### `skm destroy`
+
+Requires `./.skm.toml` in the current directory (does not fall back to `~/.skm.toml`). Unwires store-owned skill links in **every known project agent directory** (not only `placement.agents`), so an empty or stale agent list cannot leave links behind. Then removes the managed git exclude block (user lines in `info/exclude` stay) and deletes `./.skm.toml`. Foreign / project-bundled skills, the skill store, and app config are left alone.
+
+TTY: confirm, default no. Off-TTY: `--force`. `--dry-run` prints the plan and writes nothing. Missing `[profile].active`, or an active name with no matching profile in the store, prints `warning: profile not found` (same wording as the error). Unknown agent names in the file are warned about; their directories are not cleaned because skm cannot resolve them.
 
 ### `skm import`
 
@@ -92,7 +102,9 @@ Requires initialized store. `--copy` and `--move` are required and mutually excl
 ### Profiles & library skills
 
 - `profile setup` — pick a profile's skills from the **enabled** library
-- `profile extend` — pick which **profiles** this profile inherits skills from
+- `profile extend` — pick which **profiles** this profile inherits skills from (creates the profile if missing, like `setup`)
+- `use-profile [profile]` — activate and sync a named profile; omit the name on a TTY to choose
+  from the available profiles. The active profile is marked and selected by default.
 - `skill setup` — hide skills via `.skm/disabled.toml` (still in profiles; skipped when wiring)
 - `skill rm` — delete from store and all profiles; TTY confirm or `--force`
 - Disabled skills show `(disabled)` on `profile show`; sync unwires them
@@ -226,21 +238,78 @@ whole list is visible.
 
 ### `skm use-profile` / `skm sync`
 
-Both call `reconcile()`: validate → fix (rebuild index, adopt missing meta) → clean stale `skm` symlinks → apply links.
+Both call `reconcile()`: validate → fix (rebuild index, adopt missing meta) → sync the managed
+local exclude (when `ignore_links` is on) → clean stale `skm` symlinks → apply links. The exclude
+is written before symlinks change, so a write failure cannot leave newly linked skills unignored.
 
 `use-profile` writes `[profile].active` only after reconcile succeeds. `sync` does not change active profile.
 
-`--dry-run` resolves the profile and prints planned `+`/`-` link changes on stderr without writing symlinks or updating the active profile (`use-profile` only).
+`--dry-run` resolves the profile and prints planned `+`/`-` link changes on stderr without writing symlinks, exclude, or updating the active profile (`use-profile` only). Planned exclude-list changes print the same way (`+`/`-` paths under the managed exclude).
 
 Flat names in agent dir: unique leaf → leaf; collisions → `__` between path segments. Unresolvable collision → exit 2.
 
-**Foreign skills:** a top-level entry in the agent skills dir that is not a store-owned symlink is left untouched. If a profile placement targets an occupied name, that placement is **skipped** (stderr: `skipped <name> (conflicted)`); reconcile continues and exits **0**.
+**Foreign skills:** a top-level entry in the agent skills dir that is not a store-owned symlink is left untouched. If a profile placement targets an occupied name, that placement is **skipped** (stderr: `skipped <name> (conflicted)`); reconcile continues and exits **0**. That name is **not** added to the managed exclude list, so a project-bundled skill stays committable.
 
-### `skm switch-agent`
+#### Local exclude for store-owned links (`placement.ignore_links`)
 
-Updates `placement.agent` in the setup file. When the old and new agents resolve to **different** target directories, optionally syncs skills to the new agent (TTY prompt; auto on off-TTY when a profile is active) and removes store-owned symlinks from the previous agent's directory.
+Git records a symlink as the link itself. skm placements are absolute paths into the store, so `git add` on a wired skill commits a machine-local target that is dangling for everyone else.
 
-When both agents share the same target directory (e.g. legacy `codex` → `generic`), only the agent name in config changes — existing symlinks are left in place and sync is skipped.
+`placement.ignore_links` (bool, **default `true`** when omitted) keeps those paths out of `git add` **without editing any committed file**. Set `ignore_links = false` to opt out. `skm init` does not write the key.
+
+When on, reconcile maintains a **managed block** in the repo's **local** exclude file (not in the tree, never committed):
+
+```
+# BEGIN skm-managed
+/.claude/skills/docx
+/.claude/skills/git
+# END skm-managed
+```
+
+Path: `git rev-parse --git-path info/exclude` (usually `.git/info/exclude`; correct for linked worktrees). Patterns are relative to the worktree root and **anchored** with a leading `/` — an unanchored pattern with no separator in it matches at every depth, so a bare `docx` would also ignore an unrelated `vendor/docx`.
+
+skm does **not** write `<skills-dir>/.gitignore` or the project `.gitignore`. Those stay entirely the user's.
+
+| Rule | Behavior |
+|------|----------|
+| What is listed | Worktree-relative paths of store-owned placements this reconcile **wires** (not skipped conflicts, not disabled) |
+| What is not listed | Foreign occupants; never `*` or the whole skills directory |
+| Same file, other content | User lines outside the block are left alone; only the block is rewritten |
+| `ignore_links = false` | Remove the managed block; stop updating. Do not delete `info/exclude` if other lines remain |
+| Where | Only if the skills directory is inside a git worktree. Typical `~/.claude/skills` is skipped |
+| `git` missing | Skip exclude management; do not fail reconcile |
+| Already tracked | Exclude does not unstage. Never run `git rm` / `git add` |
+| `--dry-run` | Print the planned block; write nothing |
+| Special characters in a path | Escape so the pattern matches the literal placement |
+| Path a pattern cannot express | A line break has no gitignore escape: skip that path with a `warning:` naming it, and list the rest |
+| Malformed managed block | Not exactly one `BEGIN` … `END` pair (something else edited the file): leave the file byte-for-byte alone, `warning:` naming its **absolute path**, and **continue reconciling**. The links are the command; the exclude is a convenience, and `ignore_links = false` already supports wiring without one |
+| Other clones / teammates | Each machine gets this on its own `sync` / `use-profile`. Nothing to commit |
+
+**Tests (required).** Integration tests in `tests/cli.rs` must cover this when it is implemented — including **two independent git projects** that share one store. Exclude is per-repo; a bug that writes into `HOME` or a global gitignore would only show up with more than one project.
+
+| Test | Assert |
+|------|--------|
+| Git project, default on | After `use-profile` / `sync`, that repo's `info/exclude` has the managed block with **worktree-relative** wired paths. No `.gitignore` created or edited at the project root or in the skills dir |
+| **Two git projects, one store** | Separate `git init` dirs, same `HOME` + `SKM_STORE`, `use-profile` in each. A's exclude lists only A's skills paths; B's only B's. A's file is unchanged by a later sync in B. Neither project's `.gitignore` is touched |
+| Not a git repo | Project without `.git`: no `info/exclude` created, no `.gitignore` added |
+| Opt-out is per project | `ignore_links = false` in A removes A's managed block only; B's exclude is unchanged |
+| `--dry-run` | Planned exclude `+`/`-` on stderr; `info/exclude` not written |
+| Progress | When the managed block is written or removed, stderr: `updating local git exclude`. No line if unchanged |
+| User lines preserved | Pre-existing lines in `info/exclude` outside the block survive a rewrite |
+| `--user` / no git at home | User-level skills dir not in a worktree: **no exclude write**. That includes a later `--user` sync from a git project that already has a managed block — do not remove it. Only `ignore_links = false` removes the block |
+| `link.tracked` | Store-owned symlink is `git add`ed: `doctor` reports `link.tracked` (human + `--json`) |
+| `setup-agents` | Exclude block in **that** project lists the paths of every current agent; a dropped agent's paths are gone. Other projects untouched |
+| Malformed block | Break the block by hand, then `sync`: exits **0**, links still wired, `warning:` names the exclude's absolute path, and the file is byte-for-byte unchanged |
+| Anchoring | Emitted patterns start with `/`, and a same-named path elsewhere in the repo (`vendor/skills/<id>`) is **not** ignored (assert via `git check-ignore`) |
+
+Init `git` **in the project tempdir**, not in `HOME`, so user-level tests stay non-git. Skip the git-backed cases if `git` is not on `PATH` (same as runtime).
+
+### `skm setup-agents`
+
+Replaces `placement.agents` in the setup file. Without `--agent`, the agents are picked from a checkbox list pre-checked with the current set (`switch-agent` remains as an alias).
+
+When the new set adds a target directory, skills are optionally synced into it (TTY prompt; auto on off-TTY when a profile is active). Store-owned symlinks are removed from every directory that leaves the set. Dropping agents alone needs no sync — the directories that remain are already wired — and with `ignore_links` on, the managed exclude block is rebuilt from the links still on disk, so a dropped agent's paths drop out of the list.
+
+A selection that names the same agents in a different order is treated as unchanged. Replacing a legacy alias with the id it maps to (`codex` → `generic`) rewrites the config but touches no symlinks, since both name the same directory.
 
 ### `skm skill rm`
 
@@ -259,7 +328,8 @@ Read-only health report. Setup selection same as `sync`.
 | Code | Sev | Condition |
 |------|-----|-----------|
 | `store.missing` / `store.invalid` | error | Store layout |
-| `config.unknown_agent` | error | Unknown `placement.agent` |
+| `config.unknown_agent` | error | Unknown agent in `placement.agents` (one issue per agent, `agent` field names it) |
+| `config.no_agents` | error | `placement.agents` is empty |
 | `profile.missing_ref` | error | Profile references missing skill |
 | `profile.extend_broken` | error | Cycle, over-deep chain, or missing profile in `extends` |
 | `index.stale` | warn | Index count ≠ disk |
@@ -270,13 +340,14 @@ Read-only health report. Setup selection same as `sync`.
 | `profile.disabled_ref` | info | Profile includes disabled skill |
 | `link.extra` | info | Store-owned symlink not in active profile |
 | `link.conflict` | info | Profile placement blocked by a non-skm entry at that name |
+| `link.tracked` | warn | `ignore_links` on, skills dir in a git worktree, and a store-owned symlink is tracked (`git ls-files`). Message names the path and hints `git rm --cached <path>` — skm never untracks |
 | `config.no_active_profile` | info | No active profile (skips link checks) |
 
 Exit **1** on any `warn` or `error`; **0** on success or `info` only.
 
 ### `skm ls` / `skm status`
 
-Human output on stdout; progress on stderr. `status` shows agent, profile, **Linked** skills with paths, and **Conflicts** (profile skills blocked by a non-skm entry at that name).
+Human output on stdout; progress on stderr. `status` shows every target agent with its skills directory, the active profile, **Linked** skills with paths, and **Conflicts** (profile skills blocked by a non-skm entry at that name). With more than one agent, Linked and Conflicts are grouped under a per-agent heading, since a name can be conflicted in one agent's directory and linked in another's.
 
 `ls` lists `profile/…` and `skill/…` under headings (or filtered with `-s`/`-p`).
 
@@ -286,11 +357,11 @@ Human output on stdout; progress on stderr. `status` shows agent, profile, **Lin
 
 Data on stdout only; no ANSI on stdout.
 
-**`status`:** `{ agent, skills_path, profile, skills: [{ name, source }], conflicts: [{ name, store_id, reason: "conflicted" }] }`
+**`status`:** `{ agents: [{ agent, skills_path, skills: [{ name, source }], conflicts: [{ name, store_id, reason: "conflicted" }] }], profile }`
 
 **`ls` / `skill ls`:** `{ skills: [...] }` and/or `{ profiles: [...] }` depending on filters.
 
-**`doctor`:** `{ ok, store, agent, profile, issues: [{ code, severity, message, ... }] }` — `ok` matches exit code.
+**`doctor`:** `{ ok, store, agents: [...], profile, issues: [{ code, severity, message, agent?, ... }] }` — `ok` matches exit code. Issues belonging to one agent's skills directory carry its `agent`.
 
 ---
 
@@ -313,5 +384,5 @@ Respect `NO_COLOR`.
 
 ## Deferred
 
-- **0.3.0:** Windows release binary; `skm import github:…`, `skm update`
+- **0.4.0:** Windows release binary; `skm import github:…`, `skm update`
 - **Later:** Tier 2 agents, skill groups, `skm freeze`, variants (`skm fork`), `skm init --user`, copy-mode placements

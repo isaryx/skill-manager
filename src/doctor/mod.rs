@@ -15,7 +15,7 @@ pub use checks::{Issue, Severity};
 pub struct Report {
     pub ok: bool,
     pub store: String,
-    pub agent: Option<String>,
+    pub agents: Vec<String>,
     pub profile: Option<String>,
     pub issues: Vec<Issue>,
 }
@@ -47,23 +47,30 @@ pub fn run_checks(store: &StorePaths, force_user: bool) -> Result<Report, SkmErr
         issues.extend(checks::check_profiles(store)?);
     }
 
-    let (agent, profile) = if let Some(ref selected) = selected {
+    let (agents, profile) = if let Some(ref selected) = selected {
         step("checking profiles");
         issues.extend(checks::check_config(selected));
 
-        let agent = Some(selected.setup.placement.agent.clone());
+        let agents = selected.setup.placement.resolved_agents();
         let profile = selected.setup.profile.active.clone();
 
+        // Every agent has to resolve before the link check runs: it walks all of their
+        // directories at once, and an unknown agent is already reported by `check_config`.
+        let agents_known = !agents.is_empty()
+            && agents
+                .iter()
+                .all(|agent| crate::adapters::get_adapter(agent).is_ok());
+
         if let Some(active) = profile.as_deref() {
-            if crate::adapters::get_adapter(&selected.setup.placement.agent).is_ok() {
+            if agents_known {
                 step("checking links");
                 issues.extend(checks::check_links(store, selected, active)?);
             }
         }
 
-        (agent, profile)
+        (agents, profile)
     } else {
-        (None, None)
+        (Vec::new(), None)
     };
 
     let ok = !issues.iter().any(|issue| {
@@ -76,7 +83,7 @@ pub fn run_checks(store: &StorePaths, force_user: bool) -> Result<Report, SkmErr
     Ok(Report {
         ok,
         store: store_display,
-        agent,
+        agents,
         profile,
         issues,
     })

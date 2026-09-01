@@ -10,8 +10,8 @@ use crate::store::extends::{
     render_tree,
 };
 use crate::store::profiles::{
-    create_profile, ensure_profile, ensure_profile_not_active, interactive_setup, load_profile,
-    remove_profile, set_profile_extends, set_profile_skills,
+    create_profile, ensure_profile_not_active, interactive_setup, load_profile, remove_profile,
+    set_profile_skills, upsert_profile_extends,
 };
 use crate::store::skills::read_disabled_ids;
 use crate::store::StorePaths;
@@ -98,8 +98,7 @@ pub fn run_profile_extend(store: &StorePaths, name: &str) -> Result<(), SkmError
     let flat = flatten_with_extends(store, name, &chosen)
         .map_err(|e| e.op(format!("checking profiles extended by `{name}`")))?;
 
-    ensure_profile(store, name).map_err(|e| e.op(format!("creating profile `{name}`")))?;
-    set_profile_extends(store, name, &chosen)
+    upsert_profile_extends(store, name, &chosen)
         .map_err(|e| e.op(format!("writing profile `{name}`")))?;
 
     let verb = if existed { "updated" } else { "created" };

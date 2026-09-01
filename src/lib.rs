@@ -18,8 +18,8 @@ use std::env;
 use crate::cli::ls::LsFilter;
 use crate::cli::sync as sync_cmd;
 use crate::cli::{
-    doctor::run_doctor, import, init, ls, profile, scan, skill, status, switch_agent, use_cmd,
-    Commands, ProfileAction, SkillAction,
+    destroy, doctor::run_doctor, import, init, ls, profile, scan, setup_agents, skill, status,
+    use_cmd, Commands, ProfileAction, SkillAction,
 };
 use crate::config::resolve_store_root;
 use crate::store::StorePaths;
@@ -43,7 +43,7 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
             force,
             accept_existing_skills,
         } => {
-            init::run_init(cli.store.as_deref(), agent, force, accept_existing_skills)?;
+            init::run_init(cli.store.as_deref(), &agent, force, accept_existing_skills)?;
             0
         }
         Commands::Import {
@@ -76,15 +76,19 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
             0
         }
         Commands::UseProfile { profile, user } => {
-            use_cmd::run_use_profile(&store, &profile, user, reconcile_opts)?;
+            use_cmd::run_use_profile(&store, profile.as_deref(), user, reconcile_opts)?;
             0
         }
         Commands::Sync { user } => {
             sync_cmd::run_sync(&store, user, reconcile_opts)?;
             0
         }
-        Commands::SwitchAgent { agent, user } => {
-            switch_agent::run_switch_agent(&store, agent, user)?;
+        Commands::SetupAgents { agent, user } => {
+            setup_agents::run_setup_agents(&store, &agent, user)?;
+            0
+        }
+        Commands::Destroy { force } => {
+            destroy::run_destroy(&store, force, dry_run)?;
             0
         }
         Commands::Status { user } => {
@@ -125,7 +129,7 @@ fn validate_global_flags(cli: &Cli) -> Result<(), SkmError> {
     }
     if cli.dry_run && !supports_dry_run(&cli.command) {
         return Err(SkmError::Usage(
-            "--dry-run is only supported for sync, use-profile, and skill rm".into(),
+            "--dry-run is only supported for sync, use-profile, skill rm, and destroy".into(),
         ));
     }
     Ok(())
@@ -144,13 +148,15 @@ fn supports_json(command: &Commands) -> bool {
 }
 
 fn supports_dry_run(command: &Commands) -> bool {
-    matches!(command, Commands::Sync { .. } | Commands::UseProfile { .. })
-        || matches!(
-            command,
-            Commands::Skill {
-                action: SkillAction::Rm { .. },
-            }
-        )
+    matches!(
+        command,
+        Commands::Sync { .. } | Commands::UseProfile { .. } | Commands::Destroy { .. }
+    ) || matches!(
+        command,
+        Commands::Skill {
+            action: SkillAction::Rm { .. },
+        }
+    )
 }
 
 pub fn init_logging(verbose: bool) {

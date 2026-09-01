@@ -72,6 +72,30 @@ pub fn set_profile_extends(
     write_profile(store, name, &profile)
 }
 
+/// Replace the profiles `name` extends, creating `name` if it does not exist yet.
+///
+/// One file write either way. `ensure_profile` followed by [`set_profile_extends`] would write an
+/// empty profile, read it straight back, and write it again — and a failure between the two would
+/// leave the empty profile behind, which is exactly what a caller that bails out does not want.
+pub fn upsert_profile_extends(
+    store: &StorePaths,
+    name: &str,
+    extends: &[String],
+) -> Result<(), SkmError> {
+    store.ensure_initialized()?;
+    validate_profile_name(name)?;
+    validate_extends(name, extends)?;
+
+    let path = store.profile_file(name);
+    let mut profile = if path.is_file() {
+        read_profile(&path)?
+    } else {
+        ProfileFile::default()
+    };
+    profile.extends = extends.to_vec();
+    write_profile(store, name, &profile)
+}
+
 fn skill_entries(skill_ids: &[String]) -> Vec<ProfileSkillEntry> {
     skill_ids
         .iter()
@@ -392,6 +416,49 @@ mod tests {
 
         // Nothing hostile was written.
         assert!(load_profile(&store, "app").unwrap().extends.is_empty());
+    }
+
+    /// The create path writes once, so a profile that did not exist comes into being already
+    /// carrying its `extends` — there is no intermediate empty profile to leave behind.
+    #[test]
+    fn upsert_extends_creates_a_missing_profile_and_preserves_an_existing_ones_skills() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        upsert_profile_extends(&store, "fresh", &["base".to_string()]).unwrap();
+        let created = load_profile(&store, "fresh").unwrap();
+        assert_eq!(created.extends, vec!["base"]);
+        assert!(created.skill.is_empty());
+
+        create_profile(&store, "work", &["docx".to_string()]).unwrap();
+        upsert_profile_extends(&store, "work", &["base".to_string()]).unwrap();
+        let updated = load_profile(&store, "work").unwrap();
+        assert_eq!(updated.extends, vec!["base"]);
+        assert_eq!(updated.skill[0].id, "docx", "own skills must survive");
+    }
+
+    #[test]
+    fn upsert_extends_rejects_the_same_names_as_the_strict_setter() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        let err = upsert_profile_extends(&store, "app", &["app".to_string()]).unwrap_err();
+        assert!(matches!(err, SkmError::SelfExtend(_)), "{err:?}");
+        // `ReservedName` rather than `InvalidProfileName`: the leading `.` is checked first.
+        let err =
+            upsert_profile_extends(&store, "app", &["../../etc/passwd".to_string()]).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                SkmError::InvalidProfileName(_) | SkmError::ReservedName(_)
+            ),
+            "{err:?}"
+        );
+
+        // A rejected upsert must not have created the profile as a side effect.
+        assert!(!store.profile_file("app").is_file());
     }
 
     #[test]

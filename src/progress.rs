@@ -15,6 +15,21 @@ pub fn step(msg: impl AsRef<str>) {
     }
 }
 
+/// A problem the command worked around rather than failed on.
+///
+/// Unindented and undimmed, unlike [`step`]: this is not progress narration, and it has to stay
+/// legible in the middle of a run that otherwise succeeded. Matches `print_error`'s `error:`
+/// shape so the two read as the same family.
+pub fn warn(msg: impl AsRef<str>) {
+    let msg = msg.as_ref();
+    let mut out = io::stderr().lock();
+    if color_stderr() {
+        let _ = writeln!(out, "{} {msg}", style("warning:").yellow().bold());
+    } else {
+        let _ = writeln!(out, "warning: {msg}");
+    }
+}
+
 pub fn added(skill: &str) {
     step(format!("added {skill}"));
 }

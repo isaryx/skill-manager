@@ -31,7 +31,7 @@ const CLEAR_TO_END_OF_SCREEN: &str = "\x1b[0J";
 ///
 /// Bidi and zero-width characters are deliberately left alone: they measure as zero width, so
 /// they cannot break the layout, and removing them would mangle legitimate non-Latin text.
-fn sanitize(text: &str) -> String {
+pub(crate) fn sanitize(text: &str) -> String {
     text.chars()
         .map(|c| if c.is_control() { '\u{fffd}' } else { c })
         .collect()

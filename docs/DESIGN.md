@@ -1,6 +1,6 @@
 # Design
 
-**CLI:** `skm` · **Version:** 0.2.2
+**CLI:** `skm` · **Version:** 0.3.0
 
 Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.md). CLI conventions: [../guides/cli-guidelines.md](../guides/cli-guidelines.md).
 
@@ -72,7 +72,7 @@ Meta owner for nested id `local/foo` → `local` (`store::meta_owner_id`). `has_
 | Layer | Path | Contents |
 |-------|------|----------|
 | App | `~/.config/skm/config.toml` | `[store].path` |
-| Setup | `./.skm.toml` or `~/.skm.toml` | `placement.agent`, `[profile].active` |
+| Setup | `./.skm.toml` or `~/.skm.toml` | `placement.agents` (list; legacy `agent = "…"` still read), `placement.ignore_links` (default true), `[profile].active` |
 | Profile | `$STORE/.skm/profiles/*.toml` | `[[skill]] id = "…"` |
 
 Store path resolution: `--store` → `SKM_STORE` → app config → `~/.skill-store`.
@@ -84,6 +84,7 @@ Store path resolution: `--store` → `SKM_STORE` → app config → `~/.skill-st
 | `select_setup` | yes (`read_setup`) | sync, use-profile, status |
 | `select_setup_lenient` | no (`read_setup_raw`) | doctor (report `unknown_agent` instead of failing early) |
 | `select_project_setup` | yes | status without `--user` (requires `./.skm.toml`) |
+| `select_project_setup_raw` | no | `destroy` (tear down even a broken agent list; known agent dirs are still unwired) |
 
 `--user` / `-u` always loads `~/.skm.toml`. Default: `./.skm.toml` if present, else user setup.
 
@@ -119,7 +120,7 @@ cli/          Command handlers, clap (cli/mod.rs), JSON (cli/output.rs)
 setup.rs      Setup file selection, active profile writes
 store/        StorePaths, discovery, profiles, extends graph, pool import, disabled, validate
 resolver/     Pure profile → SkillPlacement
-sync/         reconcile(), symlink walk/apply (sync/links.rs)
+sync/         reconcile(), symlink walk/apply (sync/links.rs), managed local exclude
 doctor/       Read-only checks → Issue list
 db/           SQLite index; refresh_store_index = adopt + rebuild
 adapters/     AgentAdapter trait, agent pickers
@@ -215,11 +216,15 @@ makes that limit load-bearing rather than cosmetic.
 
 1. Load active profile (or override)
 2. `resolver::resolve(profile, store, disabled)`
-3. If `--dry-run`: `compute_link_changes` → print `(dry-run) +/-` on stderr; return
+3. If `--dry-run`: `compute_link_changes` → print `(dry-run) +/-` on stderr; planned exclude paths the same way; return
 4. `ensure_store_subdirs`
 5. `db::refresh_store_index`
 6. Resolve agent target; create target dir
-7. `remove_dangling_store_symlinks` → `clean_target` → `prune_empty_skill_dirs` → `apply_placements` (skips foreign occupants; does not fail reconcile)
+7. Sync the managed block in `info/exclude` when `placement.ignore_links` is on (default) and the
+   target is in a git worktree — [SPEC.md](SPEC.md#local-exclude-for-store-owned-links-placementignore_links).
+   This happens before link mutations, so failure cannot leave a new link unignored. Never writes
+   a `.gitignore` in the tree
+8. `remove_dangling_store_symlinks` → `clean_target` → `prune_empty_skill_dirs` → `apply_placements` (skips foreign occupants; does not fail reconcile)
 
 Human output uses `src/color.rs` (`--color`, `NO_COLOR`, `CLICOLOR`). JSON output is never colored.
 
@@ -237,7 +242,7 @@ Human output uses `src/color.rs` (`--color`, `NO_COLOR`, `CLICOLOR`). JSON outpu
 
 ### Doctor
 
-Read-only. Runs store → index → disk skills → meta → profiles → config → links (if active profile resolves). Uses `select_setup_lenient` so invalid agents surface as `config.unknown_agent`. Link checks reuse store-ownership rules from `sync/links.rs`. Does not call `reconcile` or mutate disk.
+Read-only. Runs store → index → disk skills → meta → profiles → config → links (if active profile resolves). Uses `select_setup_lenient` so invalid agents surface as `config.unknown_agent`. Link checks reuse store-ownership rules from `sync/links.rs`. `link.tracked` shells out to `git ls-files` only when ignore is on and a `.git` ancestor exists; missing `git` skips the check. Does not call `reconcile` or mutate disk. Does not write `info/exclude`.
 
 ---
 
@@ -268,6 +273,8 @@ cargo fmt --check
 
 Helper pattern in `tests/cli.rs`: `with_env(home, store)` sets `HOME`, `XDG_CONFIG_HOME`, `SKM_STORE`, `current_dir`.
 
+**`ignore_links` / local exclude.** Required cases live in [SPEC.md](SPEC.md#local-exclude-for-store-owned-links-placementignore_links) (table). Do not ship the feature without them. The one that is easy to skip and expensive to miss: **two git projects, one store** — each `git init` in its own tempdir (never in `HOME`), `use-profile` in both, then assert each `info/exclude` lists only that worktree's paths and neither `.gitignore` changed. A single-project test cannot catch writes that leak into the other repo, `HOME`, or a global exclude.
+
 ---
 
 ## Extending the codebase
@@ -275,7 +282,7 @@ Helper pattern in `tests/cli.rs`: `with_env(home, store)` sets `HOME`, `XDG_CONF
 ### New agent adapter
 
 1. Implement `AgentAdapter` in `src/adapters/mod.rs`
-2. Register in `get_adapter()` and `INIT_AGENTS` (init/switch-agent pickers)
+2. Register in `get_adapter()` and `INIT_AGENTS` (the `init` / `setup-agents` picker)
 3. Unit test `target_dir` for project + user levels
 4. Integration test: `init --agent <id>` + `use-profile` → symlink under expected path
 5. Document in [SPEC-AGENTS.md](SPEC-AGENTS.md) and README agent table
@@ -304,6 +311,15 @@ consistent. Add widget behavior as pure `State` methods with unit tests; gate th
 
 Prefer routing placement changes through `reconcile()` or `refresh_store_index` rather than ad-hoc symlink or index updates.
 
+### Local exclude (`ignore_links`)
+
+Keep gitignore/exclude logic in `sync/`, called from `reconcile` (and from `setup-agents` via `refresh_local_exclude` when the agent set changes without a sync). The managed block is one list per worktree, so `sync_local_exclude` takes **every** target directory at once — writing it per directory would have each agent's paths erase the previous agent's. Resolve the exclude file with `git rev-parse --git-path info/exclude` from the skills dir (or project root), not a hard-coded `.git/info/exclude`. When adding tests, copy the SPEC table — especially **two projects, one store**.
+
+Two invariants worth keeping when touching `sync/exclude.rs`:
+
+- **Anchor every pattern** with a leading `/`. An unanchored pattern with no separator matches at every depth. Today's adapters all nest two segments deep so the interior separator is already there, but that is an adapter property, not a guarantee of this module.
+- **Degrade, never block.** The exclude is a convenience and the links are the command, so anything this module cannot do — a block it cannot parse, a path gitignore cannot express — is a `progress::warn` and a `return Ok(())`, not an error. `ignore_links = false` already supports wiring with no exclude at all, so refusing to wire would be inconsistent with the feature's own opt-out. Warnings that name a file must print its absolute path: in a linked worktree the exclude is under `.git/worktrees/<name>/`. Empty patterns mean "remove the block" only for that opt-out. A command whose targets all sit outside the worktree (typical `--user`) must leave an existing block alone.
+
 ---
 
 ## Roadmap
@@ -314,7 +330,8 @@ Prefer routing placement changes through `reconcile()` or `refresh_store_index` 
 | 0.2.0 | Shipped | `doctor`, `--json`, Tier 1 agents, scan adopt |
 | 0.2.1 | Shipped | Remove `codex` adapter; `switch-agent` same-target fix; `generic` client docs |
 | 0.2.2 | Shipped | Drop `skm add`; engineer-oriented `--help` |
-| 0.3.0 | Planned | Windows binary, GitHub import |
+| 0.3.0 | Shipped | Multi-agent setups, profile `extends`, local git exclude, `skm destroy`, full-screen picker |
+| 0.4.0 | Planned | Windows binary, GitHub import |
 | Later | — | Tier 2 agents, `freeze`, variants, skill groups |
 
 ---
@@ -322,8 +339,9 @@ Prefer routing placement changes through `reconcile()` or `refresh_store_index` 
 ## Settled decisions
 
 - Unified `skm init` (no `init store` subcommands)
-- One agent per setup file
+- One setup file may list several target agents (`placement.agents`)
 - Symlink-only placements (no copy-mode ledger yet)
+- Store-owned links are ignored by default via a managed block in **`.git/info/exclude`** (local, not committed). Never edit project `.gitignore` or `<skills-dir>/.gitignore`. Never `*`. Never `git rm --cached`
 - Nested skill discovery at any depth; skip walking inside valid skill dirs when scanning for orphans
 - `use-profile` replaces `skm use`; writes active profile only after reconcile succeeds
 - Index is disposable — always rebuildable from store + meta on disk

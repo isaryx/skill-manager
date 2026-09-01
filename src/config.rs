@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::adapters::get_adapter;
+use crate::adapters::{canonical_agent_id, get_adapter};
 use crate::error::SkmError;
 
 pub mod app;
@@ -26,7 +26,50 @@ pub struct SetupFile {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlacementSection {
-    pub agent: String,
+    /// Every agent this setup places skills into, in the order the user picked them.
+    ///
+    /// Read from `agents = [...]` or, for setups written before multi-agent support, from a
+    /// single `agent = "..."`. Always written back as `agents`, so an old file migrates the
+    /// first time any command rewrites it.
+    #[serde(rename = "agents", alias = "agent", deserialize_with = "de_agents")]
+    pub agents: Vec<String>,
+    #[serde(default = "default_true", skip_serializing_if = "is_true")]
+    pub ignore_links: bool,
+}
+
+impl PlacementSection {
+    /// The agents to place into, with aliases canonicalized and duplicates dropped.
+    ///
+    /// `codex` and `generic` name the same directory, so a setup listing both would otherwise
+    /// have every command visit that directory twice.
+    pub fn resolved_agents(&self) -> Vec<String> {
+        let mut out: Vec<String> = Vec::with_capacity(self.agents.len());
+        for agent in &self.agents {
+            let canonical = canonical_agent_id(agent).to_string();
+            if !out.contains(&canonical) {
+                out.push(canonical);
+            }
+        }
+        out
+    }
+}
+
+/// Accepts both `agent = "claude-code"` and `agents = ["claude-code", "cursor"]`.
+fn de_agents<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany {
+        One(String),
+        Many(Vec<String>),
+    }
+
+    Ok(match OneOrMany::deserialize(deserializer)? {
+        OneOrMany::One(agent) => vec![agent],
+        OneOrMany::Many(agents) => agents,
+    })
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -59,25 +102,36 @@ pub struct ProfileSkillEntry {
     pub id: String,
 }
 
-pub fn default_setup(agent: &str) -> SetupFile {
+pub fn default_setup(agents: &[String]) -> SetupFile {
     SetupFile {
         version: SETUP_VERSION,
         placement: PlacementSection {
-            agent: agent.to_string(),
+            agents: agents.to_vec(),
+            ignore_links: true,
         },
         profile: ProfileSection::default(),
     }
 }
 
+fn default_true() -> bool {
+    true
+}
+
+fn is_true(value: &bool) -> bool {
+    *value
+}
+
 pub fn write_setup(path: &Path, setup: &SetupFile) -> Result<(), SkmError> {
-    let content = toml::to_string_pretty(setup)?;
+    // Not `to_string_pretty`: it breaks arrays across lines, turning the one-line agent list
+    // into five, and this file is meant to be read and hand-edited.
+    let content = toml::to_string(setup)?;
     std::fs::write(path, content)?;
     Ok(())
 }
 
 pub fn read_setup(path: &Path) -> Result<SetupFile, SkmError> {
     let setup = read_setup_raw(path)?;
-    validate_setup_agent(&setup)?;
+    validate_setup_agents(&setup)?;
     Ok(setup)
 }
 
@@ -96,8 +150,14 @@ pub fn read_setup_raw(path: &Path) -> Result<SetupFile, SkmError> {
     Ok(setup)
 }
 
-pub fn validate_setup_agent(setup: &SetupFile) -> Result<(), SkmError> {
-    get_adapter(&setup.placement.agent).map(|_| ())
+pub fn validate_setup_agents(setup: &SetupFile) -> Result<(), SkmError> {
+    if setup.placement.agents.is_empty() {
+        return Err(SkmError::NoTargetAgents);
+    }
+    for agent in &setup.placement.agents {
+        get_adapter(agent)?;
+    }
+    Ok(())
 }
 
 pub fn user_setup_path() -> PathBuf {
@@ -216,5 +276,77 @@ mod tests {
         let _env = EnvGuard::set("SKM_STORE", "");
         write_app_config(&store).unwrap();
         assert_eq!(resolve_store_root(None), store);
+    }
+
+    #[test]
+    fn legacy_single_agent_field_is_read_and_rewritten_as_a_list() {
+        let setup: SetupFile =
+            toml::from_str("version = 1\n[placement]\nagent = \"claude-code\"\n").unwrap();
+        assert_eq!(setup.placement.agents, vec!["claude-code".to_string()]);
+        assert!(toml::to_string(&setup)
+            .unwrap()
+            .contains("agents = [\"claude-code\"]"));
+    }
+
+    #[test]
+    fn agents_list_is_read_in_order() {
+        let setup: SetupFile =
+            toml::from_str("version = 1\n[placement]\nagents = [\"cursor\", \"claude-code\"]\n")
+                .unwrap();
+        assert_eq!(
+            setup.placement.agents,
+            vec!["cursor".to_string(), "claude-code".to_string()]
+        );
+    }
+
+    #[test]
+    fn resolved_agents_canonicalizes_aliases_and_drops_repeats() {
+        let setup: SetupFile = toml::from_str(
+            "version = 1\n[placement]\nagents = [\"codex\", \"generic\", \"cursor\"]\n",
+        )
+        .unwrap();
+        assert_eq!(
+            setup.placement.resolved_agents(),
+            vec!["generic".to_string(), "cursor".to_string()]
+        );
+    }
+
+    #[test]
+    fn an_empty_agent_list_is_rejected() {
+        let setup: SetupFile = toml::from_str("version = 1\n[placement]\nagents = []\n").unwrap();
+        assert!(matches!(
+            validate_setup_agents(&setup),
+            Err(SkmError::NoTargetAgents)
+        ));
+    }
+
+    #[test]
+    fn an_unknown_agent_is_rejected() {
+        let setup: SetupFile =
+            toml::from_str("version = 1\n[placement]\nagents = [\"cursor\", \"windsurf\"]\n")
+                .unwrap();
+        assert!(matches!(
+            validate_setup_agents(&setup),
+            Err(SkmError::UnknownAgent(agent)) if agent == "windsurf"
+        ));
+    }
+
+    #[test]
+    fn ignore_links_defaults_on_and_can_be_disabled() {
+        let defaulted: SetupFile =
+            toml::from_str("version = 1\n[placement]\nagents = [\"claude-code\"]\n").unwrap();
+        assert!(defaulted.placement.ignore_links);
+
+        let disabled: SetupFile = toml::from_str(
+            "version = 1\n[placement]\nagents = [\"claude-code\"]\nignore_links = false\n",
+        )
+        .unwrap();
+        assert!(!disabled.placement.ignore_links);
+        assert!(!toml::to_string(&defaulted)
+            .unwrap()
+            .contains("ignore_links"));
+        assert!(toml::to_string(&disabled)
+            .unwrap()
+            .contains("ignore_links = false"));
     }
 }

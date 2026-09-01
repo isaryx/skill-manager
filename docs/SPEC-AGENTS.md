@@ -1,6 +1,6 @@
 # Agent adapters
 
-Each `placement.agent` in `.skm.toml` maps to a skills directory. All adapters use flat symlink names, absolute links into the store, and one agent per config file.
+Each id in `placement.agents` in `.skm.toml` maps to a skills directory. All adapters use flat symlink names and absolute links into the store. A config file may list several agents; each one gets its own copy of the links, and ids resolving to the same directory are collapsed.
 
 ## Shipped (0.2.1)
 
@@ -21,7 +21,7 @@ Each `placement.agent` in `.skm.toml` maps to a skills directory. All adapters u
 | **Gemini CLI** | Interoperable alias; native path is `.gemini/skills` ([docs](https://geminicli.com/docs/cli/skills/)) |
 | **Copilot CLI** | Interoperable alias; native project path is `.github/skills` ([docs](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills)) |
 
-Use `generic` when you want one shared directory for these tools. Use `cursor`, `gemini-cli`, or `copilot-cli` adapters when you only want that agent's native path. Legacy configs with `placement.agent = "codex"` are accepted as an alias for `generic`.
+Use `generic` when you want one shared directory for these tools. Use `cursor`, `gemini-cli`, or `copilot-cli` adapters when you want those agents' native paths — list several in `placement.agents` to fill more than one. Legacy configs with `placement.agent = "codex"` are accepted as an alias for `generic`.
 
 ## Planned tiers
 

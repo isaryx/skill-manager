@@ -23,7 +23,7 @@ fn doctor_warns_for_every_tracked_store_owned_link_and_no_others() {
         write_skill(store.path(), skill);
     }
     write_profile(store.path(), "work", &["docx", "git", "pdf"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     with_env(home.path(), store.path())
         .current_dir(project.path())

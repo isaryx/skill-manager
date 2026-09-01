@@ -112,7 +112,7 @@ fn destroy_force_unwires_links_removes_exclude_and_setup() {
     init_project(home.path(), store.path());
     write_skill(store.path(), "docx");
     write_profile(store.path(), "work", &["docx"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
@@ -165,7 +165,7 @@ fn destroy_dry_run_writes_nothing() {
     init_project(home.path(), store.path());
     write_skill(store.path(), "docx");
     write_profile(store.path(), "work", &["docx"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     with_env(home.path(), store.path())
         .current_dir(project.path())

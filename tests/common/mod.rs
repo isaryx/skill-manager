@@ -63,6 +63,14 @@ pub fn git(project: &Path, args: &[&str]) {
     assert!(git_succeeds(project, args), "git {args:?} failed");
 }
 
+/// A repo with no template applied: `--template=` beats `init.templateDir` and
+/// `GIT_TEMPLATE_DIR` alike, so `.git/info/exclude` starts absent on every host. A default git
+/// install seeds it with a comment block, which the exclude assertions would otherwise read as
+/// content skm left behind.
+pub fn git_init(project: &Path) {
+    git(project, &["init", "--quiet", "--template="]);
+}
+
 pub fn git_available() -> bool {
     ProcessCommand::new("git")
         .arg("--version")

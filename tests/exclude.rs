@@ -35,7 +35,7 @@ fn local_excludes_are_isolated_between_projects_sharing_a_store() {
     write_profile(store.path(), "work", &["docx"]);
 
     for project in [&project_a, &project_b] {
-        git(project.path(), &["init", "--quiet"]);
+        git_init(project.path());
         with_env(home.path(), store.path())
             .current_dir(project.path())
             .args(["init", "--agent", "claude-code"])
@@ -96,7 +96,7 @@ fn ignore_links_opt_out_removes_only_the_managed_exclude_block() {
     init_project(home.path(), store.path());
     write_skill(store.path(), "docx");
     write_profile(store.path(), "work", &["docx"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
@@ -154,7 +154,7 @@ fn sync_dry_run_does_not_change_local_exclude() {
     write_skill(store.path(), "docx");
     write_skill(store.path(), "git");
     write_profile(store.path(), "work", &["docx"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
@@ -223,7 +223,7 @@ fn setup_agents_replaces_old_paths_in_local_exclude() {
     init_project(home.path(), store.path());
     write_skill(store.path(), "docx");
     write_profile(store.path(), "work", &["docx"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
@@ -265,7 +265,7 @@ fn user_level_sync_in_a_git_project_writes_no_local_exclude() {
     init_project(home.path(), store.path());
     write_skill(store.path(), "docx");
     write_profile(store.path(), "work", &["docx"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
     assert!(!project.path().join(".skm.toml").exists());
 
     with_env(home.path(), store.path())
@@ -303,7 +303,7 @@ fn user_level_sync_does_not_remove_an_existing_project_exclude() {
     init_project(home.path(), store.path());
     write_skill(store.path(), "docx");
     write_profile(store.path(), "work", &["docx"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
@@ -348,7 +348,7 @@ fn a_malformed_exclude_block_warns_but_still_wires_links() {
     write_skill(store.path(), "docx");
     write_skill(store.path(), "git");
     write_profile(store.path(), "work", &["docx"]);
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
@@ -398,7 +398,7 @@ fn local_exclude_covers_every_agent_directory() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
     let project = TempDir::new().unwrap();
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     init_project(home.path(), store.path());
     let src = TempDir::new().unwrap();
@@ -437,7 +437,7 @@ fn setup_agents_drops_the_removed_agent_from_local_exclude() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
     let project = TempDir::new().unwrap();
-    git(project.path(), &["init", "--quiet"]);
+    git_init(project.path());
 
     init_project(home.path(), store.path());
     let src = TempDir::new().unwrap();

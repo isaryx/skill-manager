@@ -16,7 +16,11 @@ pub enum SetupLevel {
 
 pub trait AgentAdapter {
     fn name(&self) -> &'static str;
-    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> PathBuf;
+    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> Result<PathBuf, SkmError>;
+}
+
+fn user_skills_dir(agent_home: &str) -> Result<PathBuf, SkmError> {
+    Ok(home_dir()?.join(agent_home).join("skills"))
 }
 
 pub struct ClaudeCodeAdapter;
@@ -26,11 +30,11 @@ impl AgentAdapter for ClaudeCodeAdapter {
         "claude-code"
     }
 
-    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> PathBuf {
-        match level {
-            SetupLevel::User => home_dir().join(".claude").join("skills"),
+    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> Result<PathBuf, SkmError> {
+        Ok(match level {
+            SetupLevel::User => user_skills_dir(".claude")?,
             SetupLevel::Project => project_root.join(".claude").join("skills"),
-        }
+        })
     }
 }
 
@@ -41,11 +45,11 @@ impl AgentAdapter for CursorAdapter {
         "cursor"
     }
 
-    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> PathBuf {
-        match level {
-            SetupLevel::User => home_dir().join(".cursor").join("skills"),
+    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> Result<PathBuf, SkmError> {
+        Ok(match level {
+            SetupLevel::User => user_skills_dir(".cursor")?,
             SetupLevel::Project => project_root.join(".cursor").join("skills"),
-        }
+        })
     }
 }
 
@@ -61,11 +65,11 @@ impl AgentAdapter for GenericAdapter {
         "generic"
     }
 
-    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> PathBuf {
-        match level {
-            SetupLevel::User => home_dir().join(".agents").join("skills"),
+    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> Result<PathBuf, SkmError> {
+        Ok(match level {
+            SetupLevel::User => user_skills_dir(".agents")?,
             SetupLevel::Project => project_root.join(".agents").join("skills"),
-        }
+        })
     }
 }
 
@@ -76,11 +80,11 @@ impl AgentAdapter for GeminiCliAdapter {
         "gemini-cli"
     }
 
-    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> PathBuf {
-        match level {
-            SetupLevel::User => home_dir().join(".gemini").join("skills"),
+    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> Result<PathBuf, SkmError> {
+        Ok(match level {
+            SetupLevel::User => user_skills_dir(".gemini")?,
             SetupLevel::Project => project_root.join(".gemini").join("skills"),
-        }
+        })
     }
 }
 
@@ -91,11 +95,11 @@ impl AgentAdapter for CopilotCliAdapter {
         "copilot-cli"
     }
 
-    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> PathBuf {
-        match level {
-            SetupLevel::User => home_dir().join(".copilot").join("skills"),
+    fn target_dir(&self, level: SetupLevel, project_root: &Path) -> Result<PathBuf, SkmError> {
+        Ok(match level {
+            SetupLevel::User => user_skills_dir(".copilot")?,
             SetupLevel::Project => project_root.join(".github").join("skills"),
-        }
+        })
     }
 }
 
@@ -125,7 +129,7 @@ pub fn resolve_target_dir(
     let adapter = get_adapter(agent)?;
     Ok(AgentTarget {
         agent: agent.to_string(),
-        dir: adapter.target_dir(level, project_root),
+        dir: adapter.target_dir(level, project_root)?,
     })
 }
 
@@ -293,9 +297,9 @@ pub(crate) fn format_agent_skills_path(
     project_root: &Path,
 ) -> Result<String, SkmError> {
     let adapter = get_adapter(agent)?;
-    let path = adapter.target_dir(level, project_root);
+    let path = adapter.target_dir(level, project_root)?;
     if level == SetupLevel::User {
-        let home = home_dir();
+        let home = home_dir()?;
         if let Ok(rel) = path.strip_prefix(&home) {
             return Ok(format!("~/{}", rel.to_string_lossy()));
         }
@@ -330,7 +334,7 @@ mod tests {
 
     #[test]
     fn agent_hint_shows_user_skills_path() {
-        let home = home_dir();
+        let home = home_dir().unwrap();
         let hint = agent_hint("claude-code", SetupLevel::User, &home).unwrap();
         assert!(hint.contains("~/.claude/skills"));
     }
@@ -390,12 +394,12 @@ mod tests {
         let adapter = CursorAdapter;
         let project = Path::new("/tmp/proj");
         assert_eq!(
-            adapter.target_dir(SetupLevel::Project, project),
+            adapter.target_dir(SetupLevel::Project, project).unwrap(),
             project.join(".cursor/skills")
         );
-        let home = home_dir();
+        let home = home_dir().unwrap();
         assert_eq!(
-            adapter.target_dir(SetupLevel::User, project),
+            adapter.target_dir(SetupLevel::User, project).unwrap(),
             home.join(".cursor/skills")
         );
     }
@@ -406,12 +410,12 @@ mod tests {
         let project = Path::new("/tmp/proj");
         assert_eq!(adapter.name(), "generic");
         assert_eq!(
-            adapter.target_dir(SetupLevel::Project, project),
+            adapter.target_dir(SetupLevel::Project, project).unwrap(),
             project.join(".agents/skills")
         );
-        let home = home_dir();
+        let home = home_dir().unwrap();
         assert_eq!(
-            adapter.target_dir(SetupLevel::User, project),
+            adapter.target_dir(SetupLevel::User, project).unwrap(),
             home.join(".agents/skills")
         );
     }
@@ -430,7 +434,7 @@ mod tests {
         let adapter = GeminiCliAdapter;
         let project = Path::new("/tmp/proj");
         assert_eq!(
-            adapter.target_dir(SetupLevel::Project, project),
+            adapter.target_dir(SetupLevel::Project, project).unwrap(),
             project.join(".gemini/skills")
         );
     }
@@ -440,12 +444,12 @@ mod tests {
         let adapter = CopilotCliAdapter;
         let project = Path::new("/tmp/proj");
         assert_eq!(
-            adapter.target_dir(SetupLevel::Project, project),
+            adapter.target_dir(SetupLevel::Project, project).unwrap(),
             project.join(".github/skills")
         );
-        let home = home_dir();
+        let home = home_dir().unwrap();
         assert_eq!(
-            adapter.target_dir(SetupLevel::User, project),
+            adapter.target_dir(SetupLevel::User, project).unwrap(),
             home.join(".copilot/skills")
         );
     }

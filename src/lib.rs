@@ -32,7 +32,7 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
     crate::color::init(cli.color);
     validate_global_flags(&cli)?;
 
-    let store = StorePaths::new(resolve_store_root(cli.store.as_deref()));
+    let store = StorePaths::new(resolve_store_root(cli.store.as_deref())?);
     let json = cli.json;
     let dry_run = cli.dry_run;
     let reconcile_opts = ReconcileOptions { dry_run };

@@ -74,9 +74,10 @@ fn diff_line(sign: char, skill: &str, added: bool) {
 }
 
 pub fn display_path(path: &std::path::Path) -> String {
-    let home = home_dir();
-    if let Ok(rel) = path.strip_prefix(&home) {
-        return format!("~/{}", rel.to_string_lossy());
+    if let Ok(home) = home_dir() {
+        if let Ok(rel) = path.strip_prefix(&home) {
+            return format!("~/{}", rel.to_string_lossy());
+        }
     }
     path.display().to_string()
 }
@@ -87,7 +88,7 @@ mod tests {
 
     #[test]
     fn display_path_shortens_home() {
-        let home = home_dir();
+        let home = home_dir().unwrap();
         let path = home.join(".skill-store/local/demo");
         assert_eq!(display_path(&path), "~/.skill-store/local/demo");
     }

@@ -160,35 +160,35 @@ pub fn validate_setup_agents(setup: &SetupFile) -> Result<(), SkmError> {
     Ok(())
 }
 
-pub fn user_setup_path() -> PathBuf {
-    home_dir().join(SETUP_FILENAME)
+pub fn user_setup_path() -> Result<PathBuf, SkmError> {
+    Ok(home_dir()?.join(SETUP_FILENAME))
 }
 
 pub fn project_setup_path(cwd: &Path) -> PathBuf {
     cwd.join(SETUP_FILENAME)
 }
 
-pub fn home_dir() -> PathBuf {
+pub fn home_dir() -> Result<PathBuf, SkmError> {
     directories::UserDirs::new()
         .map(|d| d.home_dir().to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("/"))
+        .ok_or(SkmError::HomeNotFound)
 }
 
-pub fn default_store_root() -> PathBuf {
-    home_dir().join(".skill-store")
+pub fn default_store_root() -> Result<PathBuf, SkmError> {
+    Ok(home_dir()?.join(".skill-store"))
 }
 
-pub fn resolve_store_root(cli_store: Option<&Path>) -> PathBuf {
+pub fn resolve_store_root(cli_store: Option<&Path>) -> Result<PathBuf, SkmError> {
     if let Some(s) = cli_store {
-        return s.to_path_buf();
+        return Ok(s.to_path_buf());
     }
     if let Ok(env) = std::env::var("SKM_STORE") {
         if !env.is_empty() {
-            return PathBuf::from(env);
+            return Ok(PathBuf::from(env));
         }
     }
     if let Some(config) = try_read_app_config() {
-        return app_store_path(&config);
+        return Ok(app_store_path(&config));
     }
     default_store_root()
 }
@@ -234,7 +234,7 @@ mod tests {
         let _lock = ENV_LOCK.lock().unwrap();
         let _env = EnvGuard::set("SKM_STORE", "/from-env");
         let cli = PathBuf::from("/from-cli");
-        assert_eq!(resolve_store_root(Some(&cli)), cli);
+        assert_eq!(resolve_store_root(Some(&cli)).unwrap(), cli);
     }
 
     #[test]
@@ -247,7 +247,10 @@ mod tests {
         );
         write_app_config(&tmp.path().join("from-config")).unwrap();
         let _env = EnvGuard::set("SKM_STORE", "/from-env");
-        assert_eq!(resolve_store_root(None), PathBuf::from("/from-env"));
+        assert_eq!(
+            resolve_store_root(None).unwrap(),
+            PathBuf::from("/from-env")
+        );
     }
 
     #[test]
@@ -261,7 +264,7 @@ mod tests {
         );
         let _env = EnvGuard::remove("SKM_STORE");
         write_app_config(&store).unwrap();
-        assert_eq!(resolve_store_root(None), store);
+        assert_eq!(resolve_store_root(None).unwrap(), store);
     }
 
     #[test]
@@ -275,7 +278,7 @@ mod tests {
         );
         let _env = EnvGuard::set("SKM_STORE", "");
         write_app_config(&store).unwrap();
-        assert_eq!(resolve_store_root(None), store);
+        assert_eq!(resolve_store_root(None).unwrap(), store);
     }
 
     #[test]

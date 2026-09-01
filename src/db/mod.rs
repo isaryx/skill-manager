@@ -32,8 +32,9 @@ pub fn rebuild_from_store(store: &StorePaths) -> Result<(), SkmError> {
     let conn = open_index(store)?;
     conn.execute("DELETE FROM skills", [])?;
 
+    let disabled = skills::read_disabled_ids(store)?;
     for id in discover_skill_ids(store)? {
-        if skills::is_skill_disabled(store, &id)? {
+        if disabled.contains(&id) {
             continue;
         }
         let skill_path = store.skill_dir(&id);
@@ -225,5 +226,25 @@ mod tests {
         assert_eq!(skills[0].id, "engineering/tdd");
         assert_eq!(skills[0].source_type, "store");
         assert!(store.meta_file("engineering").is_file());
+    }
+
+    #[test]
+    fn rebuild_omits_disabled_skills() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        for id in ["docx", "git"] {
+            let dir = store.skill_dir(id);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("SKILL.md"), format!("# {id}\n")).unwrap();
+        }
+        crate::store::skills::write_disabled_ids(&store, &["docx".to_string()]).unwrap();
+
+        rebuild_from_store(&store).unwrap();
+        let conn = open_index(&store).unwrap();
+        let skills = list_skills(&conn).unwrap();
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].id, "git");
     }
 }

@@ -35,7 +35,8 @@ src/
 ├── main.rs         # parse args → run() → map errors → exit
 └── cli.rs          # optional: clap structs only
 tests/
-└── cli.rs          # integration tests (assert_cmd)
+├── common/         # shared fixtures (not a test crate)
+└── *.rs            # integration tests (assert_cmd)
 ```
 
 **Why:** `main()` cannot be unit-tested directly. Moving logic into `lib.rs` lets you test it without spawning a process.

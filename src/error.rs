@@ -19,6 +19,9 @@ pub enum SkmError {
     #[error("application config not found: {0}")]
     AppConfigNotFound(PathBuf),
 
+    #[error("home directory not found")]
+    HomeNotFound,
+
     #[error("invalid application config {path}: {message}")]
     InvalidAppConfig { path: PathBuf, message: String },
 
@@ -241,5 +244,6 @@ mod tests {
     fn domain_failures_are_exit_one() {
         assert_eq!(SkmError::EmptyProfile.exit_code(), 1);
         assert_eq!(SkmError::StoreNotInitialized.exit_code(), 1);
+        assert_eq!(SkmError::HomeNotFound.exit_code(), 1);
     }
 }

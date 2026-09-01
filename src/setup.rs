@@ -17,7 +17,7 @@ pub struct SelectedSetup {
 }
 
 pub fn select_setup_lenient(cwd: &Path, force_user: bool) -> Result<SelectedSetup, SkmError> {
-    let user_path = crate::config::user_setup_path();
+    let user_path = crate::config::user_setup_path()?;
     let project_path = crate::config::project_setup_path(cwd);
 
     if force_user {
@@ -50,7 +50,7 @@ pub fn select_setup_lenient(cwd: &Path, force_user: bool) -> Result<SelectedSetu
 }
 
 pub fn select_setup(cwd: &Path, force_user: bool) -> Result<SelectedSetup, SkmError> {
-    let user_path = crate::config::user_setup_path();
+    let user_path = crate::config::user_setup_path()?;
     let project_path = crate::config::project_setup_path(cwd);
 
     if force_user {
@@ -134,7 +134,7 @@ pub fn clear_active_profile_if_empty(
 
     use crate::config::{project_setup_path, read_setup, user_setup_path};
 
-    for path in [project_setup_path(cwd), user_setup_path()] {
+    for path in [project_setup_path(cwd), user_setup_path()?] {
         if !path.is_file() {
             continue;
         }

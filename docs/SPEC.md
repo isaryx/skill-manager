@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.3.0 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
+**Version:** 0.3.1 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 
@@ -284,7 +284,7 @@ skm does **not** write `<skills-dir>/.gitignore` or the project `.gitignore`. Th
 | Malformed managed block | Not exactly one `BEGIN` … `END` pair (something else edited the file): leave the file byte-for-byte alone, `warning:` naming its **absolute path**, and **continue reconciling**. The links are the command; the exclude is a convenience, and `ignore_links = false` already supports wiring without one |
 | Other clones / teammates | Each machine gets this on its own `sync` / `use-profile`. Nothing to commit |
 
-**Tests (required).** Integration tests in `tests/cli.rs` must cover this when it is implemented — including **two independent git projects** that share one store. Exclude is per-repo; a bug that writes into `HOME` or a global gitignore would only show up with more than one project.
+**Tests (required).** Integration tests in `tests/exclude.rs` must cover this when it is implemented — including **two independent git projects** that share one store. Exclude is per-repo; a bug that writes into `HOME` or a global gitignore would only show up with more than one project.
 
 | Test | Assert |
 |------|--------|

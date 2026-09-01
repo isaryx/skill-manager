@@ -1,6 +1,6 @@
 # Design
 
-**CLI:** `skm` · **Version:** 0.3.0
+**CLI:** `skm` · **Version:** 0.3.1
 
 Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.md). CLI conventions: [../guides/cli-guidelines.md](../guides/cli-guidelines.md).
 
@@ -263,7 +263,7 @@ Stdout = data (including `--json`). Stderr = progress, errors, logs. See SPEC fo
 | Level | Location | Notes |
 |-------|----------|-------|
 | Unit | `#[cfg(test)]` in modules | resolver, profiles, discovery, adapters |
-| Integration | `tests/cli.rs` | `assert_cmd`; isolate with temp `HOME` + `SKM_STORE` |
+| Integration | `tests/*.rs` (`common/` helpers) | `assert_cmd`; isolate with temp `HOME` + `SKM_STORE` |
 
 ```bash
 cargo test
@@ -271,7 +271,7 @@ cargo clippy -- -D warnings
 cargo fmt --check
 ```
 
-Helper pattern in `tests/cli.rs`: `with_env(home, store)` sets `HOME`, `XDG_CONFIG_HOME`, `SKM_STORE`, `current_dir`.
+Helper pattern in `tests/common/mod.rs`: `with_env(home, store)` sets `HOME`, `XDG_CONFIG_HOME`, `SKM_STORE`, `current_dir`.
 
 **`ignore_links` / local exclude.** Required cases live in [SPEC.md](SPEC.md#local-exclude-for-store-owned-links-placementignore_links) (table). Do not ship the feature without them. The one that is easy to skip and expensive to miss: **two git projects, one store** — each `git init` in its own tempdir (never in `HOME`), `use-profile` in both, then assert each `info/exclude` lists only that worktree's paths and neither `.gitignore` changed. A single-project test cannot catch writes that leak into the other repo, `HOME`, or a global exclude.
 
@@ -298,7 +298,7 @@ must tolerate a broken graph: `doctor` reports `profile.extend_broken` instead o
 
 1. Add function in `doctor/checks.rs` returning `Vec<Issue>` with stable `code`
 2. Wire into `doctor::run_checks`
-3. Integration test in `tests/cli.rs` for human + `--json` output
+3. Integration test in `tests/doctor.rs` for human + `--json` output
 4. Document code in [SPEC.md](SPEC.md) doctor table
 
 ### New interactive picker
@@ -331,6 +331,7 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 | 0.2.1 | Shipped | Remove `codex` adapter; `switch-agent` same-target fix; `generic` client docs |
 | 0.2.2 | Shipped | Drop `skm add`; engineer-oriented `--help` |
 | 0.3.0 | Shipped | Multi-agent setups, profile `extends`, local git exclude, `skm destroy`, full-screen picker |
+| 0.3.1 | Shipped | Prune stays out of skill trees; missing home is an error; one disabled-list read per index pass |
 | 0.4.0 | Planned | Windows binary, GitHub import |
 | Later | — | Tier 2 agents, `freeze`, variants, skill groups |
 

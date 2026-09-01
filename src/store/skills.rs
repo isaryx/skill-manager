@@ -57,10 +57,6 @@ pub fn write_disabled_ids(store: &StorePaths, ids: &[String]) -> Result<(), SkmE
     Ok(())
 }
 
-pub fn is_skill_disabled(store: &StorePaths, id: &str) -> Result<bool, SkmError> {
-    Ok(read_disabled_ids(store)?.contains(id))
-}
-
 pub fn list_enabled_pool_ids(store: &StorePaths) -> Result<Vec<String>, SkmError> {
     store.ensure_initialized()?;
     let disabled = read_disabled_ids(store)?;

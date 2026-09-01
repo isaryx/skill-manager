@@ -14,7 +14,7 @@ use crate::setup::{select_setup, target_dirs_for_setup, SelectedSetup};
 use crate::store::extends::load_flattened_profile;
 use crate::store::skills::read_disabled_ids;
 use crate::store::{ensure_store_subdirs, StorePaths};
-use crate::util::validate_profile_name;
+use crate::util::{is_skill_dir, validate_profile_name};
 
 pub(crate) use exclude::tracked_paths;
 pub(crate) use links::{
@@ -318,6 +318,9 @@ fn clean_target(
 }
 
 /// Remove empty directories left behind after cleaning legacy nested placements.
+///
+/// Does not walk into a skill root (`SKILL.md`): empty folders inside a project or
+/// hand-installed skill are not leftover placements.
 fn prune_empty_skill_dirs(target: &Path) -> Result<(), SkmError> {
     fn prune(dir: &Path, root: &Path) -> Result<(), SkmError> {
         if !dir.is_dir() {
@@ -330,10 +333,15 @@ fn prune_empty_skill_dirs(target: &Path) -> Result<(), SkmError> {
         {
             return Ok(());
         }
+        if dir != root && is_skill_dir(dir) {
+            return Ok(());
+        }
 
         for entry in fs::read_dir(dir)? {
-            let path = entry?.path();
-            if path.is_dir() {
+            let entry = entry?;
+            let path = entry.path();
+            // `file_type` does not follow symlinks, so a foreign symlink-to-dir is not entered.
+            if entry.file_type()?.is_dir() {
                 prune(&path, root)?;
             }
         }
@@ -534,5 +542,42 @@ mod tests {
             result.is_ok(),
             "a foreign dangling symlink at the placement name should be skipped as a conflict, not error: {result:?}"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unwire_all_does_not_prune_empty_dirs_inside_a_project_skill() {
+        let root = TempDir::new().unwrap();
+        let store_root = root.path().join("store");
+        let skill = store_root.join("docx");
+        fs::create_dir_all(&skill).unwrap();
+        fs::write(skill.join("SKILL.md"), "# docx\n").unwrap();
+
+        let target = root.path().join("agent");
+        let project = target.join("project-skill");
+        fs::create_dir_all(project.join("scripts")).unwrap();
+        fs::write(project.join("SKILL.md"), "# project\n").unwrap();
+        std::os::unix::fs::symlink(&skill, target.join("docx")).unwrap();
+
+        let store_canon = store_root.canonicalize().unwrap();
+        unwire_all(&target, &store_canon, false).unwrap();
+
+        assert!(!target.join("docx").exists());
+        assert!(project.join("SKILL.md").is_file());
+        assert!(project.join("scripts").is_dir());
+    }
+
+    #[test]
+    fn unwire_all_prunes_empty_nested_placement_dirs() {
+        let root = TempDir::new().unwrap();
+        let store_root = root.path().join("store");
+        fs::create_dir_all(&store_root).unwrap();
+        let target = root.path().join("agent");
+        fs::create_dir_all(target.join("engineering")).unwrap();
+
+        unwire_all(&target, &store_root, false).unwrap();
+
+        assert!(!target.join("engineering").exists());
+        assert!(target.is_dir());
     }
 }

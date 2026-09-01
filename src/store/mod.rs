@@ -151,8 +151,9 @@ pub fn ensure_meta_for_discovered_skills(store: &StorePaths) -> Result<(), SkmEr
     use crate::store::skills;
     use crate::util::{hash_directory, is_skill_dir};
 
+    let disabled = skills::read_disabled_ids(store)?;
     for id in discover_skill_ids(store)? {
-        if skills::is_skill_disabled(store, &id)? {
+        if disabled.contains(&id) {
             continue;
         }
         let skill_path = store.skill_dir(&id);

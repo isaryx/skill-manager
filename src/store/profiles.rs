@@ -139,7 +139,7 @@ pub fn remove_profile(store: &StorePaths, name: &str) -> Result<(), SkmError> {
 pub fn ensure_profile_not_active(cwd: &Path, name: &str) -> Result<(), SkmError> {
     use crate::config::{project_setup_path, read_setup, user_setup_path};
 
-    for path in [project_setup_path(cwd), user_setup_path()] {
+    for path in [project_setup_path(cwd), user_setup_path()?] {
         if !path.is_file() {
             continue;
         }

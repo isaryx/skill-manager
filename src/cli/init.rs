@@ -92,7 +92,7 @@ fn resolve_store_location(cli_store: Option<&Path>) -> Result<PathBuf, SkmError>
         return Ok(config.store.path);
     }
 
-    interactive_select_store_location(&default_store_root())
+    interactive_select_store_location(&default_store_root()?)
 }
 
 fn explicit_app_config_write(explicit: bool) -> bool {

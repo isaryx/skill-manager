@@ -20,20 +20,22 @@ pub struct AppStoreSection {
     pub path: PathBuf,
 }
 
-pub fn app_config_dir() -> PathBuf {
+pub fn app_config_dir() -> Result<PathBuf, SkmError> {
     if let Ok(config_home) = std::env::var("XDG_CONFIG_HOME") {
         if !config_home.is_empty() {
-            return PathBuf::from(config_home).join("skm");
+            return Ok(PathBuf::from(config_home).join("skm"));
         }
     }
 
-    directories::BaseDirs::new()
-        .map(|dirs| dirs.config_dir().join("skm"))
-        .unwrap_or_else(|| home_dir().join(".config").join("skm"))
+    if let Some(dirs) = directories::BaseDirs::new() {
+        return Ok(dirs.config_dir().join("skm"));
+    }
+
+    Ok(home_dir()?.join(".config").join("skm"))
 }
 
-pub fn app_config_path() -> PathBuf {
-    app_config_dir().join(APP_CONFIG_FILENAME)
+pub fn app_config_path() -> Result<PathBuf, SkmError> {
+    Ok(app_config_dir()?.join(APP_CONFIG_FILENAME))
 }
 
 pub fn default_app_config(store_path: &Path) -> AppConfig {
@@ -46,7 +48,7 @@ pub fn default_app_config(store_path: &Path) -> AppConfig {
 }
 
 pub fn read_app_config() -> Result<AppConfig, SkmError> {
-    let path = app_config_path();
+    let path = app_config_path()?;
     let content = fs::read_to_string(&path).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             SkmError::AppConfigNotFound(path.clone())
@@ -66,7 +68,7 @@ pub fn try_read_app_config() -> Option<AppConfig> {
 }
 
 pub fn write_app_config(store_path: &Path) -> Result<PathBuf, SkmError> {
-    let path = app_config_path();
+    let path = app_config_path()?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-01
+
+Prune safety, missing-home error, and a cheaper disabled-list read on index rebuild.
+
+### Changed
+
+- Index rebuild and meta adoption read the disabled-skill list once per pass instead of once per skill.
+
+### Fixed
+
+- Unwiring no longer deletes empty directories inside a project or hand-installed skill (`SKILL.md`).
+- A missing home directory is an error instead of treating `/` as `$HOME`.
+
+[0.3.1]: https://github.com/isaryx/skill-manager/releases/tag/v0.3.1
+
 ## [0.3.0] - 2026-09-01
 
 Multiple target agents per setup, profile inheritance, local git excludes, and `skm destroy`.

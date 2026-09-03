@@ -60,7 +60,7 @@ fn destroy_targets(selected: &SelectedSetup) -> Result<Vec<AgentTarget>, SkmErro
     }
 
     // Every adapter skm can place into, not only `placement.agents`. An empty or stale list
-    // (hand-edited, or a dropped agent never passed through `setup-agents`) would otherwise
+    // (hand-edited, or a dropped agent never passed through `remove-agent`) would otherwise
     // delete `.skm.toml` and leave store-owned links behind with no retry path.
     let agents: Vec<String> = known_agent_ids()
         .iter()
@@ -70,12 +70,14 @@ fn destroy_targets(selected: &SelectedSetup) -> Result<Vec<AgentTarget>, SkmErro
 }
 
 fn warn_if_profile_missing(store: &StorePaths, selected: &SelectedSetup) {
-    match selected.setup.profile.active.as_deref() {
-        None | Some("") => progress::warn("profile not found"),
-        Some(name) if !store.profile_file(name).is_file() => {
+    if selected.setup.profile.active.is_empty() {
+        progress::warn("profile not found");
+        return;
+    }
+    for name in &selected.setup.profile.active {
+        if !store.profile_file(name).is_file() {
             progress::warn(format!("profile not found: {name}"));
         }
-        Some(_) => {}
     }
 }
 

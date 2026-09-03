@@ -10,7 +10,7 @@ use crate::error::SkmError;
 use crate::progress::display_path;
 use crate::resolver::resolve;
 use crate::setup::{target_dirs_for_setup, SelectedSetup};
-use crate::store::extends::{flatten_skill_ids, load_flattened_profile};
+use crate::store::extends::{flatten_skill_ids, load_merged_flattened_profile};
 use crate::store::profiles::{list_profiles, load_profile};
 use crate::store::skills::{list_enabled_pool_ids, read_disabled_ids};
 use crate::store::validate::{inspect_store_path, StoreState};
@@ -338,7 +338,7 @@ pub fn check_config(selected: &SelectedSetup) -> Vec<Issue> {
     if selected.setup.placement.agents.is_empty() {
         issues.push(Issue::error(
             "config.no_agents",
-            "config lists no target agents; run `skm setup-agents`",
+            "config lists no target agents; run `skm use-agents` or `skm add-agent <agent>`",
         ));
     }
 
@@ -354,10 +354,10 @@ pub fn check_config(selected: &SelectedSetup) -> Vec<Issue> {
         }
     }
 
-    if selected.setup.profile.active.is_none() {
+    if selected.setup.profile.active.is_empty() {
         issues.push(Issue::info(
             "config.no_active_profile",
-            "no active profile; run `skm use-profile <profile>`",
+            "no active profiles; run `skm use-profiles` or `skm add-profile <profile>`",
         ));
     }
 
@@ -367,14 +367,15 @@ pub fn check_config(selected: &SelectedSetup) -> Vec<Issue> {
 pub fn check_links(
     store: &StorePaths,
     selected: &SelectedSetup,
-    active_profile: &str,
+    active_profiles: &[String],
 ) -> Result<Vec<Issue>, SkmError> {
     let mut issues = Vec::new();
 
-    let profile = match load_flattened_profile(store, active_profile) {
+    let profile = match load_merged_flattened_profile(store, active_profiles) {
         Ok(profile) => profile,
         Err(_) => return Ok(issues),
     };
+    let active_label = active_profiles.join(", ");
 
     let disabled = read_disabled_ids(store)?;
     let placements = match resolve(&profile, store, &disabled) {
@@ -408,7 +409,7 @@ pub fn check_links(
                         ),
                     )
                     .with_skill(&placement.store_id)
-                    .with_profile(active_profile)
+                    .with_profile(&active_label)
                     .with_path(display_path(&link_path))
                     .with_agent(agent),
                 );
@@ -445,7 +446,7 @@ pub fn check_links(
                 issues.push(
                     Issue::info(
                         "link.extra",
-                        format!("symlink `{rel}` is not in the active profile"),
+                        format!("symlink `{rel}` is not in the active profiles"),
                     )
                     .with_path(display_path(path))
                     .with_agent(agent),

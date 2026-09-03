@@ -20,7 +20,7 @@ __skm() {
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '-V[Print version]' \
@@ -48,7 +48,7 @@ copilot-cli\:"Copilot CLI (.github/skills; ~/.copilot/skills with --user)"))' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 && ret=0
@@ -63,7 +63,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 ':dir -- Path to the skill directory:_files' \
@@ -76,7 +76,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 ":: :_skm__subcmd__profile_commands" \
@@ -96,7 +96,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 ':name -- Profile name:_default' \
@@ -109,7 +109,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 ':name -- Profile name:_default' \
@@ -122,7 +122,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -137,7 +137,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 ':name -- Profile name:_default' \
@@ -150,7 +150,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 ':name -- Profile name:_default' \
@@ -207,7 +207,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 ":: :_skm__subcmd__skill_commands" \
@@ -227,7 +227,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -239,7 +239,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -252,7 +252,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 ':id -- Store skill ID to remove:_default' \
@@ -294,7 +294,7 @@ esac
     ;;
 esac
 ;;
-(use-profile)
+(use-profiles)
 _arguments "${_arguments_options[@]}" : \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
@@ -303,19 +303,76 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
-'::profile -- Profile name; omit to choose interactively:_default' \
 && ret=0
 ;;
-(setup-agents)
+(add-profile)
 _arguments "${_arguments_options[@]}" : \
-'*--agent=[Target agents (repeatable, comma-separated); omit to pick interactively]:AGENT:((claude-code\:"Claude Code (.claude/skills)"
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':profile -- Profile name:_default' \
+&& ret=0
+;;
+(remove-profile)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':profile -- Profile name:_default' \
+&& ret=0
+;;
+(use-agents)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(add-agent)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':agent -- Target agent:((claude-code\:"Claude Code (.claude/skills)"
 cursor\:"Cursor (.cursor/skills)"
 generic\:"Agent Skills (.agents/skills); Codex, Cursor, Gemini CLI, Copilot CLI"
 gemini-cli\:"Gemini CLI (.gemini/skills)"
 copilot-cli\:"Copilot CLI (.github/skills; ~/.copilot/skills with --user)"))' \
+&& ret=0
+;;
+(remove-agent)
+_arguments "${_arguments_options[@]}" : \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
@@ -323,9 +380,14 @@ copilot-cli\:"Copilot CLI (.github/skills; ~/.copilot/skills with --user)"))' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
+':agent -- Target agent:((claude-code\:"Claude Code (.claude/skills)"
+cursor\:"Cursor (.cursor/skills)"
+generic\:"Agent Skills (.agents/skills); Codex, Cursor, Gemini CLI, Copilot CLI"
+gemini-cli\:"Gemini CLI (.gemini/skills)"
+copilot-cli\:"Copilot CLI (.github/skills; ~/.copilot/skills with --user)"))' \
 && ret=0
 ;;
 (destroy)
@@ -336,7 +398,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 && ret=0
@@ -350,7 +412,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -364,7 +426,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 && ret=0
@@ -380,7 +442,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -392,7 +454,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -406,7 +468,7 @@ _arguments "${_arguments_options[@]}" : \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`skill ls\`, \`doctor\` only)]' \
-'--dry-run[Preview changes without writing (\`sync\`, \`use-profile\`, \`skill rm\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
 && ret=0
@@ -495,11 +557,27 @@ _arguments "${_arguments_options[@]}" : \
     ;;
 esac
 ;;
-(use-profile)
+(use-profiles)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
-(setup-agents)
+(add-profile)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove-profile)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(use-agents)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(add-agent)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove-agent)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
@@ -547,8 +625,12 @@ __skm_commands() {
 'import:Import a skill directory into the store' \
 'profile:Create and manage profiles' \
 'skill:Manage skills in the store' \
-'use-profile:Activate a profile and sync skill links' \
-'setup-agents:Choose which agents your config places skills into' \
+'use-profiles:Choose active profiles and sync skill links (interactive)' \
+'add-profile:Add a profile to the active set and sync skill links' \
+'remove-profile:Remove a profile from the active set and sync skill links' \
+'use-agents:Choose target agents interactively' \
+'add-agent:Add a target agent to this setup' \
+'remove-agent:Remove a target agent from this setup' \
 'destroy:Tear down this project'\''s skm setup (\`.skm.toml\` and store-owned links)' \
 'sync:Refresh skill links without changing the active profile' \
 'status:Show agent, active profile, linked skills, and name conflicts' \
@@ -558,6 +640,16 @@ __skm_commands() {
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands '_skm commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__add-agent_commands] )) ||
+_skm__subcmd__add-agent_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm add-agent commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__add-profile_commands] )) ||
+_skm__subcmd__add-profile_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm add-profile commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__destroy_commands] )) ||
 _skm__subcmd__destroy_commands() {
@@ -576,8 +668,12 @@ _skm__subcmd__help_commands() {
 'import:Import a skill directory into the store' \
 'profile:Create and manage profiles' \
 'skill:Manage skills in the store' \
-'use-profile:Activate a profile and sync skill links' \
-'setup-agents:Choose which agents your config places skills into' \
+'use-profiles:Choose active profiles and sync skill links (interactive)' \
+'add-profile:Add a profile to the active set and sync skill links' \
+'remove-profile:Remove a profile from the active set and sync skill links' \
+'use-agents:Choose target agents interactively' \
+'add-agent:Add a target agent to this setup' \
+'remove-agent:Remove a target agent from this setup' \
 'destroy:Tear down this project'\''s skm setup (\`.skm.toml\` and store-owned links)' \
 'sync:Refresh skill links without changing the active profile' \
 'status:Show agent, active profile, linked skills, and name conflicts' \
@@ -587,6 +683,16 @@ _skm__subcmd__help_commands() {
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'skm help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__add-agent_commands] )) ||
+_skm__subcmd__help__subcmd__add-agent_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help add-agent commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__add-profile_commands] )) ||
+_skm__subcmd__help__subcmd__add-profile_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help add-profile commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__help__subcmd__destroy_commands] )) ||
 _skm__subcmd__help__subcmd__destroy_commands() {
@@ -654,15 +760,20 @@ _skm__subcmd__help__subcmd__profile__subcmd__show_commands() {
     local commands; commands=()
     _describe -t commands 'skm help profile show commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__help__subcmd__remove-agent_commands] )) ||
+_skm__subcmd__help__subcmd__remove-agent_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help remove-agent commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__remove-profile_commands] )) ||
+_skm__subcmd__help__subcmd__remove-profile_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help remove-profile commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__help__subcmd__scan_commands] )) ||
 _skm__subcmd__help__subcmd__scan_commands() {
     local commands; commands=()
     _describe -t commands 'skm help scan commands' commands "$@"
-}
-(( $+functions[_skm__subcmd__help__subcmd__setup-agents_commands] )) ||
-_skm__subcmd__help__subcmd__setup-agents_commands() {
-    local commands; commands=()
-    _describe -t commands 'skm help setup-agents commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__help__subcmd__skill_commands] )) ||
 _skm__subcmd__help__subcmd__skill_commands() {
@@ -698,10 +809,15 @@ _skm__subcmd__help__subcmd__sync_commands() {
     local commands; commands=()
     _describe -t commands 'skm help sync commands' commands "$@"
 }
-(( $+functions[_skm__subcmd__help__subcmd__use-profile_commands] )) ||
-_skm__subcmd__help__subcmd__use-profile_commands() {
+(( $+functions[_skm__subcmd__help__subcmd__use-agents_commands] )) ||
+_skm__subcmd__help__subcmd__use-agents_commands() {
     local commands; commands=()
-    _describe -t commands 'skm help use-profile commands' commands "$@"
+    _describe -t commands 'skm help use-agents commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__use-profiles_commands] )) ||
+_skm__subcmd__help__subcmd__use-profiles_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help use-profiles commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__import_commands] )) ||
 _skm__subcmd__import_commands() {
@@ -797,15 +913,20 @@ _skm__subcmd__profile__subcmd__show_commands() {
     local commands; commands=()
     _describe -t commands 'skm profile show commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__remove-agent_commands] )) ||
+_skm__subcmd__remove-agent_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm remove-agent commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__remove-profile_commands] )) ||
+_skm__subcmd__remove-profile_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm remove-profile commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__scan_commands] )) ||
 _skm__subcmd__scan_commands() {
     local commands; commands=()
     _describe -t commands 'skm scan commands' commands "$@"
-}
-(( $+functions[_skm__subcmd__setup-agents_commands] )) ||
-_skm__subcmd__setup-agents_commands() {
-    local commands; commands=()
-    _describe -t commands 'skm setup-agents commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__skill_commands] )) ||
 _skm__subcmd__skill_commands() {
@@ -872,10 +993,15 @@ _skm__subcmd__sync_commands() {
     local commands; commands=()
     _describe -t commands 'skm sync commands' commands "$@"
 }
-(( $+functions[_skm__subcmd__use-profile_commands] )) ||
-_skm__subcmd__use-profile_commands() {
+(( $+functions[_skm__subcmd__use-agents_commands] )) ||
+_skm__subcmd__use-agents_commands() {
     local commands; commands=()
-    _describe -t commands 'skm use-profile commands' commands "$@"
+    _describe -t commands 'skm use-agents commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__use-profiles_commands] )) ||
+_skm__subcmd__use-profiles_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm use-profiles commands' commands "$@"
 }
 
 if [ "$funcstack[1]" = "__skm" ]; then

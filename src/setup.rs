@@ -122,10 +122,17 @@ pub fn select_project_setup_raw(cwd: &Path) -> Result<SelectedSetup, SkmError> {
     })
 }
 
-pub fn set_active_profile(setup: &mut SelectedSetup, profile_name: &str) -> Result<(), SkmError> {
-    setup.setup.profile.active = Some(profile_name.to_string());
+pub fn set_active_profiles(
+    setup: &mut SelectedSetup,
+    profile_names: &[String],
+) -> Result<(), SkmError> {
+    setup.setup.profile.active = profile_names.to_vec();
     write_setup(&setup.path, &setup.setup)?;
     Ok(())
+}
+
+pub fn set_active_profile(setup: &mut SelectedSetup, profile_name: &str) -> Result<(), SkmError> {
+    set_active_profiles(setup, &[profile_name.to_string()])
 }
 
 pub fn clear_active_profile_if_empty(
@@ -148,8 +155,8 @@ pub fn clear_active_profile_if_empty(
             continue;
         }
         let mut setup = read_setup(&path)?;
-        if setup.profile.active.as_deref() == Some(profile_name) {
-            setup.profile.active = None;
+        if setup.profile.is_active(profile_name) {
+            setup.profile.active.retain(|name| name != profile_name);
             write_setup(&path, &setup)?;
         }
     }

@@ -8,7 +8,7 @@
 |-------|----------------|
 | **Store** | Canonical copies of your skills (one folder per skill) |
 | **Profile** | A named set of skills to activate together (`work`, `personal`, …) |
-| **Sync** | Creates symlinks from the active profile into every target agent’s skills directory |
+| **Sync** | Creates symlinks from the active profiles into every target agent’s skills directory |
 
 **Store vs profile:** `skm skill setup` controls which store skills are enabled (disable without deleting). `skm profile setup` picks which enabled skills belong to a profile.
 
@@ -65,7 +65,7 @@ cargo install --path .
 skm init --agent claude-code           # or --agent claude-code,cursor for several
 skm import ./my-skill --copy
 skm profile setup work
-skm use-profile work
+skm add-profile work
 skm status
 ```
 
@@ -79,7 +79,7 @@ In Git projects, skm keeps its own links out of `git add` through a managed bloc
 
 | Situation | What skm does |
 |-----------|----------------|
-| Skill in the agent folder, **not** in your active profile | Left alone |
+| Skill in the agent folder, **not** in your active profiles | Left alone |
 | Profile wants a name already taken by a project or hand-installed skill | Skips that placement; other skills still link |
 | You run `skm init` on a project that already has agent skills | Prompts on a TTY; use `--accept-existing-skills` in scripts |
 
@@ -109,37 +109,41 @@ skm doctor --json    # for scripts (includes link.conflict when a profile skill 
 
 | Command | Description |
 |---------|-------------|
-| `skm init` | Set up the skill store and write `./.skm.toml`. Refuses if that file already exists (`setup-agents` / `use-profile`); `--force` overwrites. `--accept-existing-skills` when the agent folder already has skills |
+| `skm init` | Set up the skill store and write `./.skm.toml`. Refuses if that file already exists (`use-agents` / `use-profiles`); `--force` overwrites. `--accept-existing-skills` when the agent folder already has skills |
 | `skm import <dir> --copy\|--move` | Import a skill or nested skill tree into the store |
 | `skm ls` | List skills and profiles (`-s`/`--skill` or `-p`/`--profile` to filter) |
 | `skm skill ls` / `setup` / `rm` | List, enable/disable, or remove skills in the store |
 | `skm profile setup/ls/show/rm` | Create and manage profiles |
 | `skm profile extend <profile>` | Pick which profiles this one inherits skills from (creates the profile if missing) |
-| `skm use-profile [profile]` | Activate a profile and sync links to every target agent folder; omit the name to choose interactively (`./.skm.toml` unless `--user`) |
-| `skm setup-agents` | Choose which agents your config places skills into (checkbox list; `switch-agent` still works; `./.skm.toml` unless `--user`) |
+| `skm use-profiles` | Choose active profiles interactively (checkbox list; TTY only; `./.skm.toml` unless `--user`) |
+| `skm add-profile <profile>` | Add a profile to the active set and sync links (`./.skm.toml` unless `--user`) |
+| `skm remove-profile <profile>` | Remove a profile from the active set and sync links (`./.skm.toml` unless `--user`) |
+| `skm use-agents` | Choose target agents interactively (checkbox list; TTY only; `./.skm.toml` unless `--user`) |
+| `skm add-agent <agent>` | Add an agent to the target set and sync links (`./.skm.toml` unless `--user`) |
+| `skm remove-agent <agent>` | Remove an agent from the target set (`./.skm.toml` unless `--user`) |
 | `skm destroy` | Remove `./.skm.toml`, store-owned links in every known project agent dir, and the managed git exclude (store kept; `--force` off-TTY) |
-| `skm sync` | Refresh skill links and index without changing the active profile (`./.skm.toml` unless `--user`) |
-| `skm status` | Show target agents, active profile, linked skills, and name conflicts (`./.skm.toml` unless `--user`) |
+| `skm sync` | Refresh skill links and index without changing the active profiles (`./.skm.toml` unless `--user`) |
+| `skm status` | Show target agents, active profiles, linked skills, and name conflicts (`./.skm.toml` unless `--user`) |
 | `skm doctor` | Health report for store, profiles, and links |
 | `skm scan` | Refresh the skill index and adopt skills added to the store without metadata |
 
-Global flags: `--verbose` / `-v`, `--store <path>` (env: `SKM_STORE`), `--json` (on `status`, `ls`, `skill ls`, `doctor`), `--dry-run` (on `sync`, `use-profile`, `skill rm`, `destroy`), `--color auto|always|never`.
+Global flags: `--verbose` / `-v`, `--store <path>` (env: `SKM_STORE`), `--json` (on `status`, `ls`, `skill ls`, `doctor`), `--dry-run` (on `sync`, `add-profile`, `remove-profile`, `skill rm`, `destroy`), `--color auto|always|never`.
 
 Many commands accept `--user` / `-u` to use `~/.skm.toml` instead of `./.skm.toml`.
 
 ### Scripting and CI
 
 - Set `SKM_STORE` or pass `--store <path>` to select the store without a prompt.
-- Pass `--agent` to `skm init` and `skm setup-agents`; repeat it or comma-separate for several agents (`--agent claude-code,cursor`). If a target directory already contains skills, also pass `--accept-existing-skills`.
+- Pass `--agent` to `skm init`; repeat it or comma-separate for several agents (`--agent claude-code,cursor`). Use `skm add-agent` / `skm remove-agent` to change the set after init. If a target directory already contains skills, also pass `--accept-existing-skills`.
 - Use `--json` with `status`, `ls`, `skill ls`, and `doctor`. Structured data stays on stdout; progress and errors go to stderr.
-- Use `--dry-run` before `sync`, `use-profile`, or `skill rm`. Non-interactive `skill rm` also requires `--force`.
+- Use `--dry-run` before `sync`, `add-profile`, `remove-profile`, or `skill rm`. Non-interactive `skill rm` also requires `--force`.
 - Exit codes are `0` for success, `1` for runtime or health-check failure, and `2` for invalid usage or resolution conflicts.
 
 **Preview changes**
 
 ```bash
 skm sync --dry-run
-skm use-profile work --dry-run
+skm add-profile work --dry-run
 skm skill rm docx --dry-run
 ```
 
@@ -164,7 +168,7 @@ Files: `completions/skm.bash`, `completions/_skm` (zsh), `completions/skm.fish`.
 | File | Purpose |
 |------|---------|
 | `~/.config/skm/config.toml` | App config: skill store path (`[store].path`) |
-| `./.skm.toml` or `~/.skm.toml` | Project or user config: target agents, active profile |
+| `./.skm.toml` or `~/.skm.toml` | Project or user config: target agents, active profiles |
 | `$STORE/.skm/disabled.toml` | Store skills you have hidden (optional) |
 
 Store path resolution (first match wins): `--store` → `SKM_STORE` → app config → `~/.skill-store`.
@@ -186,7 +190,7 @@ A config file targets one or more agents via `placement.agents`:
 agents = ["claude-code", "cursor"]
 ```
 
-Every target agent gets its own symlinks, so the same profile can serve several tools at once. Run `skm setup-agents` to change the set — agents you uncheck have their store-owned links removed. Setups written before multi-agent support (`agent = "claude-code"`) are still read, and rewritten as a list the next time skm writes the file. Project vs user paths are listed in [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md).
+Every target agent gets its own symlinks, so the same profile can serve several tools at once. Run `skm use-agents` to change the set interactively, or `skm add-agent` / `skm remove-agent` in scripts — removed agents have their store-owned links unwired. Setups written before multi-agent support (`agent = "claude-code"`) are still read, and rewritten as a list the next time skm writes the file. Project vs user paths are listed in [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md).
 
 ## Documentation
 

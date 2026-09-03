@@ -94,7 +94,7 @@ pub fn run_profile_extend(store: &StorePaths, name: &str) -> Result<(), SkmError
 
     // Validate the graph the selection implies *before* writing any of it. Writing first would
     // persist a selection that is then rejected, leaving the profile broken on disk and failing
-    // every later `use-profile` until the user re-ran this command and guessed what to deselect.
+    // every later `use-profiles` until the user re-ran this command and guessed what to deselect.
     let flat = flatten_with_extends(store, name, &chosen)
         .map_err(|e| e.op(format!("checking profiles extended by `{name}`")))?;
 
@@ -128,7 +128,7 @@ pub fn run_profile_show(
 
     let cwd = env::current_dir()?;
     if let Ok(setup) = select_command_setup(&cwd, force_user) {
-        if setup.setup.profile.active.as_deref() == Some(name) {
+        if setup.setup.profile.is_active(name) {
             eprintln!("(active)");
         }
     }
@@ -167,7 +167,7 @@ pub fn run_profile_show(
 /// Print the extend graph. The `(extends …)` note is skipped here — the tree already shows it.
 ///
 /// A broken graph is rendered rather than refused, then reported: the tree is exactly what you
-/// want to look at when `use-profile` rejects a profile. Failing afterwards keeps the exit code
+/// want to look at when `use-profiles` rejects a profile. Failing afterwards keeps the exit code
 /// identical to the flat listing's for the same graph.
 fn show_tree(
     store: &StorePaths,

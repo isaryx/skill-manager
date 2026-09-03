@@ -11,7 +11,7 @@ use crate::progress;
 use crate::progress::display_path;
 use crate::resolver::{resolve, SkillPlacement};
 use crate::setup::{select_command_setup, target_dirs_for_setup, SelectedSetup};
-use crate::store::extends::load_flattened_profile;
+use crate::store::extends::load_merged_flattened_profile;
 use crate::store::skills::read_disabled_ids;
 use crate::store::{ensure_store_subdirs, StorePaths};
 use crate::util::{is_skill_dir, validate_profile_name};
@@ -59,40 +59,65 @@ pub fn reconcile(
     reconcile_with_setup(store, &selected, None, options)
 }
 
-/// Sync skill links for `profile` without saving it as the active profile.
+/// Sync skill links for `profiles` without saving them as the active set.
+pub fn reconcile_for_profiles(
+    store: &StorePaths,
+    selected: &SelectedSetup,
+    profiles: &[String],
+    options: ReconcileOptions,
+) -> Result<(), SkmError> {
+    for name in profiles {
+        validate_profile_name(name)?;
+    }
+    reconcile_with_setup(store, selected, Some(profiles), options)
+}
+
+/// Sync skill links for one profile without saving it as active.
 pub fn reconcile_for_profile(
     store: &StorePaths,
     selected: &SelectedSetup,
     profile: &str,
     options: ReconcileOptions,
 ) -> Result<(), SkmError> {
-    validate_profile_name(profile)?;
-    reconcile_with_setup(store, selected, Some(profile), options)
+    reconcile_for_profiles(store, selected, &[profile.to_string()], options)
 }
 
 pub fn reconcile_with_setup(
     store: &StorePaths,
     selected: &SelectedSetup,
-    profile_override: Option<&str>,
+    profile_override: Option<&[String]>,
     options: ReconcileOptions,
 ) -> Result<(), SkmError> {
     if !store.is_initialized() {
         return Err(SkmError::StoreNotInitialized);
     }
 
-    let active = profile_override.map(Ok).unwrap_or_else(|| {
-        selected
-            .setup
-            .profile
-            .active
-            .as_deref()
-            .ok_or(SkmError::NoActiveProfile)
-    })?;
+    let active_names: Vec<String> = match profile_override {
+        Some(names) => names.to_vec(),
+        None => selected.setup.profile.active.clone(),
+    };
 
-    progress::step(format!("loading profile `{active}`"));
-    let profile = load_flattened_profile(store, active)?;
-    let disabled = read_disabled_ids(store)?;
-    let placements = resolve(&profile, store, &disabled).map_err(SkmError::from)?;
+    if active_names.is_empty() && profile_override.is_none() {
+        return Err(SkmError::NoActiveProfile);
+    }
+
+    if active_names.is_empty() {
+        progress::step("loading no active profiles");
+    } else {
+        progress::step(format!(
+            "loading profile{} `{}`",
+            if active_names.len() == 1 { "" } else { "s" },
+            active_names.join("`, `")
+        ));
+    }
+
+    let placements = if active_names.is_empty() {
+        Vec::new()
+    } else {
+        let profile = load_merged_flattened_profile(store, &active_names)?;
+        let disabled = read_disabled_ids(store)?;
+        resolve(&profile, store, &disabled).map_err(SkmError::from)?
+    };
 
     let targets = target_dirs_for_setup(selected)?;
     let store_root = store.canonical_root();
@@ -239,7 +264,7 @@ pub fn compute_link_changes(
 }
 
 /// Remove every store-owned symlink under `target` and prune emptied directories.
-/// Used when leaving an agent's skills directory entirely (e.g. `switch-agent`), so
+/// Used when leaving an agent's skills directory entirely (e.g. `remove-agent`), so
 /// skm-managed links don't linger, orphaned and invisible, in the previous agent's dir.
 pub fn unwire_all(target: &Path, store_root: &Path, dry_run: bool) -> Result<(), SkmError> {
     if !target.is_dir() {
@@ -425,11 +450,13 @@ pub fn collect_status(
         })
         .collect();
 
-    let Some(active) = selected.setup.profile.active.as_deref() else {
+    let Some(active) = (!selected.setup.profile.active.is_empty())
+        .then_some(selected.setup.profile.active.as_slice())
+    else {
         return Ok(reports);
     };
 
-    let profile = load_flattened_profile(store, active)?;
+    let profile = load_merged_flattened_profile(store, active)?;
     let disabled = read_disabled_ids(store)?;
     let placements = resolve(&profile, store, &disabled).map_err(SkmError::from)?;
 

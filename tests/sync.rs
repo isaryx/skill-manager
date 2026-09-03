@@ -24,7 +24,7 @@ fn use_profile_requires_project_setup() {
         .env("SKM_STORE", store.path())
         .current_dir(project.path());
 
-    cmd.args(["use-profile", "work"])
+    cmd.args(["add-profile", "work"])
         .assert()
         .failure()
         .stderr(predicate::str::contains(".skm.toml"));
@@ -101,7 +101,7 @@ fn use_and_sync_place_symlinks() {
     write_profile(store.path(), "infra", &["docx", "git"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "infra"])
+        .args(["add-profile", "infra"])
         .assert()
         .success();
 
@@ -116,7 +116,7 @@ fn use_and_sync_place_symlinks() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Target agents:"))
-        .stdout(predicate::str::contains("Active profile:"))
+        .stdout(predicate::str::contains("Active profiles:"))
         .stdout(predicate::str::contains("infra"))
         .stdout(predicate::str::contains("claude-code"))
         .stdout(predicate::str::contains(".claude/skills"))
@@ -145,13 +145,17 @@ fn use_switches_profiles_and_cleans_extras() {
     write_profile(store.path(), "writing", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "infra"])
+        .args(["add-profile", "infra"])
         .assert()
         .success();
     assert!(home.path().join(".claude/skills/git").is_symlink());
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "writing"])
+        .args(["remove-profile", "infra"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .args(["add-profile", "writing"])
         .assert()
         .success();
     assert!(!home.path().join(".claude/skills/git").exists());
@@ -186,7 +190,7 @@ fn project_setup_uses_project_targets() {
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -223,7 +227,7 @@ fn use_user_flag_ignores_project_setup() {
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work", "-u"])
+        .args(["add-profile", "work", "-u"])
         .assert()
         .success();
 
@@ -253,7 +257,7 @@ fn sync_user_does_not_create_project_setup() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -285,7 +289,7 @@ fn sync_repairs_broken_symlink() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -317,7 +321,7 @@ fn sync_removes_extra_store_symlinks() {
 
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -360,45 +364,105 @@ fn use_profile_rejects_empty_profile() {
     write_profile(store.path(), "empty", &[]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "empty"])
+        .args(["add-profile", "empty"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("profile is empty"));
 }
 
 #[test]
-fn use_profile_without_name_requires_a_tty() {
+fn use_profiles_requires_a_tty() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
     init_project(home.path(), store.path());
     write_profile(store.path(), "work", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile"])
+        .args(["use-profiles"])
         .assert()
         .failure()
-        .code(2)
-        .stderr(
-            predicate::str::contains("profile name is required")
-                .and(predicate::str::contains("skm use-profile <profile>"))
-                .and(predicate::str::contains("TTY")),
-        );
+        .stderr(predicate::str::contains("TTY"));
 }
 
 #[test]
-fn use_profile_without_name_reports_when_no_profiles_exist() {
+fn remove_profile_errors_when_not_active() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
     init_project(home.path(), store.path());
+    write_profile(store.path(), "work", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile"])
+        .args(["remove-profile", "work"])
         .assert()
         .failure()
-        .stderr(
-            predicate::str::contains("no profiles available")
-                .and(predicate::str::contains("skm profile setup <name>")),
-        );
+        .stderr(predicate::str::contains("is not active"));
+}
+
+#[test]
+fn add_profile_reports_unchanged_when_already_active() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .args(["add-profile", "work"])
+        .assert()
+        .success();
+
+    with_env(home.path(), store.path())
+        .args(["add-profile", "work"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("active profiles unchanged: work"))
+        .stderr(predicate::str::contains("activating profile").not());
+}
+
+#[test]
+fn add_profile_merges_skills_from_multiple_active_profiles() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    write_skill(src.path(), "git");
+    init_project(home.path(), store.path());
+
+    for name in ["docx", "git"] {
+        with_env(home.path(), store.path())
+            .args(["import", src.path().join(name).to_str().unwrap(), "--copy"])
+            .assert()
+            .success();
+    }
+
+    write_profile(store.path(), "writing", &["docx"]);
+    write_profile(store.path(), "infra", &["git"]);
+
+    with_env(home.path(), store.path())
+        .args(["add-profile", "writing"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .args(["add-profile", "infra"])
+        .assert()
+        .success();
+
+    assert!(home.path().join(".claude/skills/docx").is_symlink());
+    assert!(home.path().join(".claude/skills/git").is_symlink());
+
+    let setup = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
+    assert!(setup.contains("writing"));
+    assert!(setup.contains("infra"));
 }
 
 #[test]
@@ -410,7 +474,7 @@ fn use_does_not_persist_active_on_reconcile_failure() {
     write_profile(store.path(), "missing-skills", &["nope"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "missing-skills"])
+        .args(["add-profile", "missing-skills"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("not found in store"));
@@ -451,7 +515,7 @@ fn sync_skips_conflicted_placement() {
     fs::write(home.path().join(".claude/skills/docx"), "blocked").unwrap();
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success()
         .stderr(predicate::str::contains("skipped docx (conflicted)"));
@@ -486,7 +550,7 @@ fn sync_preserves_foreign_skill_not_in_profile() {
 
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -519,7 +583,7 @@ fn use_profile_dry_run_reports_skipped_conflict() {
     fs::write(home.path().join(".claude/skills/docx"), "blocked").unwrap();
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work", "--dry-run"])
+        .args(["add-profile", "work", "--dry-run"])
         .assert()
         .success()
         .stderr(predicate::str::contains("skipped docx (conflicted)"));
@@ -530,7 +594,7 @@ fn use_profile_dry_run_reports_skipped_conflict() {
     assert!(!home.path().join(".claude/skills/other").exists());
 
     let setup = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
-    assert!(!setup.contains("active = \"work\""));
+    assert!(!setup.contains("active = [\"work\"]"));
 }
 
 #[test]
@@ -555,7 +619,7 @@ fn status_reports_conflicts() {
     fs::write(home.path().join(".claude/skills/docx"), "blocked").unwrap();
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -600,7 +664,7 @@ fn use_nested_bundle_skills_places_symlinks() {
     );
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "test"])
+        .args(["add-profile", "test"])
         .assert()
         .success();
 
@@ -637,7 +701,7 @@ fn use_removes_legacy_nested_symlinks() {
     write_profile(store.path(), "test", &["engineering/tdd"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "test"])
+        .args(["add-profile", "test"])
         .assert()
         .success();
 
@@ -660,7 +724,7 @@ fn use_disambiguates_colliding_leaf_skill_names() {
     write_profile(store.path(), "test", &["engineering/tdd", "other/tdd"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "test"])
+        .args(["add-profile", "test"])
         .assert()
         .success();
 
@@ -689,7 +753,7 @@ fn status_json_outputs_fields() {
 
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -698,7 +762,7 @@ fn status_json_outputs_fields() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"agent\":\"claude-code\""))
-        .stdout(predicate::str::contains("\"profile\":\"work\""))
+        .stdout(predicate::str::contains("\"profiles\":[\"work\"]"))
         .stdout(predicate::str::contains("\"skills_path\""))
         .stdout(predicate::str::contains("\"name\":\"docx\""))
         .stdout(predicate::str::contains("\"conflicts\":[]"));
@@ -723,7 +787,7 @@ fn sync_adopts_copied_skills_without_meta() {
         .assert()
         .success();
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -754,7 +818,7 @@ fn sync_dry_run_does_not_create_symlinks() {
     write_profile(store.path(), "work", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
     fs::remove_dir_all(home.path().join(".claude/skills")).ok();
@@ -788,12 +852,46 @@ fn use_profile_dry_run_does_not_set_active() {
     write_profile(store.path(), "work", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work", "--dry-run"])
+        .args(["add-profile", "work", "--dry-run"])
         .assert()
         .success();
 
     let setup = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
-    assert!(!setup.contains("active = \"work\""));
+    assert!(!setup.contains("active = [\"work\"]"));
+}
+
+#[test]
+fn remove_profile_dry_run_does_not_change_active_profiles() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    write_skill(src.path(), "docx");
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args([
+            "import",
+            src.path().join("docx").to_str().unwrap(),
+            "--copy",
+        ])
+        .assert()
+        .success();
+    write_profile(store.path(), "work", &["docx"]);
+
+    with_env(home.path(), store.path())
+        .args(["add-profile", "work"])
+        .assert()
+        .success();
+
+    with_env(home.path(), store.path())
+        .args(["remove-profile", "work", "--dry-run"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("(dry-run) clearing active profiles"));
+
+    let setup = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
+    assert!(setup.contains("active = [\"work\"]"));
+    assert!(home.path().join(".claude/skills/docx").is_symlink());
 }
 
 #[test]
@@ -814,7 +912,7 @@ fn use_profile_placement_name_collision_exits_two() {
     );
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "clash"])
+        .args(["add-profile", "clash"])
         .assert()
         .failure()
         .code(2)
@@ -883,5 +981,5 @@ fn status_json_reports_one_entry_per_agent() {
     assert_eq!(agents[0]["skills"][0]["name"], "docx");
     assert_eq!(agents[1]["agent"], "cursor");
     assert_eq!(agents[1]["skills"][0]["name"], "docx");
-    assert_eq!(report["profile"], "work");
+    assert_eq!(report["profiles"][0], "work");
 }

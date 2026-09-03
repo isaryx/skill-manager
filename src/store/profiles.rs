@@ -144,7 +144,7 @@ pub fn ensure_profile_not_active(cwd: &Path, name: &str) -> Result<(), SkmError>
             continue;
         }
         let setup = read_setup(&path)?;
-        if setup.profile.active.as_deref() == Some(name) {
+        if setup.profile.is_active(name) {
             return Err(SkmError::ActiveProfileRemoval(name.to_string()));
         }
     }

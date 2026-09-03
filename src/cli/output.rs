@@ -3,7 +3,7 @@ use serde::Serialize;
 #[derive(Debug, Serialize)]
 pub struct StatusJson<'a> {
     pub agents: Vec<StatusAgentJson<'a>>,
-    pub profile: Option<&'a str>,
+    pub profiles: &'a [String],
 }
 
 /// One target agent's placements. Reported per agent because a foreign entry can block a skill

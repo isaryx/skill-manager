@@ -47,10 +47,10 @@ fn help_explains_engineering_workflow() {
             .and(predicate::str::contains("SKM_STORE"))
             .and(predicate::str::contains("Exit codes"))
             .and(predicate::str::contains(
-                "`sync`, `use-profile`, `skill rm`, `destroy` only",
+                "`sync`, `add-profile`, `remove-profile`, `skill rm`, `destroy` only",
             ))
             .and(predicate::str::contains(
-                "--dry-run works with `sync`, `use-profile`, `skill rm`, and `destroy`",
+                "--dry-run works with `sync`, `add-profile`, `remove-profile`, `skill rm`, and `destroy`",
             ))
             .and(predicate::str::contains(
                 "https://github.com/isaryx/skill-manager",
@@ -77,12 +77,21 @@ fn command_help_documents_non_interactive_requirements() {
         ));
 
     skm()
-        .args(["use-profile", "--help"])
+        .args(["add-profile", "--help"])
         .assert()
         .success()
         .stdout(
-            predicate::str::contains("[PROFILE]")
-                .and(predicate::str::contains("choose interactively")),
+            predicate::str::contains("<PROFILE>")
+                .and(predicate::str::contains("Requires `./.skm.toml`")),
+        );
+
+    skm()
+        .args(["add-agent", "--help"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("<AGENT>")
+                .and(predicate::str::contains("Requires `./.skm.toml`")),
         );
 }
 
@@ -99,15 +108,24 @@ fn profile_extend_help_says_it_creates_a_missing_profile() {
 
 #[test]
 fn use_profile_help_documents_project_setup_requirement() {
-    skm().args(["use-profile", "--help"]).assert().success().stdout(
+    skm().args(["add-profile", "--help"]).assert().success().stdout(
         predicate::str::contains("Requires `./.skm.toml`")
             .and(predicate::str::contains("--user")),
     );
 }
 
 #[test]
-fn setup_agents_help_documents_project_setup_requirement() {
-    skm().args(["setup-agents", "--help"]).assert().success().stdout(
+fn use_agents_help_documents_tty_and_project_setup_requirement() {
+    skm().args(["use-agents", "--help"]).assert().success().stdout(
+        predicate::str::contains("Requires a TTY")
+            .and(predicate::str::contains("`./.skm.toml`"))
+            .and(predicate::str::contains("--user")),
+    );
+}
+
+#[test]
+fn add_agent_help_documents_project_setup_requirement() {
+    skm().args(["add-agent", "--help"]).assert().success().stdout(
         predicate::str::contains("Requires `./.skm.toml`")
             .and(predicate::str::contains("--user")),
     );
@@ -335,7 +353,7 @@ fn no_color_disables_ansi_on_sync_progress() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 

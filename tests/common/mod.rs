@@ -141,7 +141,7 @@ pub fn activate_docx(home: &Path, store: &Path) {
         .success();
     write_profile(store, "work", &["docx"]);
     with_env(home, store)
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 }

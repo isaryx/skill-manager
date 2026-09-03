@@ -16,6 +16,12 @@ _skm() {
             ",$1")
                 cmd="skm"
                 ;;
+            skm,add-agent)
+                cmd="skm__subcmd__add__subcmd__agent"
+                ;;
+            skm,add-profile)
+                cmd="skm__subcmd__add__subcmd__profile"
+                ;;
             skm,destroy)
                 cmd="skm__subcmd__destroy"
                 ;;
@@ -37,11 +43,14 @@ _skm() {
             skm,profile)
                 cmd="skm__subcmd__profile"
                 ;;
+            skm,remove-agent)
+                cmd="skm__subcmd__remove__subcmd__agent"
+                ;;
+            skm,remove-profile)
+                cmd="skm__subcmd__remove__subcmd__profile"
+                ;;
             skm,scan)
                 cmd="skm__subcmd__scan"
-                ;;
-            skm,setup-agents)
-                cmd="skm__subcmd__setup__subcmd__agents"
                 ;;
             skm,skill)
                 cmd="skm__subcmd__skill"
@@ -52,8 +61,17 @@ _skm() {
             skm,sync)
                 cmd="skm__subcmd__sync"
                 ;;
-            skm,use-profile)
-                cmd="skm__subcmd__use__subcmd__profile"
+            skm,use-agents)
+                cmd="skm__subcmd__use__subcmd__agents"
+                ;;
+            skm,use-profiles)
+                cmd="skm__subcmd__use__subcmd__profiles"
+                ;;
+            skm__subcmd__help,add-agent)
+                cmd="skm__subcmd__help__subcmd__add__subcmd__agent"
+                ;;
+            skm__subcmd__help,add-profile)
+                cmd="skm__subcmd__help__subcmd__add__subcmd__profile"
                 ;;
             skm__subcmd__help,destroy)
                 cmd="skm__subcmd__help__subcmd__destroy"
@@ -76,11 +94,14 @@ _skm() {
             skm__subcmd__help,profile)
                 cmd="skm__subcmd__help__subcmd__profile"
                 ;;
+            skm__subcmd__help,remove-agent)
+                cmd="skm__subcmd__help__subcmd__remove__subcmd__agent"
+                ;;
+            skm__subcmd__help,remove-profile)
+                cmd="skm__subcmd__help__subcmd__remove__subcmd__profile"
+                ;;
             skm__subcmd__help,scan)
                 cmd="skm__subcmd__help__subcmd__scan"
-                ;;
-            skm__subcmd__help,setup-agents)
-                cmd="skm__subcmd__help__subcmd__setup__subcmd__agents"
                 ;;
             skm__subcmd__help,skill)
                 cmd="skm__subcmd__help__subcmd__skill"
@@ -91,8 +112,11 @@ _skm() {
             skm__subcmd__help,sync)
                 cmd="skm__subcmd__help__subcmd__sync"
                 ;;
-            skm__subcmd__help,use-profile)
-                cmd="skm__subcmd__help__subcmd__use__subcmd__profile"
+            skm__subcmd__help,use-agents)
+                cmd="skm__subcmd__help__subcmd__use__subcmd__agents"
+                ;;
+            skm__subcmd__help,use-profiles)
+                cmd="skm__subcmd__help__subcmd__use__subcmd__profiles"
                 ;;
             skm__subcmd__help__subcmd__profile,extend)
                 cmd="skm__subcmd__help__subcmd__profile__subcmd__extend"
@@ -185,8 +209,52 @@ _skm() {
 
     case "${cmd}" in
         skm)
-            opts="-v -h -V --verbose --store --json --dry-run --color --help --version init import profile skill use-profile setup-agents destroy sync status ls scan doctor help"
+            opts="-v -h -V --verbose --store --json --dry-run --color --help --version init import profile skill use-profiles add-profile remove-profile use-agents add-agent remove-agent destroy sync status ls scan doctor help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --store)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__add__subcmd__agent)
+            opts="-u -v -h --user --verbose --store --json --dry-run --color --help claude-code cursor generic gemini-cli copilot-cli"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --store)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__add__subcmd__profile)
+            opts="-u -v -h --user --verbose --store --json --dry-run --color --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
@@ -251,8 +319,36 @@ _skm() {
             return 0
             ;;
         skm__subcmd__help)
-            opts="init import profile skill use-profile setup-agents destroy sync status ls scan doctor help"
+            opts="init import profile skill use-profiles add-profile remove-profile use-agents add-agent remove-agent destroy sync status ls scan doctor help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__help__subcmd__add__subcmd__agent)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__help__subcmd__add__subcmd__profile)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
@@ -432,7 +528,7 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        skm__subcmd__help__subcmd__scan)
+        skm__subcmd__help__subcmd__remove__subcmd__agent)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -446,7 +542,21 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        skm__subcmd__help__subcmd__setup__subcmd__agents)
+        skm__subcmd__help__subcmd__remove__subcmd__profile)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__help__subcmd__scan)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -544,7 +654,21 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        skm__subcmd__help__subcmd__use__subcmd__profile)
+        skm__subcmd__help__subcmd__use__subcmd__agents)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__help__subcmd__use__subcmd__profiles)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -862,8 +986,8 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        skm__subcmd__scan)
-            opts="-v -h --verbose --store --json --dry-run --color --help"
+        skm__subcmd__remove__subcmd__agent)
+            opts="-u -v -h --user --verbose --store --json --dry-run --color --help claude-code cursor generic gemini-cli copilot-cli"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -884,17 +1008,35 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        skm__subcmd__setup__subcmd__agents)
-            opts="-u -v -h --agent --user --verbose --store --json --dry-run --color --help"
+        skm__subcmd__remove__subcmd__profile)
+            opts="-u -v -h --user --verbose --store --json --dry-run --color --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                --agent)
-                    COMPREPLY=($(compgen -W "claude-code cursor generic gemini-cli copilot-cli" -- "${cur}"))
+                --store)
+                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__scan)
+            opts="-v -h --verbose --store --json --dry-run --color --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
                 --store)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
@@ -1112,7 +1254,29 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        skm__subcmd__use__subcmd__profile)
+        skm__subcmd__use__subcmd__agents)
+            opts="-u -v -h --user --verbose --store --json --dry-run --color --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --store)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__use__subcmd__profiles)
             opts="-u -v -h --user --verbose --store --json --dry-run --color --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )

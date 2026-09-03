@@ -87,7 +87,7 @@ fn destroy_warns_when_active_profile_is_missing_from_the_store() {
         .success();
     fs::write(
         project.path().join(".skm.toml"),
-        "version = 1\n[placement]\nagents = [\"claude-code\"]\n[profile]\nactive = \"gone\"\n",
+        "version = 1\n[placement]\nagents = [\"claude-code\"]\n[profile]\nactive = [\"gone\"]\n",
     )
     .unwrap();
 
@@ -122,7 +122,7 @@ fn destroy_force_unwires_links_removes_exclude_and_setup() {
     write_skill(&project.path().join(".claude/skills"), "project-skill");
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -174,7 +174,7 @@ fn destroy_dry_run_writes_nothing() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -229,7 +229,7 @@ fn destroy_unwires_links_when_agents_list_is_empty() {
     write_skill(&project.path().join(".claude/skills"), "project-skill");
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -270,7 +270,7 @@ fn destroy_unwires_links_left_in_an_unlisted_agent_dir() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -306,7 +306,7 @@ fn destroy_warns_on_unknown_agent_and_still_unwires_known_dirs() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 

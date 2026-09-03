@@ -13,10 +13,14 @@ Options:
 
 const PROJECT_COMMANDS: &[&str] = &[
     "init",
-    "use-profile",
+    "use-profiles",
+    "add-profile",
+    "remove-profile",
     "sync",
     "status",
-    "setup-agents",
+    "use-agents",
+    "add-agent",
+    "remove-agent",
     "destroy",
 ];
 
@@ -103,7 +107,8 @@ mod tests {
         assert!(grouped.contains("STORE COMMANDS"));
         assert!(grouped.contains("  init"));
         assert!(grouped.contains("  import"));
-        assert!(grouped.contains("  use-profile"));
+        assert!(grouped.contains("  add-profile"));
+        assert!(grouped.contains("  remove-profile"));
         assert!(grouped.contains("  doctor"));
     }
 

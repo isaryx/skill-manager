@@ -13,7 +13,7 @@ pub mod ls;
 pub mod output;
 pub mod profile;
 pub mod scan;
-pub mod setup_agents;
+pub mod use_agents;
 pub mod skill;
 pub mod status;
 pub mod sync;
@@ -32,22 +32,23 @@ pub fn cli_command() -> clap::Command {
     version,
     about = "Manage AI agent skills from one local store",
     long_about = "Keep canonical skill directories in a store, select them with profiles, and \
-                  symlink the active profile into the agent skills directory (Claude Code, \
+                  symlink the active profiles into the agent skills directory (Claude Code, \
                   Cursor, or the generic Agent Skills layout).",
     after_help = "Examples:\n  \
                   skm init --agent claude-code,cursor\n  \
-                  skm import ./my-skill --copy && skm profile setup work && skm use-profile work\n\n\
+                  skm import ./my-skill --copy && skm profile setup work && skm add-profile work\n\n\
                   Pass --help for the full workflow, automation flags, and exit codes.",
     after_long_help = "Examples:\n  \
                        skm init --agent claude-code\n  \
                        skm import ./my-skill --copy\n  \
-                       skm profile setup work && skm use-profile work\n\n\
+                       skm profile setup work && skm add-profile work\n\n\
                        Project commands require `./.skm.toml` unless --user.\n\n\
                        Automation:\n  \
                        Select the store with SKM_STORE or --store.\n  \
                        --json works with `status`, `ls`, `skill ls`, and `doctor`; data goes to \
                        stdout, progress and errors to stderr.\n  \
-                       --dry-run works with `sync`, `use-profile`, `skill rm`, and `destroy`.\n  \
+                       --dry-run works with `sync`, `add-profile`, `remove-profile`, `skill rm`, \
+                       and `destroy`.\n  \
                        Exit codes: 0 success, 1 runtime or health failure, 2 usage or resolve \
                        conflict.\n\n\
                        Docs and issues: https://github.com/isaryx/skill-manager"
@@ -65,7 +66,7 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub json: bool,
 
-    /// Preview changes without writing (`sync`, `use-profile`, `skill rm`, `destroy` only)
+    /// Preview changes without writing (`sync`, `add-profile`, `remove-profile`, `skill rm`, `destroy` only)
     #[arg(long, global = true)]
     pub dry_run: bool,
 
@@ -88,7 +89,7 @@ pub enum Commands {
         after_help = "Automation:\n  For non-interactive use, pass --agent (repeat it, or \
                       comma-separate, for several agents). If a target agent directory already \
                       contains skills, also pass --accept-existing-skills.\n  An existing \
-                      `./.skm.toml` is refused; use `skm setup-agents` and `skm use-profile`. \
+                      `./.skm.toml` is refused; use `skm use-agents` and `skm use-profiles`. \
                       Pass --force to overwrite the file."
     )]
     Init {
@@ -126,33 +127,74 @@ pub enum Commands {
         #[command(subcommand)]
         action: SkillAction,
     },
-    /// Activate a profile and sync skill links
+    /// Choose active profiles and sync skill links (interactive)
     #[command(
-        name = "use-profile",
-        long_about = "Activate a profile and sync skill links.\n\n\
-                      Omit PROFILE to choose interactively from the available profiles.",
-        after_help = "Requires `./.skm.toml` unless --user."
+        name = "use-profiles",
+        long_about = "Choose which profiles are active and sync their combined skill links.\n\n\
+                      Opens a searchable checkbox list of available profiles.",
+        after_help = "Requires a TTY and `./.skm.toml` unless --user."
     )]
-    UseProfile {
-        /// Profile name; omit to choose interactively
-        profile: Option<String>,
+    UseProfiles {
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]
         user: bool,
     },
-    /// Choose which agents your config places skills into
+    /// Add a profile to the active set and sync skill links
     #[command(
-        name = "setup-agents",
-        alias = "switch-agent",
-        long_about = "Replace the set of target agents in the setup file.\n\n\
-                      Without --agent, pick them from a checkbox list pre-checked with the \
-                      current agents. Agents you uncheck have their store-owned links removed.",
+        name = "add-profile",
         after_help = "Requires `./.skm.toml` unless --user."
     )]
-    SetupAgents {
-        /// Target agents (repeatable, comma-separated); omit to pick interactively
-        #[arg(long = "agent", value_name = "AGENT", value_delimiter = ',')]
-        agent: Vec<Agent>,
+    AddProfile {
+        /// Profile name
+        profile: String,
+        /// Use `~/.skm.toml` even when `./.skm.toml` exists
+        #[arg(short = 'u', long)]
+        user: bool,
+    },
+    /// Remove a profile from the active set and sync skill links
+    #[command(
+        name = "remove-profile",
+        after_help = "Requires `./.skm.toml` unless --user."
+    )]
+    RemoveProfile {
+        /// Profile name
+        profile: String,
+        /// Use `~/.skm.toml` even when `./.skm.toml` exists
+        #[arg(short = 'u', long)]
+        user: bool,
+    },
+    /// Choose target agents interactively
+    #[command(
+        name = "use-agents",
+        long_about = "Choose which agents this setup places skills into.\n\n\
+                      Opens a searchable checkbox list of available agents.",
+        after_help = "Requires a TTY and `./.skm.toml` unless --user."
+    )]
+    UseAgents {
+        /// Use `~/.skm.toml` even when `./.skm.toml` exists
+        #[arg(short = 'u', long)]
+        user: bool,
+    },
+    /// Add a target agent to this setup
+    #[command(
+        name = "add-agent",
+        after_help = "Requires `./.skm.toml` unless --user."
+    )]
+    AddAgent {
+        /// Target agent
+        agent: Agent,
+        /// Use `~/.skm.toml` even when `./.skm.toml` exists
+        #[arg(short = 'u', long)]
+        user: bool,
+    },
+    /// Remove a target agent from this setup
+    #[command(
+        name = "remove-agent",
+        after_help = "Requires `./.skm.toml` unless --user."
+    )]
+    RemoveAgent {
+        /// Target agent
+        agent: Agent,
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]
         user: bool,
@@ -171,19 +213,19 @@ pub enum Commands {
         #[arg(long)]
         force: bool,
     },
-    /// Refresh skill links without changing the active profile
+    /// Refresh skill links without changing the active profiles
     #[command(after_help = "Requires `./.skm.toml` unless --user.")]
     Sync {
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]
         user: bool,
     },
-    /// Show agent, active profile, linked skills, and name conflicts
+    /// Show target agents, active profiles, linked skills, and name conflicts
     #[command(
         long_about = "Read-only report of this project's skill wiring.\n\n\
-                      Prints the target agent, active profile, Linked store-owned symlinks that \
-                      match the profile, and Conflicts where a profile skill is blocked by a \
-                      non-skm entry at that name.\n\n\
+                      Prints every target agent, the active profiles, Linked store-owned symlinks \
+                      that match the merged profile set, and Conflicts where a profile skill is \
+                      blocked by a non-skm entry at that name.\n\n\
                       Does not create or repair links. Missing or broken links are not listed; \
                       use `skm doctor`.",
         after_help = "Requires `./.skm.toml` unless --user. Supports --json."

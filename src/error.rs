@@ -8,8 +8,8 @@ pub enum SkmError {
     StoreNotInitialized,
 
     #[error(
-        "config file already exists: {0}; change agents with `skm setup-agents`; activate a \
-         profile with `skm use-profile <name>`"
+        "config file already exists: {0}; change agents with `skm use-agents` or `skm add-agent`; activate a \
+         profile with `skm add-profile <name>` or `skm use-profiles`"
     )]
     SetupExists(PathBuf),
 
@@ -49,8 +49,14 @@ pub enum SkmError {
     #[error("unknown agent: {0}")]
     UnknownAgent(String),
 
-    #[error("config lists no target agents; run `skm setup-agents`")]
+    #[error("config lists no target agents; run `skm use-agents` or `skm add-agent <agent>`")]
     NoTargetAgents,
+
+    #[error("agent `{0}` is not a target in this setup")]
+    AgentNotTarget(String),
+
+    #[error("cannot remove the last target agent; add another agent first")]
+    LastTargetAgentRemoval,
 
     #[error("profile not found: {0}")]
     ProfileNotFound(String),
@@ -61,10 +67,13 @@ pub enum SkmError {
     #[error("profile is empty; add skills with `skm profile setup`")]
     EmptyProfile,
 
-    #[error("no active profile; run `skm use-profile <profile>`")]
+    #[error("no active profiles; run `skm use-profiles` or `skm add-profile <profile>`")]
     NoActiveProfile,
 
-    #[error("cannot remove active profile `{0}`; switch profiles first")]
+    #[error("profile `{0}` is not active")]
+    ProfileNotActive(String),
+
+    #[error("cannot remove active profile `{0}`; run `skm remove-profile {0}` first")]
     ActiveProfileRemoval(String),
 
     #[error("duplicate skill id in profile: {0}")]

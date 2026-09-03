@@ -57,7 +57,7 @@ pub fn run_status(store: &StorePaths, force_user: bool, json: bool) -> Result<()
                         .collect(),
                 })
                 .collect(),
-            profile: selected.setup.profile.active.as_deref(),
+            profiles: &selected.setup.profile.active,
         };
         write_json(&payload).map_err(|e| SkmError::Usage(format!("failed to encode JSON: {e}")))?;
         return Ok(());
@@ -66,7 +66,7 @@ pub fn run_status(store: &StorePaths, force_user: bool, json: bool) -> Result<()
     let color = color_stdout();
 
     print_target_agents(&reports, &paths, color)?;
-    print_active_profile(selected.setup.profile.active.as_deref(), color)?;
+    print_active_profiles(&selected.setup.profile.active, color)?;
     writeln!(io::stdout())?;
 
     // One agent needs no per-agent headings, so its placements stay where they have always
@@ -152,19 +152,23 @@ fn print_target_agents(reports: &[AgentStatus], paths: &[String], color: bool) -
     Ok(())
 }
 
-fn print_active_profile(profile: Option<&str>, color: bool) -> io::Result<()> {
+fn print_active_profiles(profiles: &[String], color: bool) -> io::Result<()> {
     let mut out = io::stdout().lock();
     if color {
-        write!(out, "{}", style("Active profile:").dim())?;
-        match profile {
-            Some(name) => writeln!(out, " {}", style(name).cyan().bold())?,
-            None => writeln!(out, " {}", style("(none)").dim())?,
+        write!(out, "{}", style("Active profiles:").dim())?;
+        if profiles.is_empty() {
+            writeln!(out, " {}", style("(none)").dim())?;
+        } else {
+            writeln!(
+                out,
+                " {}",
+                style(profiles.join(", ")).cyan().bold()
+            )?;
         }
+    } else if profiles.is_empty() {
+        writeln!(out, "Active profiles: (none)")?;
     } else {
-        match profile {
-            Some(name) => writeln!(out, "Active profile: {name}")?,
-            None => writeln!(out, "Active profile: (none)")?,
-        }
+        writeln!(out, "Active profiles: {}", profiles.join(", "))?;
     }
     Ok(())
 }

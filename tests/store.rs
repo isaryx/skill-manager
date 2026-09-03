@@ -223,7 +223,7 @@ fn disabled_skill_in_profile_unwires_on_sync() {
     write_profile(store.path(), "work", &["docx", "git"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -294,7 +294,7 @@ fn index_rebuild_after_delete() {
     fs::remove_file(store.path().join(".skm/index.db")).unwrap();
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -565,7 +565,7 @@ fn skill_rm_removes_from_active_profile() {
     write_profile(store.path(), "work", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -581,7 +581,7 @@ fn skill_rm_removes_from_active_profile() {
     assert!(!profile_body.contains("docx"));
 
     let setup = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
-    assert!(!setup.contains("active = \"work\""));
+    assert!(!setup.contains("active = [\"work\"]"));
 }
 
 #[test]
@@ -608,7 +608,7 @@ fn skill_rm_allowed_when_not_in_active_profile() {
     write_profile(store.path(), "work", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -739,7 +739,7 @@ fn sync_unwires_when_all_profile_skills_are_disabled() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
     assert!(home.path().join(".claude/skills/docx").is_symlink());

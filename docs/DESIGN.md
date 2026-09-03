@@ -1,6 +1,6 @@
 # Design
 
-**CLI:** `skm` · **Version:** 0.3.2
+**CLI:** `skm` · **Version:** 0.3.3
 
 Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.md). CLI conventions: [../guides/cli-guidelines.md](../guides/cli-guidelines.md).
 
@@ -30,7 +30,7 @@ skm import / cp+scan
         ▼
      STORE  ── discover_skill_ids() ──▶  index.db (cache)
         │
-        │  active profile + disabled set
+        │  active profiles + disabled set
         ▼
     resolver::resolve()  ──▶  Vec<SkillPlacement>
         │
@@ -83,7 +83,7 @@ Store path resolution: `--store` → `SKM_STORE` → app config → `~/.skill-st
 |-----|-----------------|---------|
 | `select_setup` | yes (`read_setup`) | doctor with `--user` (lenient path uses `select_setup_lenient`) |
 | `select_setup_lenient` | no (`read_setup_raw`) | doctor (report `unknown_agent` instead of failing early) |
-| `select_command_setup` | yes | status, sync, use-profile, setup-agents, profile show (requires `./.skm.toml` unless `--user`) |
+| `select_command_setup` | yes | status, sync, use-profiles, add-profile, remove-profile, use-agents, profile show (requires `./.skm.toml` unless `--user`) |
 | `select_project_setup` | yes | destroy (requires `./.skm.toml`) |
 | `select_project_setup_raw` | no | `destroy` (tear down even a broken agent list; known agent dirs are still unwired) |
 
@@ -100,7 +100,7 @@ Agent skill dirs are **flat**. `resolver::assign_placement_names`:
 - Unique leaf → leaf name (`engineering/tdd` → `tdd`)
 - Colliding leaves → `__` between segments (`a/tdd` + `b/tdd` → `a__tdd`, `b__tdd`)
 - Duplicate store IDs in one profile → error
-- Disabled skills filtered before naming and existence check; empty result after filter is allowed in resolver (`use-profile` still rejects a profile with zero skill entries)
+- Disabled skills filtered before naming and existence check; empty result after filter is allowed in resolver (`use-profiles` still rejects a profile with zero skill entries)
 
 ---
 
@@ -176,7 +176,7 @@ a skill was inherited from — that attribution is what `profile show` prints.
 collapsed into `skill`. Keeps `resolver` unit-testable in isolation.
 
 **Which view to use.** Operations that *edit* profile files (`profile setup`, `skill rm`) work on
-the direct list; operations that *resolve placements* (`sync`, `use-profile`, `status`, `doctor`
+the direct list; operations that *resolve placements* (`sync`, `use-profiles`, `status`, `doctor`
 link checks) work on the flattened list. `set_profile_skills` and `set_profile_extends` are both
 read-modify-write for this reason — rebuilding the file from scratch would drop the other field.
 
@@ -274,7 +274,7 @@ cargo fmt --check
 
 Helper pattern in `tests/common/mod.rs`: `with_env(home, store)` sets `HOME`, `XDG_CONFIG_HOME`, `SKM_STORE`, `current_dir`.
 
-**`ignore_links` / local exclude.** Required cases live in [SPEC.md](SPEC.md#local-exclude-for-store-owned-links-placementignore_links) (table). Do not ship the feature without them. The one that is easy to skip and expensive to miss: **two git projects, one store** — each `git init` in its own tempdir (never in `HOME`), `use-profile` in both, then assert each `info/exclude` lists only that worktree's paths and neither `.gitignore` changed. A single-project test cannot catch writes that leak into the other repo, `HOME`, or a global exclude.
+**`ignore_links` / local exclude.** Required cases live in [SPEC.md](SPEC.md#local-exclude-for-store-owned-links-placementignore_links) (table). Do not ship the feature without them. The one that is easy to skip and expensive to miss: **two git projects, one store** — each `git init` in its own tempdir (never in `HOME`), `use-profiles` in both, then assert each `info/exclude` lists only that worktree's paths and neither `.gitignore` changed. A single-project test cannot catch writes that leak into the other repo, `HOME`, or a global exclude.
 
 ---
 
@@ -283,9 +283,9 @@ Helper pattern in `tests/common/mod.rs`: `with_env(home, store)` sets `HOME`, `X
 ### New agent adapter
 
 1. Implement `AgentAdapter` in `src/adapters/mod.rs`
-2. Register in `get_adapter()` and `INIT_AGENTS` (the `init` / `setup-agents` picker)
+2. Register in `get_adapter()` and `INIT_AGENTS` (the `init` / `use-agents` picker)
 3. Unit test `target_dir` for project + user levels
-4. Integration test: `init --agent <id>` + `use-profile` → symlink under expected path
+4. Integration test: `init --agent <id>` + `use-profiles` → symlink under expected path
 5. Document in [SPEC-AGENTS.md](SPEC-AGENTS.md) and README agent table
 
 ### New profile-graph consumer
@@ -314,7 +314,7 @@ Prefer routing placement changes through `reconcile()` or `refresh_store_index` 
 
 ### Local exclude (`ignore_links`)
 
-Keep gitignore/exclude logic in `sync/`, called from `reconcile` (and from `setup-agents` via `refresh_local_exclude` when the agent set changes without a sync). The managed block is one list per worktree, so `sync_local_exclude` takes **every** target directory at once — writing it per directory would have each agent's paths erase the previous agent's. Resolve the exclude file with `git rev-parse --git-path info/exclude` from the skills dir (or project root), not a hard-coded `.git/info/exclude`. When adding tests, copy the SPEC table — especially **two projects, one store**.
+Keep gitignore/exclude logic in `sync/`, called from `reconcile` (and from agent changes via `refresh_local_exclude` when the agent set changes without a sync). The managed block is one list per worktree, so `sync_local_exclude` takes **every** target directory at once — writing it per directory would have each agent's paths erase the previous agent's. Resolve the exclude file with `git rev-parse --git-path info/exclude` from the skills dir (or project root), not a hard-coded `.git/info/exclude`. When adding tests, copy the SPEC table — especially **two projects, one store**.
 
 Two invariants worth keeping when touching `sync/exclude.rs`:
 
@@ -334,6 +334,7 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 | 0.3.0 | Shipped | Multi-agent setups, profile `extends`, local git exclude, `skm destroy`, full-screen picker |
 | 0.3.1 | Shipped | Prune stays out of skill trees; missing home is an error; one disabled-list read per index pass |
 | 0.3.2 | Shipped | Project commands require `./.skm.toml` unless `--user`; grouped root help |
+| 0.3.3 | Shipped | Multi-active profiles; `use-profiles` / `use-agents` + add/remove commands |
 | 0.4.0 | Planned | Windows binary, GitHub import |
 | Later | — | Tier 2 agents, `freeze`, variants, skill groups |
 
@@ -346,5 +347,5 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 - Symlink-only placements (no copy-mode ledger yet)
 - Store-owned links are ignored by default via a managed block in **`.git/info/exclude`** (local, not committed). Never edit project `.gitignore` or `<skills-dir>/.gitignore`. Never `*`. Never `git rm --cached`
 - Nested skill discovery at any depth; skip walking inside valid skill dirs when scanning for orphans
-- `use-profile` replaces `skm use`; writes active profile only after reconcile succeeds
+- `use-profiles` replaces `skm use`; writes active profile only after reconcile succeeds
 - Index is disposable — always rebuildable from store + meta on disk

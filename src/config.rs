@@ -74,8 +74,37 @@ where
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProfileSection {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub active: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "de_active_profiles",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub active: Vec<String>,
+}
+
+impl ProfileSection {
+    pub fn is_active(&self, name: &str) -> bool {
+        self.active.iter().any(|profile| profile == name)
+    }
+}
+
+/// Accepts `active = "work"` (legacy) and `active = ["work", "personal"]`.
+fn de_active_profiles<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum ActiveProfiles {
+        One(String),
+        Many(Vec<String>),
+    }
+
+    Ok(match Option::<ActiveProfiles>::deserialize(deserializer)? {
+        None => Vec::new(),
+        Some(ActiveProfiles::One(name)) => vec![name],
+        Some(ActiveProfiles::Many(names)) => names,
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -332,6 +361,28 @@ mod tests {
             validate_setup_agents(&setup),
             Err(SkmError::UnknownAgent(agent)) if agent == "windsurf"
         ));
+    }
+
+    #[test]
+    fn legacy_single_active_profile_is_read_as_a_list() {
+        let setup: SetupFile =
+            toml::from_str("version = 1\n[placement]\nagents = [\"claude-code\"]\n[profile]\nactive = \"work\"\n").unwrap();
+        assert_eq!(setup.profile.active, vec!["work".to_string()]);
+        assert!(toml::to_string(&setup)
+            .unwrap()
+            .contains("active = [\"work\"]"));
+    }
+
+    #[test]
+    fn active_profiles_list_is_read_in_order() {
+        let setup: SetupFile = toml::from_str(
+            "version = 1\n[placement]\nagents = [\"claude-code\"]\n[profile]\nactive = [\"work\", \"personal\"]\n",
+        )
+        .unwrap();
+        assert_eq!(
+            setup.profile.active,
+            vec!["work".to_string(), "personal".to_string()]
+        );
     }
 
     #[test]

@@ -44,7 +44,7 @@ fn local_excludes_are_isolated_between_projects_sharing_a_store() {
         write_skill(&project.path().join(".claude/skills"), "project-skill");
         with_env(home.path(), store.path())
             .current_dir(project.path())
-            .args(["use-profile", "work"])
+            .args(["add-profile", "work"])
             .assert()
             .success()
             .stderr(predicate::str::contains("updating local git exclude"));
@@ -105,7 +105,7 @@ fn ignore_links_opt_out_removes_only_the_managed_exclude_block() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -163,7 +163,7 @@ fn sync_dry_run_does_not_change_local_exclude() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -203,7 +203,7 @@ fn sync_outside_git_does_not_create_a_gitignore() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -232,12 +232,17 @@ fn setup_agents_replaces_old_paths_in_local_exclude() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["add-agent", "cursor"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .current_dir(project.path())
+        .args(["remove-agent", "claude-code"])
         .assert()
         .success();
 
@@ -270,7 +275,7 @@ fn user_level_sync_in_a_git_project_writes_no_local_exclude() {
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work", "--user"])
+        .args(["add-profile", "work", "--user"])
         .assert()
         .success()
         .stderr(predicate::str::contains("updating local git exclude").not());
@@ -312,7 +317,7 @@ fn user_level_sync_does_not_remove_an_existing_project_exclude() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -322,7 +327,7 @@ fn user_level_sync_does_not_remove_an_existing_project_exclude() {
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work", "--user"])
+        .args(["add-profile", "work", "--user"])
         .assert()
         .success()
         .stderr(predicate::str::contains("updating local git exclude").not());
@@ -357,7 +362,7 @@ fn a_malformed_exclude_block_warns_but_still_wires_links() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -420,7 +425,7 @@ fn local_exclude_covers_every_agent_directory() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -459,13 +464,13 @@ fn setup_agents_drops_the_removed_agent_from_local_exclude() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["remove-agent", "claude-code"])
         .assert()
         .success();
 

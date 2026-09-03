@@ -18,7 +18,7 @@ use std::env;
 use crate::cli::ls::LsFilter;
 use crate::cli::sync as sync_cmd;
 use crate::cli::{
-    destroy, doctor::run_doctor, import, init, ls, profile, scan, setup_agents, skill, status,
+    destroy, doctor::run_doctor, import, init, ls, profile, scan, use_agents, skill, status,
     use_cmd, Commands, ProfileAction, SkillAction,
 };
 use crate::config::resolve_store_root;
@@ -75,16 +75,32 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
             }
             0
         }
-        Commands::UseProfile { profile, user } => {
-            use_cmd::run_use_profile(&store, profile.as_deref(), user, reconcile_opts)?;
+        Commands::UseProfiles { user } => {
+            use_cmd::run_use_profiles(&store, user)?;
+            0
+        }
+        Commands::AddProfile { profile, user } => {
+            use_cmd::run_add_profile(&store, &profile, user, reconcile_opts)?;
+            0
+        }
+        Commands::RemoveProfile { profile, user } => {
+            use_cmd::run_remove_profile(&store, &profile, user, reconcile_opts)?;
             0
         }
         Commands::Sync { user } => {
             sync_cmd::run_sync(&store, user, reconcile_opts)?;
             0
         }
-        Commands::SetupAgents { agent, user } => {
-            setup_agents::run_setup_agents(&store, &agent, user)?;
+        Commands::UseAgents { user } => {
+            use_agents::run_use_agents(&store, user)?;
+            0
+        }
+        Commands::AddAgent { agent, user } => {
+            use_agents::run_add_agent(&store, &agent, user)?;
+            0
+        }
+        Commands::RemoveAgent { agent, user } => {
+            use_agents::run_remove_agent(&store, &agent, user)?;
             0
         }
         Commands::Destroy { force } => {
@@ -129,7 +145,7 @@ fn validate_global_flags(cli: &Cli) -> Result<(), SkmError> {
     }
     if cli.dry_run && !supports_dry_run(&cli.command) {
         return Err(SkmError::Usage(
-            "--dry-run is only supported for sync, use-profile, skill rm, and destroy".into(),
+            "--dry-run is only supported for sync, add-profile, remove-profile, skill rm, and destroy".into(),
         ));
     }
     Ok(())
@@ -150,7 +166,10 @@ fn supports_json(command: &Commands) -> bool {
 fn supports_dry_run(command: &Commands) -> bool {
     matches!(
         command,
-        Commands::Sync { .. } | Commands::UseProfile { .. } | Commands::Destroy { .. }
+        Commands::Sync { .. }
+            | Commands::AddProfile { .. }
+            | Commands::RemoveProfile { .. }
+            | Commands::Destroy { .. }
     ) || matches!(
         command,
         Commands::Skill {

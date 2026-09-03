@@ -32,7 +32,7 @@ fn doctor_warns_for_every_tracked_store_owned_link_and_no_others() {
         .success();
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
     // `-f` because the managed exclude block is doing its job.
@@ -79,7 +79,7 @@ fn doctor_json_reports_link_conflict() {
 
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -122,7 +122,7 @@ fn doctor_reports_link_conflict() {
 
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -239,7 +239,7 @@ fn doctor_reports_broken_link() {
 
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -304,7 +304,7 @@ fn doctor_json_reports_link_extra() {
     }
     write_profile(store.path(), "work", &["docx", "git"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
     write_profile(store.path(), "work", &["docx"]);

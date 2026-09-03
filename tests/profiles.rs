@@ -85,7 +85,7 @@ fn profile_show_marks_active_profile() {
     write_profile(store.path(), "work", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -115,7 +115,7 @@ fn profile_rm_refuses_active_profile() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -154,7 +154,7 @@ fn profile_rm_refuses_active_in_project_setup() {
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -193,7 +193,7 @@ fn use_profile_links_inherited_skills() {
     write_profile_extending(store.path(), "work", &["base"], &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -212,7 +212,7 @@ fn use_profile_accepts_a_profile_whose_skills_all_come_from_extends() {
     write_profile_extending(store.path(), "meta", &["base"], &[]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "meta"])
+        .args(["add-profile", "meta"])
         .assert()
         .success();
 
@@ -230,7 +230,7 @@ fn editing_a_base_profile_changes_what_extenders_resolve_to() {
     write_profile_extending(store.path(), "work", &["base"], &[]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
     assert!(home.path().join(".claude/skills/git").is_symlink());
@@ -327,7 +327,7 @@ fn use_profile_rejects_an_extend_cycle() {
     write_profile_extending(store.path(), "b", &["a"], &[]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "a"])
+        .args(["add-profile", "a"])
         .assert()
         .code(2)
         .stderr(predicate::str::contains("extend cycle"));
@@ -342,7 +342,7 @@ fn use_profile_reports_a_missing_extended_profile() {
     write_profile_extending(store.path(), "work", &["gone"], &["git"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .failure()
         .stderr(predicate::str::contains(
@@ -402,7 +402,7 @@ fn extend_chain_past_the_depth_limit_is_rejected() {
     }
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "p0"])
+        .args(["add-profile", "p0"])
         .assert()
         .code(2)
         .stderr(predicate::str::contains("deeper than 8"));
@@ -419,7 +419,7 @@ fn a_skill_in_both_a_profile_and_its_base_resolves_once() {
     write_profile_extending(store.path(), "work", &["base"], &["git"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -454,7 +454,7 @@ fn colliding_leaves_from_two_bases_are_disambiguated() {
     let skills = home.path().join(".claude/skills");
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "eng"])
+        .args(["add-profile", "eng"])
         .assert()
         .success();
     assert!(
@@ -463,7 +463,7 @@ fn colliding_leaves_from_two_bases_are_disambiguated() {
     );
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "both"])
+        .args(["add-profile", "both"])
         .assert()
         .success();
     assert!(skills.join("engineering__tdd").is_symlink());
@@ -494,13 +494,17 @@ fn combining_bases_can_produce_an_unresolvable_collision() {
 
     for solo in ["p1", "p2"] {
         with_env(home.path(), store.path())
-            .args(["use-profile", solo])
+            .args(["add-profile", solo])
+            .assert()
+            .success();
+        with_env(home.path(), store.path())
+            .args(["remove-profile", solo])
             .assert()
             .success();
     }
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "both"])
+        .args(["add-profile", "both"])
         .assert()
         .code(2)
         .stderr(predicate::str::contains("resolve conflict for `a__b`"));
@@ -527,7 +531,7 @@ fn inherited_disabled_skills_are_not_wired() {
     write_profile_extending(store.path(), "work", &["base"], &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -599,7 +603,7 @@ fn profile_show_tree_marks_disabled_skills_separately() {
         ));
 }
 
-/// The tree is the view you reach for when `use-profile` refuses a profile, so it renders the
+/// The tree is the view you reach for when `use-profiles` refuses a profile, so it renders the
 /// graph and then fails with the same code the flat listing would.
 #[test]
 fn profile_show_tree_renders_a_broken_graph_then_fails() {

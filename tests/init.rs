@@ -76,8 +76,8 @@ fn init_refuses_overwrite_without_force() {
         .failure()
         .stderr(
             predicate::str::contains(".skm.toml")
-                .and(predicate::str::contains("setup-agents"))
-                .and(predicate::str::contains("use-profile")),
+                .and(predicate::str::contains("use-agents"))
+                .and(predicate::str::contains("use-profiles")),
         );
 }
 
@@ -99,7 +99,7 @@ fn init_refuses_existing_setup_before_prompting_for_agents() {
         .failure()
         .stderr(
             predicate::str::contains("already exists")
-                .and(predicate::str::contains("setup-agents"))
+                .and(predicate::str::contains("use-agents"))
                 .and(predicate::str::contains("TTY").not()),
         );
 }
@@ -142,7 +142,7 @@ fn init_force_preserves_active_profile() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -152,7 +152,7 @@ fn init_force_preserves_active_profile() {
         .success();
 
     let content = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
-    assert!(content.contains("active = \"work\""));
+    assert!(content.contains("active = [\"work\"]"));
     assert!(content.contains("cursor"));
     assert!(!content.contains("claude-code"));
 }
@@ -231,7 +231,7 @@ fn init_succeeds_when_agent_skills_dir_empty() {
 }
 
 #[test]
-fn setup_agents_updates_setup_file() {
+fn add_agent_appends_to_setup_file() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
 
@@ -241,14 +241,14 @@ fn setup_agents_updates_setup_file() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["add-agent", "cursor"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("target agents: cursor"));
+        .stdout(predicate::str::contains("target agents: claude-code, cursor"));
 
     let content = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
     assert!(content.contains("cursor"));
-    assert!(!content.contains("claude-code"));
+    assert!(content.contains("claude-code"));
 }
 
 #[test]
@@ -262,7 +262,7 @@ fn setup_agents_reports_unchanged_agent() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["add-agent", "cursor"])
         .assert()
         .success()
         .stderr(predicate::str::contains("target agents unchanged: cursor"));
@@ -285,7 +285,7 @@ fn setup_agents_requires_project_setup_in_foreign_dir() {
         .env("SKM_STORE", store.path())
         .current_dir(project.path());
 
-    cmd.args(["setup-agents", "--agent", "cursor"])
+    cmd.args(["add-agent", "cursor"])
         .assert()
         .failure()
         .stderr(predicate::str::contains(".skm.toml"));
@@ -297,7 +297,7 @@ fn setup_agents_requires_setup_file() {
     let store = TempDir::new().unwrap();
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["add-agent", "cursor"])
         .assert()
         .failure()
         .stderr(predicate::str::contains(".skm.toml"));
@@ -314,7 +314,7 @@ fn setup_agents_requires_tty_without_agents() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["setup-agents"])
+        .args(["use-agents"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("TTY"));
@@ -331,7 +331,7 @@ fn setup_agents_rejects_invalid_agent() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "windsurf"])
+        .args(["add-agent", "windsurf"])
         .assert()
         .failure()
         .code(2)
@@ -356,17 +356,17 @@ fn setup_agents_preserves_active_profile() {
         .success();
     write_profile(store.path(), "work", &["demo"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["add-agent", "cursor"])
         .assert()
         .success();
 
     let content = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
-    assert!(content.contains("active = \"work\""));
+    assert!(content.contains("active = [\"work\"]"));
     assert!(content.contains("cursor"));
 }
 
@@ -388,14 +388,14 @@ fn setup_agents_does_not_persist_on_sync_failure() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
     write_profile(store.path(), "work", &["nope"]);
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["add-agent", "cursor"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("not found in store"));
@@ -423,24 +423,28 @@ fn setup_agents_cleans_up_old_agent_symlinks() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
     let old_link = home.path().join(".claude/skills/docx");
     assert!(
         fs::symlink_metadata(&old_link).is_ok(),
-        "expected use-profile to wire the claude-code symlink first"
+        "expected use-profiles to wire the claude-code symlink first"
     );
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["add-agent", "cursor"])
+        .assert()
+        .success();
+    with_env(home.path(), store.path())
+        .args(["remove-agent", "claude-code"])
         .assert()
         .success();
 
     assert!(
         fs::symlink_metadata(&old_link).is_err(),
-        "expected switch-agent to remove the old agent's symlink at {}, but it is still present",
+        "expected remove-agent to drop the old agent's symlink at {}, but it is still present",
         old_link.display()
     );
 }
@@ -466,7 +470,7 @@ fn setup_agents_same_target_only_updates_agent_name() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -480,10 +484,10 @@ fn setup_agents_same_target_only_updates_agent_name() {
     assert!(fs::symlink_metadata(&link).is_ok());
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "generic"])
+        .args(["add-agent", "generic"])
         .assert()
         .success()
-        .stderr(predicate::str::contains("updating setup to generic"))
+        .stderr(predicate::str::contains("target agents unchanged: codex"))
         .stderr(predicate::str::contains("syncing skills").not());
 
     assert!(
@@ -492,8 +496,8 @@ fn setup_agents_same_target_only_updates_agent_name() {
     );
 
     let content = fs::read_to_string(&setup_path).unwrap();
-    assert!(content.contains("agents = [\"generic\"]"));
-    assert!(!content.contains("codex"));
+    assert!(content.contains("codex"));
+    assert!(!content.contains("agents = [\"generic\"]"));
 }
 
 #[test]
@@ -533,7 +537,7 @@ fn generic_agent_places_into_agents_skills() {
     write_profile(store.path(), "work", &["docx"]);
 
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -579,7 +583,7 @@ fn copilot_cli_places_symlinks_under_github_skills() {
 
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -608,7 +612,7 @@ fn gemini_cli_places_symlinks_under_gemini_skills() {
         .success();
     write_profile(store.path(), "work", &["docx"]);
     with_env(home.path(), store.path())
-        .args(["use-profile", "work"])
+        .args(["add-profile", "work"])
         .assert()
         .success();
 
@@ -694,7 +698,7 @@ fn setup_agents_adds_an_agent_and_syncs_into_its_directory() {
     activate_docx(home.path(), store.path());
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "claude-code,cursor"])
+        .args(["add-agent", "cursor"])
         .assert()
         .success()
         .stdout(predicate::str::contains(
@@ -717,7 +721,7 @@ fn setup_agents_unwires_only_the_dropped_agent() {
     activate_docx(home.path(), store.path());
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["remove-agent", "claude-code"])
         .assert()
         .success();
 
@@ -744,14 +748,14 @@ fn setup_agents_skips_sync_when_only_dropping_agents() {
     activate_docx(home.path(), store.path());
 
     with_env(home.path(), store.path())
-        .args(["setup-agents", "--agent", "cursor"])
+        .args(["remove-agent", "claude-code"])
         .assert()
         .success()
         .stderr(predicate::str::contains("syncing skills").not());
 }
 
 #[test]
-fn switch_agent_still_works_as_an_alias() {
+fn remove_agent_errors_when_not_a_target() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
 
@@ -761,11 +765,31 @@ fn switch_agent_still_works_as_an_alias() {
         .success();
 
     with_env(home.path(), store.path())
-        .args(["switch-agent", "--agent", "cursor"])
+        .args(["remove-agent", "cursor"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not a target"));
+}
+
+#[test]
+fn remove_agent_errors_when_removing_the_last_agent() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code"])
         .assert()
         .success();
 
-    assert!(setup_body(home.path()).contains("agents = [\"cursor\"]"));
+    with_env(home.path(), store.path())
+        .args(["remove-agent", "claude-code"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("last target agent"))
+        .stderr(predicate::str::contains("updating setup").not());
+
+    let content = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
+    assert!(content.contains("claude-code"));
 }
 
 /// Setups written before multi-agent support say `agent = "..."`. They must keep working, and

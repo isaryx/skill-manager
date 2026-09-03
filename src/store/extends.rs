@@ -181,14 +181,27 @@ pub fn flatten_skill_ids(store: &StorePaths, name: &str) -> Result<Vec<String>, 
 /// Lets `resolver::resolve` stay pure and I/O-free: the graph walk happens here, and the
 /// resolver still receives a plain [`ProfileFile`]. The returned value has an empty `extends`,
 /// since it is already resolved.
-pub fn load_flattened_profile(store: &StorePaths, name: &str) -> Result<ProfileFile, SkmError> {
+pub fn load_merged_flattened_profile(
+    store: &StorePaths,
+    names: &[impl AsRef<str>],
+) -> Result<ProfileFile, SkmError> {
+    let mut seen = std::collections::HashSet::new();
+    let mut skill = Vec::new();
+    for name in names {
+        for id in flatten_skill_ids(store, name.as_ref())? {
+            if seen.insert(id.clone()) {
+                skill.push(ProfileSkillEntry { id });
+            }
+        }
+    }
     Ok(ProfileFile {
         extends: Vec::new(),
-        skill: flatten_skill_ids(store, name)?
-            .into_iter()
-            .map(|id| ProfileSkillEntry { id })
-            .collect(),
+        skill,
     })
+}
+
+pub fn load_flattened_profile(store: &StorePaths, name: &str) -> Result<ProfileFile, SkmError> {
+    load_merged_flattened_profile(store, &[name])
 }
 
 /// What a [`TreeNode`] represents. Stated rather than inferred: an empty profile is a childless
@@ -255,7 +268,7 @@ impl TreeNode {
 /// `*` marks a node already accounted for above — a profile subtree rendered elsewhere, or a
 /// skill an earlier profile already contributed. Those are not counted twice, so `Tree::resolved`
 /// matches the line count of the flat `profile show` listing. It is *not* the number of symlinks
-/// `use-profile` creates: disabled skills resolve but are never wired.
+/// `use-profiles` creates: disabled skills resolve but are never wired.
 pub fn build_tree(store: &StorePaths, name: &str, disabled: &HashSet<String>) -> Tree {
     let mut builder = TreeBuilder {
         store,
@@ -961,7 +974,7 @@ mod tests {
 
     // ---- tree on a broken graph ---------------------------------------------------
 
-    /// The tree is the view you want when `use-profile` refuses a profile, so it renders what it
+    /// The tree is the view you want when `use-profiles` refuses a profile, so it renders what it
     /// can and marks the break instead of giving up.
     #[test]
     fn a_missing_profile_is_marked_and_siblings_still_render() {

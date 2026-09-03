@@ -269,6 +269,29 @@ fn setup_agents_reports_unchanged_agent() {
 }
 
 #[test]
+fn setup_agents_requires_project_setup_in_foreign_dir() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+
+    let mut cmd = skm();
+    cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("SKM_STORE", store.path())
+        .current_dir(project.path());
+
+    cmd.args(["setup-agents", "--agent", "cursor"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(".skm.toml"));
+}
+
+#[test]
 fn setup_agents_requires_setup_file() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();

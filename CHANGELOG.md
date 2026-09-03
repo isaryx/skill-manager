@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-09-03
+
+Project commands require `./.skm.toml` by default, and root help groups commands by project vs store.
+
+### Changed
+
+- **`skm sync`**, **`skm use-profile`**, and **`skm setup-agents`** require `./.skm.toml` in the current directory (same as `skm status`); use `--user` / `-u` for `~/.skm.toml`.
+- Root `--help` groups commands under `PROJECT COMMANDS` and `STORE COMMANDS`.
+
+[0.3.2]: https://github.com/isaryx/skill-manager/releases/tag/v0.3.2
+
 ## [0.3.1] - 2026-09-01
 
 Prune safety, missing-home error, and a cheaper disabled-list read on index rebuild.

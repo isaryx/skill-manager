@@ -97,6 +97,15 @@ pub fn select_project_setup(cwd: &Path) -> Result<SelectedSetup, SkmError> {
     })
 }
 
+/// Setup file for commands that require `./.skm.toml` unless `--user` / `-u`.
+pub fn select_command_setup(cwd: &Path, force_user: bool) -> Result<SelectedSetup, SkmError> {
+    if force_user {
+        select_setup(cwd, true)
+    } else {
+        select_project_setup(cwd)
+    }
+}
+
 /// Load `./.skm.toml` without validating agents, so a broken setup can still be torn down.
 pub fn select_project_setup_raw(cwd: &Path) -> Result<SelectedSetup, SkmError> {
     let project_path = crate::config::project_setup_path(cwd);

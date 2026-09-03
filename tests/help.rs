@@ -28,6 +28,17 @@ fn short_help_explains_engineering_workflow() {
 }
 
 #[test]
+fn root_help_groups_project_and_store_commands() {
+    skm().arg("--help").assert().success().stdout(
+        predicate::str::contains("PROJECT COMMANDS")
+            .and(predicate::str::contains("STORE COMMANDS"))
+            .and(predicate::str::contains("  init"))
+            .and(predicate::str::contains("  import"))
+            .and(predicate::str::contains("Project commands require `./.skm.toml`")),
+    );
+}
+
+#[test]
 fn help_explains_engineering_workflow() {
     skm().arg("--help").assert().success().stdout(
         predicate::str::contains("canonical skill directories in a store")
@@ -84,6 +95,30 @@ fn profile_extend_help_says_it_creates_a_missing_profile() {
         .stdout(predicate::str::contains(
             "extend  Choose which profiles this one inherits skills from (interactive; creates the profile if missing)",
         ));
+}
+
+#[test]
+fn use_profile_help_documents_project_setup_requirement() {
+    skm().args(["use-profile", "--help"]).assert().success().stdout(
+        predicate::str::contains("Requires `./.skm.toml`")
+            .and(predicate::str::contains("--user")),
+    );
+}
+
+#[test]
+fn setup_agents_help_documents_project_setup_requirement() {
+    skm().args(["setup-agents", "--help"]).assert().success().stdout(
+        predicate::str::contains("Requires `./.skm.toml`")
+            .and(predicate::str::contains("--user")),
+    );
+}
+
+#[test]
+fn sync_help_documents_project_setup_requirement() {
+    skm().args(["sync", "--help"]).assert().success().stdout(
+        predicate::str::contains("Requires `./.skm.toml`")
+            .and(predicate::str::contains("--user")),
+    );
 }
 
 #[test]

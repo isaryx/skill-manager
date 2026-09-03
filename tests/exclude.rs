@@ -270,7 +270,7 @@ fn user_level_sync_in_a_git_project_writes_no_local_exclude() {
 
     with_env(home.path(), store.path())
         .current_dir(project.path())
-        .args(["use-profile", "work"])
+        .args(["use-profile", "work", "--user"])
         .assert()
         .success()
         .stderr(predicate::str::contains("updating local git exclude").not());

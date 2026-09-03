@@ -8,6 +8,52 @@ use tempfile::TempDir;
 use common::*;
 
 #[test]
+fn use_profile_requires_project_setup() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+
+    let mut cmd = skm();
+    cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("SKM_STORE", store.path())
+        .current_dir(project.path());
+
+    cmd.args(["use-profile", "work"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(".skm.toml"));
+}
+
+#[test]
+fn sync_requires_project_setup() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["init", "--agent", "claude-code"])
+        .assert()
+        .success();
+
+    let mut cmd = skm();
+    cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("SKM_STORE", store.path())
+        .current_dir(project.path());
+
+    cmd.args(["sync"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(".skm.toml"));
+}
+
+#[test]
 fn status_requires_project_setup() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();

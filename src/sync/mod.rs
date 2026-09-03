@@ -10,7 +10,7 @@ use crate::error::SkmError;
 use crate::progress;
 use crate::progress::display_path;
 use crate::resolver::{resolve, SkillPlacement};
-use crate::setup::{select_setup, target_dirs_for_setup, SelectedSetup};
+use crate::setup::{select_command_setup, target_dirs_for_setup, SelectedSetup};
 use crate::store::extends::load_flattened_profile;
 use crate::store::skills::read_disabled_ids;
 use crate::store::{ensure_store_subdirs, StorePaths};
@@ -55,7 +55,7 @@ pub fn reconcile(
     force_user: bool,
     options: ReconcileOptions,
 ) -> Result<(), SkmError> {
-    let selected = select_setup(cwd, force_user)?;
+    let selected = select_command_setup(cwd, force_user)?;
     reconcile_with_setup(store, &selected, None, options)
 }
 

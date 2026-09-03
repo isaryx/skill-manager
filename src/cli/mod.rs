@@ -1,8 +1,9 @@
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 
 use crate::color::ColorWhen;
 
+pub mod help;
 pub mod agent;
 pub mod destroy;
 pub mod doctor;
@@ -20,6 +21,11 @@ pub mod use_cmd;
 
 pub use agent::{unique_agent_ids, Agent};
 
+/// Root [`clap::Command`] with grouped help sections.
+pub fn cli_command() -> clap::Command {
+    help::apply_grouped_help(Cli::command())
+}
+
 #[derive(Parser, Debug)]
 #[command(
     name = "skm",
@@ -36,6 +42,7 @@ pub use agent::{unique_agent_ids, Agent};
                        skm init --agent claude-code\n  \
                        skm import ./my-skill --copy\n  \
                        skm profile setup work && skm use-profile work\n\n\
+                       Project commands require `./.skm.toml` unless --user.\n\n\
                        Automation:\n  \
                        Select the store with SKM_STORE or --store.\n  \
                        --json works with `status`, `ls`, `skill ls`, and `doctor`; data goes to \
@@ -123,7 +130,8 @@ pub enum Commands {
     #[command(
         name = "use-profile",
         long_about = "Activate a profile and sync skill links.\n\n\
-                      Omit PROFILE to choose interactively from the available profiles."
+                      Omit PROFILE to choose interactively from the available profiles.",
+        after_help = "Requires `./.skm.toml` unless --user."
     )]
     UseProfile {
         /// Profile name; omit to choose interactively
@@ -138,7 +146,8 @@ pub enum Commands {
         alias = "switch-agent",
         long_about = "Replace the set of target agents in the setup file.\n\n\
                       Without --agent, pick them from a checkbox list pre-checked with the \
-                      current agents. Agents you uncheck have their store-owned links removed."
+                      current agents. Agents you uncheck have their store-owned links removed.",
+        after_help = "Requires `./.skm.toml` unless --user."
     )]
     SetupAgents {
         /// Target agents (repeatable, comma-separated); omit to pick interactively
@@ -163,6 +172,7 @@ pub enum Commands {
         force: bool,
     },
     /// Refresh skill links without changing the active profile
+    #[command(after_help = "Requires `./.skm.toml` unless --user.")]
     Sync {
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]

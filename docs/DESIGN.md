@@ -1,6 +1,6 @@
 # Design
 
-**CLI:** `skm` · **Version:** 0.3.1
+**CLI:** `skm` · **Version:** 0.3.2
 
 Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.md). CLI conventions: [../guides/cli-guidelines.md](../guides/cli-guidelines.md).
 
@@ -81,9 +81,10 @@ Store path resolution: `--store` → `SKM_STORE` → app config → `~/.skill-st
 
 | API | Validates agent | Used by |
 |-----|-----------------|---------|
-| `select_setup` | yes (`read_setup`) | sync, use-profile, status |
+| `select_setup` | yes (`read_setup`) | doctor with `--user` (lenient path uses `select_setup_lenient`) |
 | `select_setup_lenient` | no (`read_setup_raw`) | doctor (report `unknown_agent` instead of failing early) |
-| `select_project_setup` | yes | status without `--user` (requires `./.skm.toml`) |
+| `select_command_setup` | yes | status, sync, use-profile, setup-agents, profile show (requires `./.skm.toml` unless `--user`) |
+| `select_project_setup` | yes | destroy (requires `./.skm.toml`) |
 | `select_project_setup_raw` | no | `destroy` (tear down even a broken agent list; known agent dirs are still unwired) |
 
 `--user` / `-u` always loads `~/.skm.toml`. Default: `./.skm.toml` if present, else user setup.
@@ -332,6 +333,7 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 | 0.2.2 | Shipped | Drop `skm add`; engineer-oriented `--help` |
 | 0.3.0 | Shipped | Multi-agent setups, profile `extends`, local git exclude, `skm destroy`, full-screen picker |
 | 0.3.1 | Shipped | Prune stays out of skill trees; missing home is an error; one disabled-list read per index pass |
+| 0.3.2 | Shipped | Project commands require `./.skm.toml` unless `--user`; grouped root help |
 | 0.4.0 | Planned | Windows binary, GitHub import |
 | Later | — | Tier 2 agents, `freeze`, variants, skill groups |
 

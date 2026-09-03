@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.3.1 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
+**Version:** 0.3.2 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 
@@ -72,7 +72,7 @@ Store path: `--store` → `SKM_STORE` → app config → `~/.skill-store`.
 | Command | Setup file |
 |---------|------------|
 | Most commands | `./.skm.toml` if present, else `~/.skm.toml` |
-| `skm status` | Requires `./.skm.toml` (unless `--user`) |
+| `skm status`, `skm sync`, `skm use-profile`, `skm setup-agents` | Requires `./.skm.toml` (unless `--user`) |
 
 ---
 

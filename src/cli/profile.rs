@@ -4,7 +4,7 @@ use std::io::{self, IsTerminal};
 use crate::color::color_stdout;
 use crate::error::SkmError;
 use crate::progress;
-use crate::setup::select_setup;
+use crate::setup::select_command_setup;
 use crate::store::extends::{
     build_tree, extend_candidates, flatten_profile, flatten_with_extends, profiles_extending,
     render_tree,
@@ -127,7 +127,7 @@ pub fn run_profile_show(
     validate_profile_name(name)?;
 
     let cwd = env::current_dir()?;
-    if let Ok(setup) = select_setup(&cwd, force_user) {
+    if let Ok(setup) = select_command_setup(&cwd, force_user) {
         if setup.setup.profile.active.as_deref() == Some(name) {
             eprintln!("(active)");
         }

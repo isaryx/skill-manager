@@ -25,7 +25,7 @@ use crate::config::resolve_store_root;
 use crate::store::StorePaths;
 use crate::sync::ReconcileOptions;
 
-pub use cli::Cli;
+pub use cli::{cli_command, Cli};
 pub use error::{exit_code_from_error, print_error, SkmError};
 
 pub fn run(cli: Cli) -> Result<i32, SkmError> {

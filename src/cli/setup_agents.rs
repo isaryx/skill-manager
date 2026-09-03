@@ -10,7 +10,7 @@ use crate::config::write_setup;
 use crate::error::SkmError;
 use crate::progress;
 use crate::progress::display_path;
-use crate::setup::{select_setup, set_setup_agents, target_dirs_for_setup};
+use crate::setup::{select_command_setup, set_setup_agents, target_dirs_for_setup};
 use crate::store::StorePaths;
 use crate::sync::{reconcile_with_setup, refresh_local_exclude, unwire_all, ReconcileOptions};
 use crate::util::paths_equal;
@@ -21,7 +21,8 @@ pub fn run_setup_agents(
     force_user: bool,
 ) -> Result<(), SkmError> {
     let cwd = env::current_dir()?;
-    let mut selected = select_setup(&cwd, force_user).map_err(|e| e.op("loading config file"))?;
+    let mut selected =
+        select_command_setup(&cwd, force_user).map_err(|e| e.op("loading config file"))?;
 
     let current = selected.setup.placement.resolved_agents();
     let chosen = resolve_setup_agents(agents, &current, selected.level, &selected.project_root)?;

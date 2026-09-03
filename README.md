@@ -115,10 +115,10 @@ skm doctor --json    # for scripts (includes link.conflict when a profile skill 
 | `skm skill ls` / `setup` / `rm` | List, enable/disable, or remove skills in the store |
 | `skm profile setup/ls/show/rm` | Create and manage profiles |
 | `skm profile extend <profile>` | Pick which profiles this one inherits skills from (creates the profile if missing) |
-| `skm use-profile [profile]` | Activate a profile and sync links to every target agent folder; omit the name to choose interactively |
-| `skm setup-agents` | Choose which agents your config places skills into (checkbox list; `switch-agent` still works) |
+| `skm use-profile [profile]` | Activate a profile and sync links to every target agent folder; omit the name to choose interactively (`./.skm.toml` unless `--user`) |
+| `skm setup-agents` | Choose which agents your config places skills into (checkbox list; `switch-agent` still works; `./.skm.toml` unless `--user`) |
 | `skm destroy` | Remove `./.skm.toml`, store-owned links in every known project agent dir, and the managed git exclude (store kept; `--force` off-TTY) |
-| `skm sync` | Refresh skill links and index without changing the active profile |
+| `skm sync` | Refresh skill links and index without changing the active profile (`./.skm.toml` unless `--user`) |
 | `skm status` | Show target agents, active profile, linked skills, and name conflicts (`./.skm.toml` unless `--user`) |
 | `skm doctor` | Health report for store, profiles, and links |
 | `skm scan` | Refresh the skill index and adopt skills added to the store without metadata |

@@ -5,7 +5,7 @@ use dialoguer::Select;
 
 use crate::error::SkmError;
 use crate::progress;
-use crate::setup::{select_setup, set_active_profile};
+use crate::setup::{select_command_setup, set_active_profile};
 use crate::store::extends::flatten_skill_ids;
 use crate::store::profiles::list_profiles;
 use crate::store::StorePaths;
@@ -24,7 +24,7 @@ pub fn run_use_profile(
     }
 
     let cwd = env::current_dir()?;
-    let mut setup = select_setup(&cwd, force_user)?;
+    let mut setup = select_command_setup(&cwd, force_user)?;
     let profile = match profile {
         Some(profile) => profile.to_string(),
         None => interactive_select_profile(store, setup.setup.profile.active.as_deref())?,

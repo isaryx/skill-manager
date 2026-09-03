@@ -11,17 +11,14 @@ use crate::cli::output::{
 };
 use crate::error::SkmError;
 use crate::progress::display_path;
-use crate::setup::{select_project_setup, select_setup};
+use crate::setup::select_command_setup;
 use crate::store::StorePaths;
 use crate::sync::{collect_status, AgentStatus, PlacementConflict, PlacementStatus};
 
 pub fn run_status(store: &StorePaths, force_user: bool, json: bool) -> Result<(), SkmError> {
     let cwd = env::current_dir()?;
-    let selected = if force_user {
-        select_setup(&cwd, true).map_err(|e| e.op("loading config file"))?
-    } else {
-        select_project_setup(&cwd).map_err(|e| e.op("loading config file"))?
-    };
+    let selected =
+        select_command_setup(&cwd, force_user).map_err(|e| e.op("loading config file"))?;
     let reports = collect_status(store, &selected).map_err(|e| e.op("collecting linked skills"))?;
 
     let mut paths = Vec::with_capacity(reports.len());

@@ -62,10 +62,10 @@ fn apply_target_agents(
     // listed in does not change where anything is placed, so a reordered selection is the same
     // setup and not worth a rewrite.
     if same_agents(&selected.setup.placement.agents, chosen) {
-        eprintln!(
+        progress::step(format!(
             "target agents unchanged: {}",
             selected.setup.placement.agents.join(", ")
-        );
+        ));
         return Ok(());
     }
 

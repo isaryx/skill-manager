@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use crate::error::SkmError;
+use crate::progress;
 use crate::store::remote::meta::remove_remote_skill_meta;
 use crate::store::StorePaths;
 use crate::util::is_skill_dir;
@@ -20,10 +21,9 @@ pub fn install_library_symlinks(
         match install_one_symlink(store, id, target) {
             Ok(()) => installed.push(id.clone()),
             Err(SkmError::LibraryLinkOccupied { .. }) => {
-                eprintln!(
-                    "warning: skipping `{}`: destination occupied by non-skm entry",
-                    id
-                );
+                progress::warn(format!(
+                    "skipping `{id}`: destination occupied by non-skm entry"
+                ));
             }
             Err(err) => return Err(err),
         }

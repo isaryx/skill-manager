@@ -44,23 +44,27 @@ pub fn pull_remotes(store: &StorePaths, options: PullOptions) -> Result<(), SkmE
 
         let checkout = checkout_path(store, &reg.name);
         if !checkout.is_dir() {
-            eprintln!(
-                "warning: checkout missing for `{}`: {}",
+            progress::warn(format!(
+                "checkout missing for `{}`: {}",
                 reg.name,
                 checkout.display()
-            );
+            ));
             continue;
         }
 
         match update_checkout(&checkout, reg.pin.as_deref()) {
             Ok(commit) => {
                 if let Err(err) = refresh_repo_after_pull(store, &reg.name, &commit) {
-                    eprintln!("warning: refresh failed for `{}`: {}", reg.name, err.leaf());
+                    progress::warn(format!(
+                        "refresh failed for `{}`: {}",
+                        reg.name,
+                        err.leaf()
+                    ));
                 }
                 any_pulled = true;
             }
             Err(err) => {
-                eprintln!("warning: pull failed for `{}`: {}", reg.name, err.leaf());
+                progress::warn(format!("pull failed for `{}`: {}", reg.name, err.leaf()));
                 let mut failed = reg;
                 failed.last_pull_error = Some(err.leaf().to_string());
                 write_repo(store, &failed)?;

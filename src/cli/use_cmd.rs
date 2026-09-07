@@ -37,10 +37,10 @@ pub fn run_add_profile(
     let cwd = env::current_dir()?;
     let setup = select_command_setup(&cwd, force_user)?;
     if setup.setup.profile.is_active(profile) {
-        eprintln!(
+        progress::step(format!(
             "active profiles unchanged: {}",
             setup.setup.profile.active.join(", ")
-        );
+        ));
         return Ok(());
     }
     let mut active = setup.setup.profile.active.clone();

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.1](https://github.com/isaryx/skill-manager/releases/tag/v0.5.1) - 2026-09-07
 
-Remote repo lifecycle, skills.sh browse, and per-skill sync tracking.
+Remote repo lifecycle, skills.sh browse, per-skill sync tracking, and structured CLI messaging.
 
 ### Added
 
@@ -19,10 +19,12 @@ Remote repo lifecycle, skills.sh browse, and per-skill sync tracking.
 - **Non-GitHub git hosts** — any HTTPS/SSH URL that `git clone` accepts (e.g. GitLab) works; `owner/repo` shorthand remains GitHub-only.
 - **Per-skill remote sync meta** — `commit` and `synced_at` in `.skm/meta/<repo>/<skill>.toml`, updated on `update` and `sync`. Doctor reports `remote.stale` when checkout content has moved on.
 - **`skm repo browse`** — interactive skills.sh leaderboard (JSON API with HTML fallback); filter and multi-select repos to register via `repo add`.
+- **Stable error codes** — every fatal `SkmError` has a machine-readable `code` (dot notation, same style as `doctor` issue codes). With `--json`, failures emit one JSON envelope on stderr: `{ ok, error: { code, message, retryable, operation? } }`. Branch on `error.code`, not `error.message`.
 
 ### Changed
 
 - Docs consolidated into [SPEC.md](docs/SPEC.md) and [DESIGN.md](docs/DESIGN.md); removed `SPEC-REMOTE.md` and `SPEC-AGENTS.md`.
+- **User-facing messages** — unified stderr prefixes (`error:`, `warning:`, indented progress via `progress::step`). Remote/git warnings and no-op messages (`active profiles unchanged`, `target agents unchanged`) use the same helpers instead of ad-hoc `eprintln!`.
 
 ### Fixed
 

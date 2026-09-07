@@ -409,7 +409,7 @@ Human output on stdout; progress on stderr. `status` shows every target agent wi
 
 ## JSON output (`--json`)
 
-Data on stdout only; no ANSI on stdout.
+Data on stdout only; no ANSI on stdout. On failure, see [Structured failures](#structured-failures-json) below.
 
 **`status`:** `{ agents: [{ agent, skills_path, skills: [{ name, store_id, source, source_type? }], conflicts: [{ name, store_id, reason: "conflicted" }] }], profiles }`
 
@@ -417,7 +417,7 @@ Data on stdout only; no ANSI on stdout.
 
 **`ls` / `skill ls`:** `{ skills: [...] }` and/or `{ profiles: [...] }` depending on filters.
 
-**`doctor`:** `{ ok, store, agents: [...], profile, issues: [{ code, severity, message, agent?, ... }] }` — `ok` matches exit code. Issues belonging to one agent's skills directory carry its `agent`.
+**`doctor`:** `{ ok, store, agents: [...], profiles, issues: [{ code, severity, message, agent?, ... }] }` — `ok` matches exit code. Issues belonging to one agent's skills directory carry its `agent`.
 
 ---
 
@@ -425,8 +425,33 @@ Data on stdout only; no ANSI on stdout.
 
 | Stream | Content |
 |--------|---------|
-| stdout | Data (`status`, `ls`, `import` tree IDs, `--json`) |
-| stderr | Progress, errors, logs (`--verbose` / `RUST_LOG`) |
+| stdout | Data (`status`, `ls`, `import` tree IDs, `--json` success payloads) |
+| stderr | Progress, warnings, errors, logs (`--verbose` / `RUST_LOG`) |
+
+### Human message prefixes
+
+| Prefix | Stream | Meaning |
+|--------|--------|---------|
+| *(indented line)* | stderr | Progress narration via `progress::step` — dim when color is on |
+| `warning:` | stderr | Non-fatal problem; command continues or partially succeeds |
+| `error:` | stderr | Fatal failure; process exits non-zero |
+
+Warnings and errors share the same stream so scripts can ignore stderr for data-only `--json` runs, or capture it for diagnostics.
+
+### Structured failures (`--json`) {#structured-failures-json}
+
+When `--json` is set and a command fails before or instead of emitting success JSON, stderr gets one line:
+
+```json
+{"ok":false,"error":{"code":"profile.not_found","message":"…","retryable":false}}
+```
+
+- `code` — stable identifier (same style as `doctor` issue codes). Branch on this, not on `message`.
+- `message` — human-readable leaf error (what `error: …` would show without `--json`).
+- `retryable` — `true` only for transient external failures (e.g. skills.sh fetch).
+- `operation` — present with `--verbose` when the error was wrapped with context (top-level operation only).
+
+Interactive TTY use without `--json` still gets `error: …` on stderr.
 
 | Code | Meaning |
 |------|---------|

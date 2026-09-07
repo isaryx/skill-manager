@@ -158,6 +158,8 @@ Global flags: `--verbose` / `-v`, `--store <path>` (env: `SKM_STORE`), `--json`,
 - Set `SKM_STORE` or pass `--store <path>` to select the store without a prompt.
 - Pass `--agent` to `skm init`; repeat it or comma-separate for several agents (`--agent claude-code,cursor`). Use `skm add-agent` / `skm remove-agent` to change the set after init. If a target directory already contains skills, also pass `--accept-existing-skills`.
 - Use `--json` with `status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor`, and `repo ls`. Structured data stays on stdout; progress and errors go to stderr.
+- With `--json`, a failed command prints one JSON error envelope on stderr (`error.code`, `error.message`, `error.retryable`). Dispatch on `code`, not on `message`.
+- Human stderr prefixes: indented lines for progress, `warning:` for non-fatal issues, `error:` for fatal failures.
 - Use `--dry-run` before `sync`, `update`, `add-profile`, `remove-profile`, or `skill rm`. Non-interactive `skill rm` also requires `--force`.
 - Exit codes: `0` success, `1` runtime or health-check failure, `2` invalid usage or resolution conflicts.
 
@@ -200,7 +202,7 @@ Every target agent gets its own symlinks, so the same profile can serve several 
 | Doc | Use when you need |
 |-----|-------------------|
 | This README | Install, quick start, everyday workflows |
-| [docs/SPEC.md](docs/SPEC.md) | Commands, agents, remotes, flags, exit codes |
+| [docs/SPEC.md](docs/SPEC.md) | Commands, agents, remotes, flags, exit codes, message prefixes |
 | [docs/DESIGN.md](docs/DESIGN.md) | Architecture and design decisions |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 

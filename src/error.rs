@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -186,10 +187,24 @@ pub enum SkmError {
     TomlDeserialize(#[from] toml::de::Error),
 }
 
+#[derive(Debug, Serialize)]
+pub struct ErrorEnvelope {
+    pub ok: bool,
+    pub error: ErrorJson,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ErrorJson {
+    pub code: &'static str,
+    pub message: String,
+    pub retryable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub operation: Option<String>,
+}
+
 impl SkmError {
     pub fn exit_code(&self) -> i32 {
-        match self {
-            SkmError::WithContext { source, .. } => source.exit_code(),
+        match self.leaf() {
             SkmError::Usage(_)
             | SkmError::DuplicateSkillId(_)
             | SkmError::ResolveConflict(_)
@@ -208,6 +223,73 @@ impl SkmError {
         }
     }
 
+    /// Stable machine-readable identifier. Agents should branch on this, not on [`Display`].
+    pub fn code(&self) -> &'static str {
+        match self.leaf() {
+            SkmError::StoreNotInitialized => "store.not_initialized",
+            SkmError::SetupExists(_) => "config.setup_exists",
+            SkmError::SetupNotFound(_) => "config.not_found",
+            SkmError::AppConfigNotFound(_) => "app_config.not_found",
+            SkmError::HomeNotFound => "env.home_not_found",
+            SkmError::InvalidAppConfig { .. } => "app_config.invalid",
+            SkmError::InvalidSkillId(_) => "skill.invalid_id",
+            SkmError::InvalidProfileName(_) => "profile.invalid_name",
+            SkmError::ReservedName(_) => "store.reserved_name",
+            SkmError::DestinationExists(_) => "skill.destination_exists",
+            SkmError::NotASkillDir(_) => "skill.not_a_dir",
+            SkmError::EmptySkillBundle(_) => "skill.empty_bundle",
+            SkmError::SymlinkInSkillTree(_) => "skill.symlink_in_tree",
+            SkmError::UnknownAgent(_) => "agent.unknown",
+            SkmError::NoTargetAgents => "config.no_agents",
+            SkmError::AgentNotTarget(_) => "agent.not_target",
+            SkmError::LastTargetAgentRemoval => "agent.last_removal",
+            SkmError::ProfileNotFound(_) => "profile.not_found",
+            SkmError::NoProfiles => "profile.none_available",
+            SkmError::EmptyProfile => "profile.empty",
+            SkmError::NoActiveProfile => "profile.not_active",
+            SkmError::ProfileNotActive(_) => "profile.not_in_active_set",
+            SkmError::ActiveProfileRemoval(_) => "profile.active_removal",
+            SkmError::DuplicateSkillId(_) => "profile.duplicate_skill",
+            SkmError::SelfExtend(_) => "profile.self_extend",
+            SkmError::DuplicateExtend(_) => "profile.duplicate_extend",
+            SkmError::ExtendCycle(_) => "profile.extend_cycle",
+            SkmError::ExtendTooDeep { .. } => "profile.extend_too_deep",
+            SkmError::ExtendNotFound { .. } => "profile.extend_not_found",
+            SkmError::ExtendedProfileRemoval { .. } => "profile.extended_removal",
+            SkmError::NoExtendCandidates => "profile.no_extend_candidates",
+            SkmError::EmptyPool => "store.empty_pool",
+            SkmError::NotATty => "env.not_a_tty",
+            SkmError::InvalidStore { .. } => "store.invalid",
+            SkmError::SelectionCancelled => "interactive.selection_cancelled",
+            SkmError::InvalidProfile { .. } => "profile.invalid_file",
+            SkmError::InvalidSetup { .. } => "config.invalid",
+            SkmError::ResolveConflict(_) => "resolve.conflict",
+            SkmError::ResolveNotFound(_) => "resolve.not_found",
+            SkmError::SkillNotFound(_) => "skill.not_found",
+            SkmError::RefuseNonInteractiveRm => "interactive.refuse_rm",
+            SkmError::RefuseNonInteractiveDestroy => "interactive.refuse_destroy",
+            SkmError::SkillSpecInvalid(_) => "skill.spec_invalid",
+            SkmError::GitNotFound => "git.not_found",
+            SkmError::GitCommandFailed { .. } => "git.command_failed",
+            SkmError::RepoAlreadyRegistered(_) => "remote.already_registered",
+            SkmError::RepoUrlAlreadyRegistered { .. } => "remote.url_registered",
+            SkmError::RepoNotFound(_) => "remote.not_found",
+            SkmError::RepoReferencedByProfiles { .. } => "remote.referenced_by_profiles",
+            SkmError::LibraryLinkOccupied { .. } => "remote.link_occupied",
+            SkmError::SkillsShFetchFailed { .. } => "remote.skills_sh_fetch_failed",
+            SkmError::Usage(_) => "usage.invalid",
+            SkmError::WithContext { .. } => unreachable!("leaf() strips WithContext"),
+            SkmError::Io(_) => "io.error",
+            SkmError::Sqlite(_) => "store.index_error",
+            SkmError::TomlSerialize(_) => "config.serialize_error",
+            SkmError::TomlDeserialize(_) => "config.parse_error",
+        }
+    }
+
+    pub fn retryable(&self) -> bool {
+        matches!(self.leaf(), SkmError::SkillsShFetchFailed { .. })
+    }
+
     pub fn op(self, operation: impl Into<String>) -> Self {
         SkmError::WithContext {
             operation: operation.into(),
@@ -221,6 +303,29 @@ impl SkmError {
             other => other,
         }
     }
+
+    pub fn to_json(&self, verbose: bool) -> ErrorEnvelope {
+        ErrorEnvelope {
+            ok: false,
+            error: ErrorJson {
+                code: self.code(),
+                message: self.leaf().to_string(),
+                retryable: self.retryable(),
+                operation: if verbose {
+                    self.top_operation()
+                } else {
+                    None
+                },
+            },
+        }
+    }
+
+    fn top_operation(&self) -> Option<String> {
+        match self {
+            SkmError::WithContext { operation, .. } => Some(operation.clone()),
+            _ => None,
+        }
+    }
 }
 
 pub fn exit_code_from_error(err: &SkmError) -> i32 {
@@ -228,7 +333,23 @@ pub fn exit_code_from_error(err: &SkmError) -> i32 {
 }
 
 /// Print a user-facing error: leaf domain message by default, full chain with `--verbose`.
-pub fn print_error(err: &SkmError, verbose: bool) {
+///
+/// With `--json`, writes one JSON envelope line to stderr instead of human text.
+pub fn print_error(err: &SkmError, verbose: bool, json: bool) {
+    if json {
+        let envelope = err.to_json(verbose);
+        eprintln!(
+            "{}",
+            serde_json::to_string(&envelope).unwrap_or_else(|_| {
+                format!(
+                    r#"{{"ok":false,"error":{{"code":"{}","message":"{}","retryable":false}}}}"#,
+                    err.code(),
+                    err.leaf()
+                )
+            })
+        );
+        return;
+    }
     if verbose {
         print_error_verbose(err);
         return;
@@ -284,5 +405,30 @@ mod tests {
         assert_eq!(SkmError::EmptyProfile.exit_code(), 1);
         assert_eq!(SkmError::StoreNotInitialized.exit_code(), 1);
         assert_eq!(SkmError::HomeNotFound.exit_code(), 1);
+    }
+
+    #[test]
+    fn wrapped_errors_use_leaf_code() {
+        let err = SkmError::ResolveConflict("tdd".into()).op("syncing skills");
+        assert_eq!(err.code(), "resolve.conflict");
+    }
+
+    #[test]
+    fn skills_sh_fetch_is_retryable() {
+        assert!(SkmError::SkillsShFetchFailed {
+            message: "timeout".into()
+        }
+        .retryable());
+        assert!(!SkmError::StoreNotInitialized.retryable());
+    }
+
+    #[test]
+    fn json_envelope_uses_leaf_message_and_code() {
+        let err = SkmError::ProfileNotFound("work".into());
+        let envelope = err.to_json(false);
+        assert_eq!(envelope.error.code, "profile.not_found");
+        assert!(envelope.error.message.contains("work"));
+        assert!(!envelope.error.retryable);
+        assert!(envelope.error.operation.is_none());
     }
 }

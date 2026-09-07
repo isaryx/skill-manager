@@ -53,7 +53,9 @@ pub fn cli_command() -> clap::Command {
                        --dry-run works with `sync`, `add-profile`, `remove-profile`, `skill rm`, \
                        and `destroy`.\n  \
                        Exit codes: 0 success, 1 runtime or health failure, 2 usage or resolve \
-                       conflict.\n\n\
+                       conflict.\n  \
+                       With `--json`, failures emit a structured error envelope on stderr; branch \
+                       on `error.code`, not `error.message`.\n\n\
                        Docs and issues: https://github.com/isaryx/skill-manager"
 )]
 pub struct Cli {
@@ -65,7 +67,7 @@ pub struct Cli {
     #[arg(long, global = true, env = "SKM_STORE")]
     pub store: Option<PathBuf>,
 
-    /// Emit machine-readable JSON on stdout (`status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor`, `repo ls` only)
+    /// Emit machine-readable JSON on stdout (`status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor`, `repo ls` only); failures emit a JSON error envelope on stderr
     #[arg(long, global = true)]
     pub json: bool,
 

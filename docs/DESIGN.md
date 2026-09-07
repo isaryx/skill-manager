@@ -116,7 +116,7 @@ Agent skill dirs are **flat**. `resolver::assign_placement_names`:
 main.rs  →  lib::run(Cli)  →  cli/<command>.rs handlers
 ```
 
-`SkmError` in `error.rs` (`thiserror`). `main` maps to exit codes via `exit_code_from_error`. `doctor` returns `i32` from `Report::exit_code`.
+`SkmError` in `error.rs` (`thiserror`): each variant has a stable `code()` for scripts, `retryable()` for transient external failures, and `print_error` (human `error:` on stderr, or a JSON envelope when `--json` is set). Wrapped errors use `WithContext`; `--verbose` prints the chain. `main` maps to exit codes via `exit_code_from_error`. `doctor` returns `i32` from `Report::exit_code`.
 
 ### Module layers
 
@@ -133,7 +133,7 @@ adapters/     AgentAdapter trait, agent pickers
 tui/          Reusable full-screen widgets (MultiSelect)
 config/       App config + SetupFile / ProfileFile / RepoRegistration types
 util/         SKILL.md discovery, hashing, validation
-progress.rs   stderr steps; colored +/- on TTY
+progress.rs   stderr steps and warnings (`step`, `warn`); colored +/- on TTY
 ```
 
 **Git remotes.** `store/remote/register.rs` orchestrates `repo add`; `update.rs` / `sync` call `pull_remotes` then `refresh_library_symlinks` before `reconcile()`. `reconcile()` remains the only agent symlink mutator. `skills_sh.rs` fetches the skills.sh leaderboard (API + HTML fallback) for `repo browse`. Tests: `tests/remote.rs`, unit tests under `store/remote/`.
@@ -262,7 +262,17 @@ Read-only. Runs store → index → disk skills → meta → profiles → config
 | 1 | I/O, store, placement, doctor warn/error |
 | 2 | Clap usage, resolve conflict, duplicate profile skill |
 
-Stdout = data (including `--json`). Stderr = progress, errors, logs. See SPEC for per-command output.
+Stdout = data (including `--json` success payloads). Stderr = progress, warnings, errors, logs.
+
+Human stderr prefixes (see [SPEC.md](SPEC.md#human-message-prefixes)):
+
+| Prefix | Meaning |
+|--------|---------|
+| Indented line | Progress (`progress::step`), including no-op notices |
+| `warning:` | Non-fatal; command continues (`progress::warn`) |
+| `error:` | Fatal failure |
+
+With `--json`, failures emit one JSON envelope on stderr (`error.code`, `error.message`, `error.retryable`; optional `error.operation` with `--verbose`). Same dot-notation style as `doctor` issue codes. Full schema in SPEC.
 
 ---
 

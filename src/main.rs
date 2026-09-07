@@ -5,6 +5,7 @@ fn main() {
     let matches = cli_command().get_matches();
     let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|err| err.exit());
     let verbose = cli.verbose;
+    let json = cli.json;
     init_logging(verbose);
 
     match run(cli) {
@@ -14,7 +15,7 @@ fn main() {
             }
         }
         Err(err) => {
-            print_error(&err, verbose);
+            print_error(&err, verbose, json);
             std::process::exit(exit_code_from_error(&err));
         }
     }

@@ -6,6 +6,7 @@ use chrono::Utc;
 use crate::config::{RepoRegistration, SkillMeta};
 use crate::db::rebuild_from_store;
 use crate::error::SkmError;
+use crate::progress;
 use crate::store::remote::discover::{find_skills_root, list_repo_skills};
 use crate::store::remote::git::{clone_repo, current_commit};
 use crate::store::remote::link::install_library_symlinks;
@@ -47,9 +48,9 @@ pub fn register_repo(
     let skills_root = match find_skills_root(&checkout)? {
         Some(root) => root,
         None => {
-            eprintln!(
-                "warning: no skills discovered in repository `{name}`; registry kept for retry"
-            );
+            progress::warn(format!(
+                "no skills discovered in repository `{name}`; registry kept for retry"
+            ));
             write_empty_registration(store, &name, &url, &checkout, pin)?;
             rebuild_from_store(store)?;
             return Ok(Vec::new());
@@ -100,7 +101,7 @@ pub fn register_repo(
     rebuild_from_store(store)?;
 
     if installed.is_empty() {
-        eprintln!("warning: no skills linked from repository `{name}`");
+        progress::warn(format!("no skills linked from repository `{name}`"));
     }
 
     for id in &installed {

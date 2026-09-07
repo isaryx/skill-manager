@@ -49,6 +49,29 @@ A skill is a directory with a `SKILL.md` file at its root (or nested under a ski
 brew install isaryx/collection/skm
 ```
 
+**Install script** (macOS and Linux, `arm64` / `x86_64`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/install.sh | bash
+```
+
+Install to a custom directory (default: `~/.local/bin`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/install.sh | bash -s -- --install-dir /usr/local/bin
+```
+
+Pin a release with `SKM_VERSION=v0.4.0` or `--version v0.4.0`. Preview with `--dry-run`. Unsupported OS or architecture exits with a clear error.
+
+**Check for updates** (requires `skm` on `PATH`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/check-update.sh | bash
+curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/check-update.sh | bash -s -- --json
+```
+
+Exits **1** when a newer release is available; diagnostics on stderr, JSON on stdout with `--json`.
+
 **From a release** — download `skm` for your platform from [GitHub Releases](https://github.com/isaryx/skill-manager/releases) (`macos-arm64`, `macos-x86_64`, `linux-arm64`, or `linux-x86_64`), extract the binary, and put it on your `PATH`.
 
 **From source** (requires [Rust](https://rustup.rs)):

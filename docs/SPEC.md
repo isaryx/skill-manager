@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.3.3 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
+**Version:** 0.4.0 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 
@@ -407,5 +407,5 @@ Respect `NO_COLOR`.
 
 ## Deferred
 
-- **0.4.0:** Windows release binary; `skm import github:…`, `skm update`
+- **0.5.0:** Windows release binary; `skm import github:…`, `skm update`
 - **Later:** Tier 2 agents, skill groups, `skm freeze`, variants (`skm fork`), `skm init --user`, copy-mode placements

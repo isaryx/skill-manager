@@ -23,6 +23,23 @@ jobs:
         run: cargo clippy -- -D warnings
       - name: Test
         run: cargo test
+      - name: Validate install scripts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck -P scripts -x scripts/install.sh scripts/check-update.sh scripts/lib/github-release.sh
+          bash -n scripts/install.sh scripts/check-update.sh scripts/lib/github-release.sh
+          version=$(awk -F\" '/^version = / { print $2; exit }' Cargo.toml)
+          bash scripts/install.sh --dry-run --version "$version"
+          bash scripts/check-update.sh --current "$version" --latest "$version"
+          set +e
+          bash scripts/check-update.sh --json --current 0.0.0 --latest "$version" >/tmp/check-update-outdated.json
+          update_code=$?
+          set -e
+          [[ "$update_code" -eq 1 ]]
+          grep -q '"update_available":true' /tmp/check-update-outdated.json
+          bash scripts/check-update.sh --json --current "$version" --latest "$version" | grep -q '"update_available":false'
+          bash scripts/check-update.sh --current 99.0.0 --latest "$version"
 
   audit:
     runs-on: ubuntu-latest

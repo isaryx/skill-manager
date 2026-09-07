@@ -335,6 +335,28 @@ codegen-units = 1
 
 Install paths vary: `cargo install`, package managers (Homebrew, apt), or GitHub Releases. Pick what your audience uses.
 
+### Install script (`scripts/install.sh`)
+
+When shipping a curl|bash installer alongside GitHub releases, follow these conventions (aligned with [Better CLI — self-executing installers](https://bettercli.org/design/distribution/self-executing-installer/) and the stdout/stderr rules above):
+
+- Wrap the script body in `{ ... }` so a partial download does not execute.
+- Send diagnostics to **stderr** (`log` helper); reserve stdout for machine-readable output if you add any.
+- Prefix failures with `error:`; exit **2** for usage errors, **1** for runtime failures.
+- Support `--install-dir` / `SKM_INSTALL_DIR` and `--version` / `SKM_VERSION`.
+- Support `--dry-run` — print the plan without downloading or writing.
+- Verify release artifacts against `SHA256SUMS` by default; `--no-verify` to skip.
+- Detect OS/arch defensively (`/usr/bin/uname` when available); fail clearly on unsupported platforms.
+- Do not edit shell rc files; print PATH instructions when the install dir is missing from `PATH`.
+- Idempotent: safe to re-run (overwrite the existing binary).
+- Document the curl one-liner in README with `curl -fsSL` (follow redirects).
+
+### Update check (`scripts/check-update.sh`)
+
+- Compare running `skm --version` to the latest GitHub release; prefer `gh`, fall back to curl (shared with `scripts/lib/github-release.sh`).
+- Diagnostics on **stderr**; `--json` on stdout for scripts.
+- Exit **0** when up to date (including builds newer than the latest release), **1** when an update is available, **2** usage, **3** fetch/parse failure.
+- Print upgrade hints (install script, Homebrew, releases page) when outdated.
+
 ---
 
 ## Common dependencies

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/isaryx/skill-manager/releases/tag/v0.4.0) - 2026-09-07
+
+Search, validation, repo-qualified imports, and release install/update scripts.
+
 ### Added
 
 - **`skm search <terms...>`** — case-insensitive AND search of indexed skill IDs and `SKILL.md` descriptions; shows enabled state and profile membership. `--json` emits full descriptions for scripts. Index updates on `scan` / `import` / `sync`.
@@ -15,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`--repo` on `skm import`** — store skills under a repo-qualified id (e.g. `agent-skills/deploy`) with `repo_name` in meta; `source_type` stays `local` until git remote import lands.
 - **`status --json`** — linked skills include `store_id` (qualified store path) alongside the flat placement `name`.
 - **`skm doctor`** — reports `profile.resolve_conflict` when active profiles cannot resolve a shared placement name, and `profile.disambiguated_placement` when leaf-name collisions are wired as `repo__leaf`.
+- **Install script** — `scripts/install.sh` detects OS/arch, downloads the matching GitHub release binary, verifies `SHA256SUMS` by default, and installs to a configurable path (`--install-dir` / `SKM_INSTALL_DIR`). Resolves the latest release via `gh` when available, otherwise curl.
+- **Update check script** — `scripts/check-update.sh` compares the running `skm` to the latest GitHub release, prints upgrade hints, and exits **1** when an update is available (`--json` for scripts). Shares release resolution with the install script in `scripts/lib/github-release.sh`.
 
 ### Changed
 

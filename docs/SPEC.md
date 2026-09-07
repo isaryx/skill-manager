@@ -14,7 +14,7 @@ Global flags:
 |------|--------|
 | `--verbose` / `-v` | Debug logs on stderr |
 | `--store <path>` | Override store (`SKM_STORE`) |
-| `--json` | **Only** `status`, `ls`, `skill ls`, `doctor` — otherwise exit 2 |
+| `--json` | **Only** `status`, `ls`, `skill ls`, `skill validate`, `doctor` — otherwise exit 2 |
 | `--dry-run` | **Only** `sync`, `add-profile`, `remove-profile`, `skill rm`, `destroy` — preview; no writes |
 | `--color auto\|always\|never` | Human output styling (`auto` respects `NO_COLOR`) |
 
@@ -45,7 +45,7 @@ skm doctor [--json]
 
 Agents: `generic` (Codex, Cursor, Gemini CLI, Copilot CLI), `claude-code`, `cursor`, `gemini-cli`, `copilot-cli`. Existing configs with `placement.agent = "codex"` still work.
 
-`--agent` is repeatable and comma-separated (`--agent claude-code,cursor`); repeats and ids that resolve to the same directory are collapsed. Omitted on a TTY, the agents are picked from a checkbox list.
+`--agent` is repeatable and comma-separated (`--agent claude-code,cursor`); repeats and ids that resolve to the same directory are collapsed. Omitted on a TTY, the agents are picked from a checkbox list pre-checked with agents whose skills directory already exists in the project root (`--user`: under `$HOME`). `--agent` overrides; off-TTY unchanged.
 
 ---
 
@@ -68,8 +68,10 @@ active = ["work"]
 
 ```toml
 [[skill]]
-id = "engineering/tdd"
+id = "agent-skills/deploy"
 ```
+
+Remote and repo-prefixed skills use a **repo-qualified id**: registered repo name, `/`, then the skill path inside that repo. Local imports without `--repo` keep single-segment or bundle-relative ids (e.g. `docx`, `engineering/tdd`). Profiles, `skm ls`, meta, `status`, and `doctor` use the full qualified id; agent directories still get flat placement names (`deploy`, or `agent-skills__deploy` when the leaf collides).
 
 Store path: `--store` → `SKM_STORE` → app config → `~/.skill-store`.
 
@@ -100,6 +102,7 @@ Requires initialized store. `--copy` and `--move` are required and mutually excl
 
 - Single skill: `SKILL.md` at root, no nested trees
 - Skill tree: one or more `SKILL.md` at any depth under one bundle name
+- `--repo <name>` stores under a repo-qualified id (`agent-skills/deploy`); sets `repo_name` in meta while keeping `source_type` local until git provenance exists
 - Writes `.skm/meta/<name>.toml`, rebuilds index
 - Rejects overwrite and reserved names (`.skm`, leading `.`)
 
@@ -112,6 +115,7 @@ Requires initialized store. `--copy` and `--move` are required and mutually excl
 - **Multiple active profiles** — skills from every active profile are merged when wiring links; duplicate skill IDs are deduplicated in `active` list order (first profile wins)
 - `skill setup` — hide skills via `.skm/disabled.toml` (still in profiles; skipped when wiring)
 - `skill rm` — delete from store and all profiles; TTY confirm or `--force`
+- `skill validate <path>` — check `SKILL.md` frontmatter against the [Agent Skills](https://agentskills.io) spec; supports `--json` (exit 0 valid, 1 invalid)
 - Disabled skills show `(disabled)` on `profile show`; sync unwires them
 
 `profile setup` also offers any **disabled** skill the profile already references, marked
@@ -310,7 +314,7 @@ Init `git` **in the project tempdir**, not in `HOME`, so user-level tests stay n
 
 ### `skm use-agents` / `skm add-agent` / `skm remove-agent`
 
-`use-agents` replaces the full `placement.agents` list from a checkbox picker pre-checked with the current set (TTY only).
+`use-agents` replaces the full `placement.agents` list from a checkbox picker pre-checked with the current set (TTY only). On `init`, when no agents are configured yet, the same picker pre-checks agents whose skills directory already exists under the project root (`--user`: under `$HOME`).
 
 `add-agent` appends one agent; `remove-agent` drops one. Both update the setup file the same way as `use-agents`. Re-adding an agent already in the set is a no-op (`target agents unchanged: …`). `remove-agent` on the last target agent is rejected before any changes are made.
 
@@ -324,9 +328,19 @@ A selection that names the same agents in a different order is treated as unchan
 
 `--force` required off-TTY (unchanged).
 
+### `skm skill validate`
+
+Checks `SKILL.md` frontmatter against the Agent Skills spec (same rules as [myskills `validate.Spec`](https://github.com/jverhoeks/myskills/blob/main/internal/validate/validate.go)): required `name` and `description`, `name` matches the directory and `[a-z][a-z0-9]*(-[a-z0-9]+)*`, length limits (`name` ≤ 64, `description` ≤ 1024, `compatibility` ≤ 500 when present). Human output lists each issue; `--json` emits `{ "path", "valid", "issues" }`. Exit 0 when valid, 1 when invalid.
+
+`skm import` and `skm sync` warn on spec violations by default; pass `--strict` to fail instead.
+
 ### `skm scan`
 
-Rebuilds `index.db`. Adopts skills copied into the store without meta (create-if-missing only; `source_type = "store"`, `transfer = "adopted"`). Never overwrites import meta.
+Rebuilds `index.db` from every on-disk skill, including disabled ones. Stores the `SKILL.md` frontmatter `description` and enabled flag. Adopts skills copied into the store without meta (create-if-missing only; `source_type = "store"`, `transfer = "adopted"`). Never overwrites import meta.
+
+### `skm search`
+
+Searches the index, not the live files. All query terms must match case-insensitively in the skill ID or description. Human output is one row per hit: id, enabled/disabled, comma-separated profile names (`-` if none), and a truncated description. `--json` emits `[{ "id", "enabled", "profiles", "description" }]` with the full description. Re-run `skm scan` (or any command that rebuilds the index, such as `import` / `sync`) after editing `SKILL.md`.
 
 ### `skm doctor`
 
@@ -338,6 +352,8 @@ Read-only health report. Setup selection same as `sync`.
 | `config.unknown_agent` | error | Unknown agent in `placement.agents` (one issue per agent, `agent` field names it) |
 | `config.no_agents` | error | `placement.agents` is empty |
 | `profile.missing_ref` | error | Profile references missing skill |
+| `profile.resolve_conflict` | error | Active profiles share a placement name that cannot be disambiguated |
+| `profile.disambiguated_placement` | info | Leaf name collision; skill wired as `repo__leaf` instead of `leaf` |
 | `profile.extend_broken` | error | Cycle, over-deep chain, or missing profile in `extends` |
 | `index.stale` | warn | Index count ≠ disk |
 | `skill.missing_skill_md` | warn | Dir looks like skill, no `SKILL.md` |
@@ -364,7 +380,7 @@ Human output on stdout; progress on stderr. `status` shows every target agent wi
 
 Data on stdout only; no ANSI on stdout.
 
-**`status`:** `{ agents: [{ agent, skills_path, skills: [{ name, source }], conflicts: [{ name, store_id, reason: "conflicted" }] }], profile }`
+**`status`:** `{ agents: [{ agent, skills_path, skills: [{ name, store_id, source }], conflicts: [{ name, store_id, reason: "conflicted" }] }], profiles }`
 
 **`ls` / `skill ls`:** `{ skills: [...] }` and/or `{ profiles: [...] }` depending on filters.
 

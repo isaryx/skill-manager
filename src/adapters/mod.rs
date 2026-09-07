@@ -257,6 +257,65 @@ pub fn canonical_agent_id(agent: &str) -> &str {
     }
 }
 
+fn agent_skills_dir_exists(agent: &str, level: SetupLevel, scan_root: &Path) -> bool {
+    if skills_dir_for_detection(agent, level, scan_root).is_some_and(|dir| dir.is_dir()) {
+        return true;
+    }
+
+    // Codex may create ~/.codex before ~/.agents/skills exists.
+    agent == "generic" && level == SetupLevel::User && scan_root.join(".codex").is_dir()
+}
+
+/// Skills directory to probe for install detection.
+///
+/// User-level adapters resolve against process `$HOME`; re-root onto `scan_root` so tests can
+/// pass a temp directory without mutating the environment. In production `scan_root` is `$HOME`,
+/// so this is a no-op.
+fn skills_dir_for_detection(agent: &str, level: SetupLevel, scan_root: &Path) -> Option<PathBuf> {
+    let path = get_adapter(agent)
+        .ok()
+        .and_then(|adapter| adapter.target_dir(level, scan_root).ok())?;
+
+    match level {
+        SetupLevel::Project => Some(path),
+        SetupLevel::User => {
+            let home = home_dir().ok()?;
+            path.strip_prefix(&home).ok().map(|rel| scan_root.join(rel))
+        }
+    }
+}
+
+fn detect_installed_agents(
+    level: SetupLevel,
+    project_root: &Path,
+) -> Result<Vec<String>, SkmError> {
+    let scan_root = match level {
+        SetupLevel::Project => project_root.to_path_buf(),
+        SetupLevel::User => home_dir()?,
+    };
+    Ok(installed_agents_at(&scan_root, level))
+}
+
+fn installed_agents_at(scan_root: &Path, level: SetupLevel) -> Vec<String> {
+    INIT_AGENTS
+        .iter()
+        .filter(|&agent| agent_skills_dir_exists(agent, level, scan_root))
+        .map(|agent| (*agent).to_string())
+        .collect()
+}
+
+fn effective_preselected(
+    preselected: &[String],
+    level: SetupLevel,
+    project_root: &Path,
+) -> Result<Vec<String>, SkmError> {
+    if preselected.is_empty() {
+        detect_installed_agents(level, project_root)
+    } else {
+        Ok(preselected.to_vec())
+    }
+}
+
 pub fn interactive_select_agents(
     preselected: &[String],
     level: SetupLevel,
@@ -266,17 +325,14 @@ pub fn interactive_select_agents(
         return Err(SkmError::NotATty);
     }
 
-    let preselected: Vec<&str> = preselected
-        .iter()
-        .map(|agent| canonical_agent_id(agent))
-        .collect();
+    let preselected = effective_preselected(preselected, level, project_root)?;
 
     let mut items = Vec::with_capacity(INIT_AGENTS.len());
     for &agent in INIT_AGENTS {
         items.push(
             MultiSelectItem::new(agent)
                 .hint(agent_hint(agent, level, project_root)?)
-                .selected(preselected.contains(&agent)),
+                .selected(preselected.iter().any(|id| canonical_agent_id(id) == agent)),
         );
     }
 
@@ -452,5 +508,70 @@ mod tests {
             adapter.target_dir(SetupLevel::User, project).unwrap(),
             home.join(".copilot/skills")
         );
+    }
+
+    #[test]
+    fn installed_agents_at_user_level_detects_skills_dirs() {
+        let home = tempfile::tempdir().unwrap();
+        fs::create_dir_all(home.path().join(".claude/skills")).unwrap();
+        fs::create_dir_all(home.path().join(".agents/skills")).unwrap();
+
+        let installed = installed_agents_at(home.path(), SetupLevel::User);
+        assert_eq!(
+            installed,
+            vec!["generic".to_string(), "claude-code".to_string()]
+        );
+    }
+
+    #[test]
+    fn installed_agents_at_user_level_detects_codex_before_agents_skills() {
+        let home = tempfile::tempdir().unwrap();
+        fs::create_dir_all(home.path().join(".codex")).unwrap();
+
+        let installed = installed_agents_at(home.path(), SetupLevel::User);
+        assert_eq!(installed, vec!["generic".to_string()]);
+    }
+
+    #[test]
+    fn installed_agents_at_user_level_ignores_config_dir_without_skills() {
+        let home = tempfile::tempdir().unwrap();
+        fs::create_dir_all(home.path().join(".claude")).unwrap();
+
+        assert!(installed_agents_at(home.path(), SetupLevel::User).is_empty());
+    }
+
+    #[test]
+    fn installed_agents_at_user_level_ignores_missing_dirs() {
+        let home = tempfile::tempdir().unwrap();
+        assert!(installed_agents_at(home.path(), SetupLevel::User).is_empty());
+    }
+
+    #[test]
+    fn installed_agents_at_project_level_scans_project_root() {
+        let project = tempfile::tempdir().unwrap();
+        fs::create_dir_all(project.path().join(".cursor/skills")).unwrap();
+        fs::create_dir_all(project.path().join(".github/skills")).unwrap();
+
+        let installed = installed_agents_at(project.path(), SetupLevel::Project);
+        assert_eq!(
+            installed,
+            vec!["cursor".to_string(), "copilot-cli".to_string()]
+        );
+    }
+
+    #[test]
+    fn installed_agents_at_project_level_ignores_config_dir_without_skills() {
+        let project = tempfile::tempdir().unwrap();
+        fs::create_dir_all(project.path().join(".github/workflows")).unwrap();
+        fs::create_dir_all(project.path().join(".cursor")).unwrap();
+
+        assert!(installed_agents_at(project.path(), SetupLevel::Project).is_empty());
+    }
+
+    #[test]
+    fn installed_agents_at_project_level_is_empty_without_skills_dirs() {
+        let project = tempfile::tempdir().unwrap();
+
+        assert!(installed_agents_at(project.path(), SetupLevel::Project).is_empty());
     }
 }

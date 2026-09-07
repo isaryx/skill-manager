@@ -887,7 +887,9 @@ fn remove_profile_dry_run_does_not_change_active_profiles() {
         .args(["remove-profile", "work", "--dry-run"])
         .assert()
         .success()
-        .stderr(predicate::str::contains("(dry-run) clearing active profiles"));
+        .stderr(predicate::str::contains(
+            "(dry-run) clearing active profiles",
+        ));
 
     let setup = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
     assert!(setup.contains("active = [\"work\"]"));
@@ -979,7 +981,9 @@ fn status_json_reports_one_entry_per_agent() {
     assert_eq!(agents[0]["agent"], "claude-code");
     assert_eq!(agents[0]["skills_path"], ".claude/skills");
     assert_eq!(agents[0]["skills"][0]["name"], "docx");
+    assert_eq!(agents[0]["skills"][0]["store_id"], "docx");
     assert_eq!(agents[1]["agent"], "cursor");
     assert_eq!(agents[1]["skills"][0]["name"], "docx");
+    assert_eq!(agents[1]["skills"][0]["store_id"], "docx");
     assert_eq!(report["profiles"][0], "work");
 }

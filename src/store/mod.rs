@@ -163,13 +163,13 @@ pub fn ensure_meta_for_discovered_skills(store: &StorePaths) -> Result<(), SkmEr
 
         let meta_id = meta_owner_id(&id);
         let owner_path = store.skill_dir(meta_id);
-        let meta = SkillMeta {
-            source_type: "store".to_string(),
-            path: owner_path.to_string_lossy().into_owned(),
-            hash: hash_directory(&owner_path)?,
-            imported_at: Utc::now().to_rfc3339(),
-            transfer: "adopted".to_string(),
-        };
+        let meta = SkillMeta::new(
+            "store",
+            owner_path.to_string_lossy().into_owned(),
+            hash_directory(&owner_path)?,
+            Utc::now().to_rfc3339(),
+            "adopted",
+        );
         write_meta(store, meta_id, &toml::to_string_pretty(&meta)?)?;
     }
     Ok(())

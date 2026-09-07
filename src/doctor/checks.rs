@@ -8,7 +8,7 @@ use crate::adapters::get_adapter;
 use crate::db::{list_skills, open_index};
 use crate::error::SkmError;
 use crate::progress::display_path;
-use crate::resolver::resolve;
+use crate::resolver::{resolve, ResolveError, placement_name_is_disambiguated};
 use crate::setup::{target_dirs_for_setup, SelectedSetup};
 use crate::store::extends::{flatten_skill_ids, load_merged_flattened_profile};
 use crate::store::profiles::{list_profiles, load_profile};
@@ -37,6 +37,9 @@ pub struct Issue {
     pub profile: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub skill: Option<String>,
+    /// Flat agent placement name when the issue is about wiring, not a store skill id.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub placement: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     /// Set on issues that belong to one target agent's skills directory.
@@ -52,6 +55,7 @@ impl Issue {
             message: message.into(),
             profile: None,
             skill: None,
+            placement: None,
             path: None,
             agent: None,
         }
@@ -64,6 +68,7 @@ impl Issue {
             message: message.into(),
             profile: None,
             skill: None,
+            placement: None,
             path: None,
             agent: None,
         }
@@ -76,6 +81,7 @@ impl Issue {
             message: message.into(),
             profile: None,
             skill: None,
+            placement: None,
             path: None,
             agent: None,
         }
@@ -88,6 +94,11 @@ impl Issue {
 
     fn with_skill(mut self, skill: impl Into<String>) -> Self {
         self.skill = Some(skill.into());
+        self
+    }
+
+    fn with_placement(mut self, placement: impl Into<String>) -> Self {
+        self.placement = Some(placement.into());
         self
     }
 
@@ -380,8 +391,41 @@ pub fn check_links(
     let disabled = read_disabled_ids(store)?;
     let placements = match resolve(&profile, store, &disabled) {
         Ok(placements) => placements,
-        Err(_) => return Ok(issues),
+        Err(ResolveError::Conflict(name)) => {
+            issues.push(
+                Issue::error(
+                    "profile.resolve_conflict",
+                    format!(
+                        "active profile `{active_label}` has resolve conflict for `{name}`; \
+                         run `skm profile show` to see which skills collide"
+                    ),
+                )
+                .with_profile(&active_label)
+                .with_placement(name),
+            );
+            return Ok(issues);
+        }
+        Err(ResolveError::NotFound(_)) | Err(ResolveError::EmptyProfile) => return Ok(issues),
     };
+
+    for placement in &placements {
+        if placement_name_is_disambiguated(&placement.store_id, &placement.name) {
+            issues.push(
+                Issue::info(
+                    "profile.disambiguated_placement",
+                    format!(
+                        "skill `{store_id}` is wired as `{name}` because another active skill \
+                         shares its leaf name",
+                        store_id = placement.store_id,
+                        name = placement.name,
+                    ),
+                )
+                .with_skill(&placement.store_id)
+                .with_placement(&placement.name)
+                .with_profile(&active_label),
+            );
+        }
+    }
 
     let desired_names: HashSet<&str> = placements.iter().map(|p| p.name.as_str()).collect();
     let store_root = store.canonical_root();
@@ -682,5 +726,77 @@ mod tests {
             issues.iter().any(|i| i.code == "index.stale"),
             "expected index.stale even though the skill count is unchanged (1 -> 1), because the index's identity no longer matches disk"
         );
+    }
+
+    #[test]
+    fn check_links_reports_resolve_conflict_with_placement_field() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        for id in ["team/tdd", "other/tdd", "team__tdd"] {
+            let dir = store.skill_dir(id);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("SKILL.md"), "# tdd").unwrap();
+        }
+        crate::store::profiles::create_profile(
+            &store,
+            "work",
+            &[
+                "team/tdd".to_string(),
+                "other/tdd".to_string(),
+                "team__tdd".to_string(),
+            ],
+        )
+        .unwrap();
+
+        let mut selected = selected_setup_for(tmp.path(), &["claude-code"]);
+        selected.setup.profile.active = vec!["work".to_string()];
+
+        let issues = check_links(&store, &selected, &["work".to_string()]).unwrap();
+        let conflict = issues
+            .iter()
+            .find(|issue| issue.code == "profile.resolve_conflict")
+            .expect("expected profile.resolve_conflict");
+        assert_eq!(conflict.placement.as_deref(), Some("team__tdd"));
+        assert!(conflict.skill.is_none());
+    }
+
+    #[test]
+    fn check_links_reports_disambiguated_placements() {
+        let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        for id in ["my-team/code-review", "engineering/code-review"] {
+            let dir = store.skill_dir(id);
+            fs::create_dir_all(&dir).unwrap();
+            fs::write(dir.join("SKILL.md"), "# review").unwrap();
+        }
+        crate::store::profiles::create_profile(
+            &store,
+            "work",
+            &[
+                "my-team/code-review".to_string(),
+                "engineering/code-review".to_string(),
+            ],
+        )
+        .unwrap();
+
+        let mut selected = selected_setup_for(tmp.path(), &["claude-code"]);
+        selected.setup.profile.active = vec!["work".to_string()];
+
+        let issues = check_links(&store, &selected, &["work".to_string()]).unwrap();
+        let disambiguated = issues
+            .iter()
+            .filter(|issue| issue.code == "profile.disambiguated_placement")
+            .collect::<Vec<_>>();
+        assert_eq!(disambiguated.len(), 2);
+        assert!(disambiguated
+            .iter()
+            .any(|issue| issue.placement.as_deref() == Some("my-team__code-review")));
+        assert!(disambiguated
+            .iter()
+            .any(|issue| issue.placement.as_deref() == Some("engineering__code-review")));
     }
 }

@@ -24,7 +24,13 @@ pub fn with_env(home: &Path, store: &Path) -> Command {
 pub fn write_skill(dir: &Path, name: &str) {
     let skill = dir.join(name);
     fs::create_dir_all(&skill).unwrap();
-    fs::write(skill.join("SKILL.md"), format!("# {name}\n")).unwrap();
+    fs::write(
+        skill.join("SKILL.md"),
+        format!(
+            "---\nname: {name}\ndescription: Test skill {name} used by integration tests.\n---\n\n# {name}\n"
+        ),
+    )
+    .unwrap();
 }
 
 pub fn write_profile(store: &Path, name: &str, skills: &[&str]) {
@@ -125,6 +131,49 @@ pub fn agent_link(home: &Path, agent_dir: &str, skill: &str) -> PathBuf {
 
 pub fn setup_body(home: &Path) -> String {
     fs::read_to_string(home.join(".skm.toml")).unwrap()
+}
+
+/// Set `[profile].active` in `./.skm.toml`, preserving the rest of the file from init.
+pub fn set_active_profiles(home: &Path, profiles: &[&str]) {
+    let path = home.join(".skm.toml");
+    let mut body = setup_body(home);
+    let active_line = format!(
+        "active = [{}]",
+        profiles
+            .iter()
+            .map(|name| format!("\"{name}\""))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
+    if body
+        .lines()
+        .any(|line| line.trim_start().starts_with("active "))
+    {
+        body = body
+            .lines()
+            .map(|line| {
+                if line.trim_start().starts_with("active ") {
+                    active_line.as_str()
+                } else {
+                    line
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        if !body.ends_with('\n') {
+            body.push('\n');
+        }
+    } else if body.contains("[profile]") {
+        body = body.replacen("[profile]", &format!("[profile]\n{active_line}"), 1);
+        if !body.ends_with('\n') {
+            body.push('\n');
+        }
+    } else {
+        body.push_str(&format!("\n\n[profile]\n{active_line}\n"));
+    }
+
+    fs::write(path, body).unwrap();
 }
 
 /// Import one skill, put it in profile `work`, and activate it.

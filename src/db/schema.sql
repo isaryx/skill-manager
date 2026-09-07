@@ -5,5 +5,7 @@ CREATE TABLE IF NOT EXISTS skills (
     source_path TEXT,
     kind TEXT NOT NULL DEFAULT 'pool',
     sha TEXT,
-    hash TEXT NOT NULL
+    hash TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 1
 );

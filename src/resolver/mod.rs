@@ -42,6 +42,11 @@ fn store_id_to_flat_name(id: &str) -> String {
     id.replace('/', "__")
 }
 
+/// True when the flat placement name differs from the store id's leaf segment.
+pub fn placement_name_is_disambiguated(store_id: &str, placement_name: &str) -> bool {
+    store_id_leaf(store_id) != placement_name
+}
+
 /// Map store ids to flat agent placement names.
 ///
 /// Uses the leaf segment when unique (`engineering/tdd` → `tdd`). When multiple
@@ -167,6 +172,15 @@ mod tests {
         let placements = resolve(&profile, &store, &HashSet::new()).unwrap();
         assert_eq!(placements[0].store_id, "engineering/tdd");
         assert_eq!(placements[0].name, "tdd");
+    }
+
+    #[test]
+    fn placement_name_is_disambiguated_when_leaf_collides() {
+        assert!(placement_name_is_disambiguated(
+            "my-team/code-review",
+            "my-team__code-review"
+        ));
+        assert!(!placement_name_is_disambiguated("docx", "docx"));
     }
 
     #[test]

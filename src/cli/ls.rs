@@ -4,6 +4,7 @@ use dialoguer::console::style;
 
 use crate::cli::output::{write_json, LsJson};
 use crate::error::SkmError;
+use crate::progress::display_path;
 use crate::store::profiles::list_profiles;
 use crate::store::StorePaths;
 
@@ -37,6 +38,7 @@ fn list_skills(store: &StorePaths, json: bool) -> Result<(), SkmError> {
         return Ok(());
     }
 
+    print_store_scope(store);
     for id in ids {
         println!("{id}");
     }
@@ -55,6 +57,7 @@ fn list_profiles_lines(store: &StorePaths, json: bool) -> Result<(), SkmError> {
         return Ok(());
     }
 
+    print_store_scope(store);
     for name in profiles {
         println!("{name}");
     }
@@ -78,6 +81,7 @@ fn list_all(store: &StorePaths, json: bool) -> Result<(), SkmError> {
         return Ok(());
     }
 
+    print_store_scope(store);
     let mut wrote_section = false;
 
     if !profiles.is_empty() {
@@ -99,6 +103,17 @@ fn list_all(store: &StorePaths, json: bool) -> Result<(), SkmError> {
     }
 
     Ok(())
+}
+
+fn print_store_scope(store: &StorePaths) {
+    let label = format!("Skill store: {}", display_path(store.root()));
+    if color_stdout() {
+        println!("{}", style(label).dim());
+        println!();
+    } else {
+        println!("{label}");
+        println!();
+    }
 }
 
 fn print_section_header(title: &str) {

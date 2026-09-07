@@ -136,6 +136,9 @@ pub enum SkmError {
     #[error("refusing to destroy without --force")]
     RefuseNonInteractiveDestroy,
 
+    #[error("skill spec validation failed: {0}")]
+    SkillSpecInvalid(String),
+
     #[error("{0}")]
     Usage(String),
 

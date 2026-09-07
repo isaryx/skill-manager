@@ -8,7 +8,8 @@ use crate::db::rebuild_from_store;
 use crate::error::SkmError;
 use crate::store::{discover_skill_ids, write_meta, StorePaths};
 use crate::util::{
-    copy_dir_all, hash_directory, is_skill_dir, is_skill_tree, validate_store_entry_name,
+    copy_dir_all, hash_directory, is_skill_dir, is_skill_tree, skill_id::qualify_skill_id,
+    validate_store_entry_name,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +23,7 @@ pub fn add_skill(
     source: &Path,
     mode: TransferMode,
     as_name: Option<&str>,
+    repo: Option<&str>,
 ) -> Result<String, SkmError> {
     store.ensure_initialized()?;
 
@@ -39,8 +41,12 @@ pub fn add_skill(
     };
 
     validate_store_entry_name(&name)?;
+    let store_id = match repo {
+        Some(repo_name) => qualify_skill_id(repo_name, &name)?,
+        None => name.clone(),
+    };
 
-    let dest = store.skill_dir(&name);
+    let dest = store.skill_dir(&store_id);
     if dest.exists() {
         return Err(SkmError::DestinationExists(dest));
     }
@@ -52,9 +58,16 @@ pub fn add_skill(
         TransferMode::Move => fs::rename(source, &dest)?,
     }
 
-    write_skill_meta(store, &name, &source_path, &dest, mode)?;
+    write_skill_meta(
+        store,
+        crate::store::meta_owner_id(&store_id),
+        &source_path,
+        &dest,
+        mode,
+        repo,
+    )?;
     rebuild_from_store(store)?;
-    Ok(name)
+    Ok(store_id)
 }
 
 /// Import a skill bundle as one tree under `$SKM_STORE/<name>/` (preserves parent + children).
@@ -63,6 +76,7 @@ pub fn add_skill_tree(
     source: &Path,
     mode: TransferMode,
     as_name: Option<&str>,
+    repo: Option<&str>,
 ) -> Result<Vec<String>, SkmError> {
     store.ensure_initialized()?;
 
@@ -80,8 +94,12 @@ pub fn add_skill_tree(
     };
 
     validate_store_entry_name(&name)?;
+    let bundle_id = match repo {
+        Some(repo_name) => qualify_skill_id(repo_name, &name)?,
+        None => name.clone(),
+    };
 
-    let dest = store.skill_dir(&name);
+    let dest = store.skill_dir(&bundle_id);
     if dest.exists() {
         return Err(SkmError::DestinationExists(dest));
     }
@@ -93,26 +111,20 @@ pub fn add_skill_tree(
         TransferMode::Move => fs::rename(source, &dest)?,
     }
 
-    let meta = SkillMeta {
-        source_type: "local-bundle".to_string(),
-        path: source_path.to_string_lossy().into_owned(),
-        hash: hash_directory(&dest)?,
-        imported_at: Utc::now().to_rfc3339(),
-        transfer: match mode {
-            TransferMode::Copy => "copy",
-            TransferMode::Move => "move",
-        }
-        .to_string(),
-    };
+    let meta = import_meta(&source_path, &dest, mode, true, repo)?;
     let meta_content = toml::to_string_pretty(&meta)?;
-    write_meta(store, &name, &meta_content)?;
+    write_meta(
+        store,
+        crate::store::meta_owner_id(&bundle_id),
+        &meta_content,
+    )?;
 
     rebuild_from_store(store)?;
 
-    let prefix = format!("{name}/");
+    let prefix = format!("{bundle_id}/");
     let skill_ids: Vec<String> = discover_skill_ids(store)?
         .into_iter()
-        .filter(|id| id == &name || id.starts_with(&prefix))
+        .filter(|id| id == &bundle_id || id.starts_with(&prefix))
         .collect();
 
     if skill_ids.is_empty() {
@@ -122,15 +134,19 @@ pub fn add_skill_tree(
     Ok(skill_ids)
 }
 
-fn write_skill_meta(
-    store: &StorePaths,
-    name: &str,
+fn import_meta(
     source_path: &Path,
     dest: &Path,
     mode: TransferMode,
-) -> Result<(), SkmError> {
-    let meta = SkillMeta {
-        source_type: "local".to_string(),
+    bundle: bool,
+    repo: Option<&str>,
+) -> Result<SkillMeta, SkmError> {
+    Ok(SkillMeta {
+        source_type: if bundle {
+            "local-bundle".to_string()
+        } else {
+            "local".to_string()
+        },
         path: source_path.to_string_lossy().into_owned(),
         hash: hash_directory(dest)?,
         imported_at: Utc::now().to_rfc3339(),
@@ -139,9 +155,23 @@ fn write_skill_meta(
             TransferMode::Move => "move",
         }
         .to_string(),
-    };
+        repo_name: repo.map(str::to_string),
+        remote_url: None,
+        commit: None,
+    })
+}
+
+fn write_skill_meta(
+    store: &StorePaths,
+    meta_id: &str,
+    source_path: &Path,
+    dest: &Path,
+    mode: TransferMode,
+    repo: Option<&str>,
+) -> Result<(), SkmError> {
+    let meta = import_meta(source_path, dest, mode, false, repo)?;
     let meta_content = toml::to_string_pretty(&meta)?;
-    write_meta(store, name, &meta_content)
+    write_meta(store, meta_id, &meta_content)
 }
 
 #[derive(Debug, Clone)]
@@ -247,7 +277,7 @@ mod tests {
         fs::write(src.join("SKILL.md"), "# parent").unwrap();
         fs::write(src.join("child/SKILL.md"), "# child").unwrap();
 
-        let ids = add_skill_tree(&store, &src, TransferMode::Copy, None).unwrap();
+        let ids = add_skill_tree(&store, &src, TransferMode::Copy, None, None).unwrap();
 
         assert!(
             ids.contains(&"parent".to_string()),
@@ -267,8 +297,38 @@ mod tests {
         fs::create_dir_all(&src).unwrap();
         fs::write(src.join("SKILL.md"), "# demo").unwrap();
 
-        add_skill(&store, &src, TransferMode::Copy, None).unwrap();
-        let err = add_skill(&store, &src, TransferMode::Copy, None).unwrap_err();
+        add_skill(&store, &src, TransferMode::Copy, None, None).unwrap();
+        let err = add_skill(&store, &src, TransferMode::Copy, None, None).unwrap_err();
         assert!(matches!(err, SkmError::DestinationExists(_)));
+    }
+
+    #[test]
+    fn repo_qualified_imports_coexist_for_same_leaf_name() {
+        let store_tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(store_tmp.path().to_path_buf());
+        init_store_layout(&store).unwrap();
+
+        for repo in ["agent-skills", "other-repo"] {
+            let src_tmp = TempDir::new().unwrap();
+            let src = src_tmp.path().join("deploy");
+            fs::create_dir_all(&src).unwrap();
+            fs::write(
+                src.join("SKILL.md"),
+                "---\nname: deploy\ndescription: Deploy skill used in repo-qualified import tests.\n---\n",
+            )
+            .unwrap();
+            let id =
+                add_skill(&store, &src, TransferMode::Copy, Some("deploy"), Some(repo)).unwrap();
+            assert_eq!(id, format!("{repo}/deploy"));
+        }
+
+        let ids = discover_skill_ids(&store).unwrap();
+        assert_eq!(
+            ids,
+            vec![
+                "agent-skills/deploy".to_string(),
+                "other-repo/deploy".to_string()
+            ]
+        );
     }
 }

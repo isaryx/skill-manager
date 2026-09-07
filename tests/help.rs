@@ -34,7 +34,10 @@ fn root_help_groups_project_and_store_commands() {
             .and(predicate::str::contains("STORE COMMANDS"))
             .and(predicate::str::contains("  init"))
             .and(predicate::str::contains("  import"))
-            .and(predicate::str::contains("Project commands require `./.skm.toml`")),
+            .and(predicate::str::contains("  search"))
+            .and(predicate::str::contains(
+                "Project commands require `./.skm.toml`",
+            )),
     );
 }
 
@@ -108,34 +111,45 @@ fn profile_extend_help_says_it_creates_a_missing_profile() {
 
 #[test]
 fn use_profile_help_documents_project_setup_requirement() {
-    skm().args(["add-profile", "--help"]).assert().success().stdout(
-        predicate::str::contains("Requires `./.skm.toml`")
-            .and(predicate::str::contains("--user")),
-    );
+    skm()
+        .args(["add-profile", "--help"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("Requires `./.skm.toml`")
+                .and(predicate::str::contains("--user")),
+        );
 }
 
 #[test]
 fn use_agents_help_documents_tty_and_project_setup_requirement() {
-    skm().args(["use-agents", "--help"]).assert().success().stdout(
-        predicate::str::contains("Requires a TTY")
-            .and(predicate::str::contains("`./.skm.toml`"))
-            .and(predicate::str::contains("--user")),
-    );
+    skm()
+        .args(["use-agents", "--help"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("Requires a TTY")
+                .and(predicate::str::contains("`./.skm.toml`"))
+                .and(predicate::str::contains("--user")),
+        );
 }
 
 #[test]
 fn add_agent_help_documents_project_setup_requirement() {
-    skm().args(["add-agent", "--help"]).assert().success().stdout(
-        predicate::str::contains("Requires `./.skm.toml`")
-            .and(predicate::str::contains("--user")),
-    );
+    skm()
+        .args(["add-agent", "--help"])
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("Requires `./.skm.toml`")
+                .and(predicate::str::contains("--user")),
+        );
 }
 
 #[test]
 fn sync_help_documents_project_setup_requirement() {
     skm().args(["sync", "--help"]).assert().success().stdout(
-        predicate::str::contains("Requires `./.skm.toml`")
-            .and(predicate::str::contains("--user")),
+        predicate::str::contains("Requires `./.skm.toml`").and(predicate::str::contains("--user")),
     );
 }
 

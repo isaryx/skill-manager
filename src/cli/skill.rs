@@ -11,7 +11,26 @@ use crate::store::pool::{plan_skill_removal, remove_skill};
 use crate::store::profiles::{profiles_referencing_skills, remove_skills_from_profiles};
 use crate::store::skills::{interactive_skills_setup, list_enabled_pool_ids, read_disabled_ids};
 use crate::store::StorePaths;
+use crate::util::skill_spec;
 use crate::util::validate_store_skill_id;
+
+pub fn run_validate(path: &std::path::Path, json: bool) -> Result<i32, SkmError> {
+    let report = skill_spec::validate_skill_spec(path);
+
+    if json {
+        super::output::write_json(&report)
+            .map_err(|e| SkmError::Usage(format!("failed to encode JSON: {e}")))?;
+    } else if report.valid {
+        println!("✓ {} is valid", report.path);
+    } else {
+        println!("✗ {} has {} issue(s):", report.path, report.issues.len());
+        for issue in &report.issues {
+            println!(" - {issue}");
+        }
+    }
+
+    Ok(if report.valid { 0 } else { 1 })
+}
 
 pub fn run_setup(store: &StorePaths) -> Result<(), SkmError> {
     interactive_skills_setup(store).map_err(|e| e.op("selecting skills interactively"))?;

@@ -23,7 +23,7 @@ pub fn run_use_profiles(store: &StorePaths, force_user: bool) -> Result<(), SkmE
     if !chosen.is_empty() {
         ensure_nonempty_selection(store, &chosen)?;
     }
-    apply_active_profiles(store, setup, &chosen, ReconcileOptions { dry_run: false })
+    apply_active_profiles(store, setup, &chosen, ReconcileOptions::default())
 }
 
 pub fn run_add_profile(
@@ -37,7 +37,10 @@ pub fn run_add_profile(
     let cwd = env::current_dir()?;
     let setup = select_command_setup(&cwd, force_user)?;
     if setup.setup.profile.is_active(profile) {
-        eprintln!("active profiles unchanged: {}", setup.setup.profile.active.join(", "));
+        eprintln!(
+            "active profiles unchanged: {}",
+            setup.setup.profile.active.join(", ")
+        );
         return Ok(());
     }
     let mut active = setup.setup.profile.active.clone();

@@ -114,6 +114,34 @@ pub struct SkillMeta {
     pub hash: String,
     pub imported_at: String,
     pub transfer: String,
+    /// Registered repo namespace for repo-qualified ids (`--repo` import today; git remote later).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repo_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
+}
+
+impl SkillMeta {
+    pub fn new(
+        source_type: impl Into<String>,
+        path: impl Into<String>,
+        hash: impl Into<String>,
+        imported_at: impl Into<String>,
+        transfer: impl Into<String>,
+    ) -> Self {
+        Self {
+            source_type: source_type.into(),
+            path: path.into(),
+            hash: hash.into(),
+            imported_at: imported_at.into(),
+            transfer: transfer.into(),
+            repo_name: None,
+            remote_url: None,
+            commit: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -365,8 +393,10 @@ mod tests {
 
     #[test]
     fn legacy_single_active_profile_is_read_as_a_list() {
-        let setup: SetupFile =
-            toml::from_str("version = 1\n[placement]\nagents = [\"claude-code\"]\n[profile]\nactive = \"work\"\n").unwrap();
+        let setup: SetupFile = toml::from_str(
+            "version = 1\n[placement]\nagents = [\"claude-code\"]\n[profile]\nactive = \"work\"\n",
+        )
+        .unwrap();
         assert_eq!(setup.profile.active, vec!["work".to_string()]);
         assert!(toml::to_string(&setup)
             .unwrap()

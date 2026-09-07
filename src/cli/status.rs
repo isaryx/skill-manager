@@ -43,6 +43,7 @@ pub fn run_status(store: &StorePaths, force_user: bool, json: bool) -> Result<()
                         .iter()
                         .map(|placement| StatusSkillJson {
                             name: placement.name.clone(),
+                            store_id: placement.store_id.clone(),
                             source: display_path(&placement.source),
                         })
                         .collect(),
@@ -159,11 +160,7 @@ fn print_active_profiles(profiles: &[String], color: bool) -> io::Result<()> {
         if profiles.is_empty() {
             writeln!(out, " {}", style("(none)").dim())?;
         } else {
-            writeln!(
-                out,
-                " {}",
-                style(profiles.join(", ")).cyan().bold()
-            )?;
+            writeln!(out, " {}", style(profiles.join(", ")).cyan().bold())?;
         }
     } else if profiles.is_empty() {
         writeln!(out, "Active profiles: (none)")?;
@@ -187,15 +184,32 @@ fn print_placement(placement: &PlacementStatus, indent: &str, color: bool) -> io
     let source = display_path(&placement.source);
     let mut out = io::stdout().lock();
     if color {
+        if placement.store_id == placement.name {
+            writeln!(
+                out,
+                "{indent}  {} {} {}",
+                style(&placement.name).green(),
+                style("→").dim(),
+                style(source).dim()
+            )?;
+        } else {
+            writeln!(
+                out,
+                "{indent}  {} {} {} {}",
+                style(&placement.name).green(),
+                style(format!("({})", placement.store_id)).dim(),
+                style("→").dim(),
+                style(source).dim()
+            )?;
+        }
+    } else if placement.store_id == placement.name {
+        writeln!(out, "{indent}  {} -> {source}", placement.name)?;
+    } else {
         writeln!(
             out,
-            "{indent}  {} {} {}",
-            style(&placement.name).green(),
-            style("→").dim(),
-            style(source).dim()
+            "{indent}  {} ({}) -> {source}",
+            placement.name, placement.store_id
         )?;
-    } else {
-        writeln!(out, "{indent}  {} -> {source}", placement.name)?;
     }
     Ok(())
 }
@@ -205,15 +219,16 @@ fn print_conflict(conflict: &PlacementConflict, indent: &str, color: bool) -> io
     if color {
         writeln!(
             out,
-            "{indent}  {} {}",
+            "{indent}  {} {} {}",
             style(&conflict.name).yellow(),
+            style(format!("({})", conflict.store_id)).dim(),
             style("(conflicted — non-skm entry present)").dim()
         )?;
     } else {
         writeln!(
             out,
-            "{indent}  {} (conflicted — non-skm entry present)",
-            conflict.name
+            "{indent}  {} ({}) (conflicted — non-skm entry present)",
+            conflict.name, conflict.store_id
         )?;
     }
     Ok(())

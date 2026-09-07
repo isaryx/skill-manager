@@ -25,12 +25,7 @@ const PROJECT_COMMANDS: &[&str] = &[
 ];
 
 const STORE_COMMANDS: &[&str] = &[
-    "import",
-    "profile",
-    "skill",
-    "ls",
-    "scan",
-    "doctor",
+    "import", "profile", "skill", "ls", "scan", "search", "doctor",
 ];
 
 /// Root help with gh-style `PROJECT COMMANDS` / `STORE COMMANDS` sections.
@@ -109,14 +104,13 @@ mod tests {
         assert!(grouped.contains("  import"));
         assert!(grouped.contains("  add-profile"));
         assert!(grouped.contains("  remove-profile"));
+        assert!(grouped.contains("  search"));
         assert!(grouped.contains("  doctor"));
     }
 
     #[test]
     fn grouped_help_omits_flat_commands_section() {
-        let rendered = apply_grouped_help(Cli::command())
-            .render_help()
-            .to_string();
+        let rendered = apply_grouped_help(Cli::command()).render_help().to_string();
         assert!(rendered.contains("PROJECT COMMANDS"));
         assert!(rendered.contains("STORE COMMANDS"));
         assert!(!rendered.contains("Commands:\n"));

@@ -4,8 +4,7 @@ use std::io::{self, IsTerminal};
 use dialoguer::Confirm;
 
 use crate::adapters::{
-    canonical_agent_id, get_adapter, interactive_select_agents, resolve_target_dirs,
-    AgentTarget,
+    canonical_agent_id, get_adapter, interactive_select_agents, resolve_target_dirs, AgentTarget,
 };
 use crate::cli::Agent;
 use crate::config::write_setup;
@@ -33,11 +32,7 @@ pub fn run_use_agents(store: &StorePaths, force_user: bool) -> Result<(), SkmErr
     apply_target_agents(store, selected, &chosen)
 }
 
-pub fn run_add_agent(
-    store: &StorePaths,
-    agent: &Agent,
-    force_user: bool,
-) -> Result<(), SkmError> {
+pub fn run_add_agent(store: &StorePaths, agent: &Agent, force_user: bool) -> Result<(), SkmError> {
     let cwd = env::current_dir()?;
     let selected =
         select_command_setup(&cwd, force_user).map_err(|e| e.op("loading config file"))?;

@@ -3,20 +3,21 @@ use std::path::PathBuf;
 
 use crate::color::ColorWhen;
 
-pub mod help;
 pub mod agent;
 pub mod destroy;
 pub mod doctor;
+pub mod help;
 pub mod import;
 pub mod init;
 pub mod ls;
 pub mod output;
 pub mod profile;
 pub mod scan;
-pub mod use_agents;
+pub mod search;
 pub mod skill;
 pub mod status;
 pub mod sync;
+pub mod use_agents;
 pub mod use_cmd;
 
 pub use agent::{unique_agent_ids, Agent};
@@ -45,8 +46,8 @@ pub fn cli_command() -> clap::Command {
                        Project commands require `./.skm.toml` unless --user.\n\n\
                        Automation:\n  \
                        Select the store with SKM_STORE or --store.\n  \
-                       --json works with `status`, `ls`, `skill ls`, and `doctor`; data goes to \
-                       stdout, progress and errors to stderr.\n  \
+                       --json works with `status`, `ls`, `search`, `skill ls`, `skill validate`, \
+                       and `doctor`; data goes to stdout, progress and errors to stderr.\n  \
                        --dry-run works with `sync`, `add-profile`, `remove-profile`, `skill rm`, \
                        and `destroy`.\n  \
                        Exit codes: 0 success, 1 runtime or health failure, 2 usage or resolve \
@@ -62,7 +63,7 @@ pub struct Cli {
     #[arg(long, global = true, env = "SKM_STORE")]
     pub store: Option<PathBuf>,
 
-    /// Emit machine-readable JSON on stdout (`status`, `ls`, `skill ls`, `doctor` only)
+    /// Emit machine-readable JSON on stdout (`status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor` only)
     #[arg(long, global = true)]
     pub json: bool,
 
@@ -116,6 +117,12 @@ pub enum Commands {
         /// Name to use in the store
         #[arg(long = "as", alias = "as-name")]
         as_name: Option<String>,
+        /// Register under a remote repo name (e.g. `agent-skills/deploy`)
+        #[arg(long)]
+        repo: Option<String>,
+        /// Fail when SKILL.md frontmatter is invalid (default: warn)
+        #[arg(long)]
+        strict: bool,
     },
     /// Create and manage profiles
     Profile {
@@ -214,11 +221,17 @@ pub enum Commands {
         force: bool,
     },
     /// Refresh skill links without changing the active profiles
-    #[command(after_help = "Requires `./.skm.toml` unless --user.")]
+    #[command(
+        after_help = "Requires `./.skm.toml` unless --user. Warns on invalid SKILL.md \
+                             frontmatter; pass --strict to fail."
+    )]
     Sync {
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]
         user: bool,
+        /// Fail when SKILL.md frontmatter is invalid (default: warn)
+        #[arg(long)]
+        strict: bool,
     },
     /// Show target agents, active profiles, linked skills, and name conflicts
     #[command(
@@ -246,6 +259,13 @@ pub enum Commands {
     },
     /// Refresh the on-disk skill index
     Scan,
+    /// Search indexed skill IDs and descriptions
+    #[command(after_help = "All terms must match, case-insensitively. Supports --json.")]
+    Search {
+        /// Terms to find in the skill ID or description
+        #[arg(required = true, num_args = 1..)]
+        query: Vec<String>,
+    },
     /// Read-only health report for the store, profiles, and skill links
     Doctor {
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
@@ -328,5 +348,16 @@ pub enum SkillAction {
         /// Remove without confirmation (required when stdin is not a TTY)
         #[arg(long)]
         force: bool,
+    },
+    /// Validate SKILL.md frontmatter against the Agent Skills spec
+    #[command(
+        long_about = "Check a skill directory (or SKILL.md) against the Agent Skills \
+                      frontmatter rules: required fields, name/directory match, and length \
+                      limits.",
+        after_help = "Supports --json for CI. Exit 0 when valid, 1 when invalid."
+    )]
+    Validate {
+        /// Skill directory or SKILL.md file
+        path: PathBuf,
     },
 }

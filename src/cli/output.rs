@@ -19,6 +19,7 @@ pub struct StatusAgentJson<'a> {
 #[derive(Debug, Serialize)]
 pub struct StatusSkillJson {
     pub name: String,
+    pub store_id: String,
     pub source: String,
 }
 

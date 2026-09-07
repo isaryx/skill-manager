@@ -244,7 +244,9 @@ fn add_agent_appends_to_setup_file() {
         .args(["add-agent", "cursor"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("target agents: claude-code, cursor"));
+        .stdout(predicate::str::contains(
+            "target agents: claude-code, cursor",
+        ));
 
     let content = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
     assert!(content.contains("cursor"));

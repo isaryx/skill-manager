@@ -7,6 +7,9 @@ use walkdir::WalkDir;
 
 use crate::error::SkmError;
 
+pub mod skill_id;
+pub mod skill_spec;
+
 /// Validate a single path segment: `[a-z0-9][a-z0-9._-]*`
 pub fn validate_skill_id(id: &str) -> Result<(), SkmError> {
     validate_name(id, |name| SkmError::InvalidSkillId(name.to_string()))

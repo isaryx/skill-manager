@@ -14,7 +14,7 @@ use crate::setup::{select_command_setup, target_dirs_for_setup, SelectedSetup};
 use crate::store::extends::load_merged_flattened_profile;
 use crate::store::skills::read_disabled_ids;
 use crate::store::{ensure_store_subdirs, StorePaths};
-use crate::util::{is_skill_dir, validate_profile_name};
+use crate::util::{is_skill_dir, skill_spec::check_skill_specs, validate_profile_name};
 
 pub(crate) use exclude::tracked_paths;
 pub(crate) use links::{
@@ -25,11 +25,13 @@ pub(crate) use links::{
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ReconcileOptions {
     pub dry_run: bool,
+    pub strict: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct PlacementStatus {
     pub name: String,
+    pub store_id: String,
     pub source: PathBuf,
 }
 
@@ -118,6 +120,13 @@ pub fn reconcile_with_setup(
         let disabled = read_disabled_ids(store)?;
         resolve(&profile, store, &disabled).map_err(SkmError::from)?
     };
+
+    if !placements.is_empty() {
+        let mut skill_dirs: Vec<PathBuf> = placements.iter().map(|p| p.source.clone()).collect();
+        skill_dirs.sort();
+        skill_dirs.dedup();
+        check_skill_specs(&skill_dirs, options.strict)?;
+    }
 
     let targets = target_dirs_for_setup(selected)?;
     let store_root = store.canonical_root();
@@ -485,6 +494,7 @@ pub fn collect_status(
             if current == want {
                 report.linked.push(PlacementStatus {
                     name: placement.name.clone(),
+                    store_id: placement.store_id.clone(),
                     source: current,
                 });
             }

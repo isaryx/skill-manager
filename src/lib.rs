@@ -18,8 +18,8 @@ use std::env;
 use crate::cli::ls::LsFilter;
 use crate::cli::sync as sync_cmd;
 use crate::cli::{
-    destroy, doctor::run_doctor, import, init, ls, profile, scan, use_agents, skill, status,
-    use_cmd, Commands, ProfileAction, SkillAction,
+    destroy, doctor::run_doctor, import, init, ls, profile, scan, search, skill, status,
+    use_agents, use_cmd, Commands, ProfileAction, SkillAction,
 };
 use crate::config::resolve_store_root;
 use crate::store::StorePaths;
@@ -35,7 +35,10 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
     let store = StorePaths::new(resolve_store_root(cli.store.as_deref())?);
     let json = cli.json;
     let dry_run = cli.dry_run;
-    let reconcile_opts = ReconcileOptions { dry_run };
+    let reconcile_opts = ReconcileOptions {
+        dry_run,
+        strict: false,
+    };
 
     let exit = match cli.command {
         Commands::Init {
@@ -51,8 +54,10 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
             copy,
             move_,
             as_name,
+            repo,
+            strict,
         } => {
-            import::run_import(&store, &dir, copy, move_, as_name)?;
+            import::run_import(&store, &dir, copy, move_, as_name, repo, strict)?;
             0
         }
         Commands::Profile { action } => {
@@ -72,6 +77,9 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
                 SkillAction::Ls => skill::run_ls(&store, json)?,
                 SkillAction::Setup => skill::run_setup(&store)?,
                 SkillAction::Rm { id, force } => skill::run_rm(&store, &id, force, dry_run)?,
+                SkillAction::Validate { path } => {
+                    return skill::run_validate(&path, json);
+                }
             }
             0
         }
@@ -87,8 +95,8 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
             use_cmd::run_remove_profile(&store, &profile, user, reconcile_opts)?;
             0
         }
-        Commands::Sync { user } => {
-            sync_cmd::run_sync(&store, user, reconcile_opts)?;
+        Commands::Sync { user, strict } => {
+            sync_cmd::run_sync(&store, user, ReconcileOptions { dry_run, strict })?;
             0
         }
         Commands::UseAgents { user } => {
@@ -126,6 +134,10 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
             scan::run_scan(&store)?;
             0
         }
+        Commands::Search { query } => {
+            search::run_search(&store, &query, json)?;
+            0
+        }
         Commands::Doctor { user } => run_doctor(&store, user, json)?,
     };
 
@@ -140,7 +152,8 @@ fn validate_global_flags(cli: &Cli) -> Result<(), SkmError> {
     }
     if cli.json && !supports_json(&cli.command) {
         return Err(SkmError::Usage(
-            "--json is only supported for status, ls, skill ls, and doctor".into(),
+            "--json is only supported for status, ls, search, skill ls, skill validate, and doctor"
+                .into(),
         ));
     }
     if cli.dry_run && !supports_dry_run(&cli.command) {
@@ -154,11 +167,14 @@ fn validate_global_flags(cli: &Cli) -> Result<(), SkmError> {
 fn supports_json(command: &Commands) -> bool {
     matches!(
         command,
-        Commands::Status { .. } | Commands::Ls { .. } | Commands::Doctor { .. }
+        Commands::Status { .. }
+            | Commands::Ls { .. }
+            | Commands::Search { .. }
+            | Commands::Doctor { .. }
     ) || matches!(
         command,
         Commands::Skill {
-            action: SkillAction::Ls,
+            action: SkillAction::Ls | SkillAction::Validate { .. },
         }
     )
 }

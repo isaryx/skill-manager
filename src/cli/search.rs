@@ -69,7 +69,16 @@ pub fn run_search(store: &StorePaths, terms: &[String], json: bool) -> Result<()
 fn profile_memberships(store: &StorePaths) -> Result<HashMap<String, Vec<String>>, SkmError> {
     let mut memberships: HashMap<String, Vec<String>> = HashMap::new();
     for profile_name in list_profiles(store)? {
-        for skill_id in flatten_skill_ids(store, &profile_name)? {
+        let skill_ids = match flatten_skill_ids(store, &profile_name) {
+            Ok(ids) => ids,
+            Err(err) => {
+                progress::warn(format!(
+                    "skipping profile `{profile_name}` in search results: {err}"
+                ));
+                continue;
+            }
+        };
+        for skill_id in skill_ids {
             memberships
                 .entry(skill_id)
                 .or_default()

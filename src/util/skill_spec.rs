@@ -27,8 +27,15 @@ struct SkillFrontmatter {
 
 /// Validate a skill directory (or a path to `SKILL.md`) against the Agent Skills spec.
 pub fn validate_skill_spec(path: &Path) -> SkillValidationReport {
+    validate_skill_spec_with_expected(path, None)
+}
+
+fn validate_skill_spec_with_expected(
+    path: &Path,
+    expected_name: Option<&str>,
+) -> SkillValidationReport {
     let skill_dir = resolve_skill_root(path);
-    let issues = spec_issues(&skill_dir);
+    let issues = spec_issues(&skill_dir, expected_name);
     SkillValidationReport {
         path: skill_dir.display().to_string(),
         valid: issues.is_empty(),
@@ -38,9 +45,45 @@ pub fn validate_skill_spec(path: &Path) -> SkillValidationReport {
 
 /// Validate every skill directory and warn or fail depending on `strict`.
 pub fn check_skill_specs(skill_dirs: &[PathBuf], strict: bool) -> Result<(), SkmError> {
+    check_skill_specs_with_rename(skill_dirs, strict, None)
+}
+
+/// Validate skills before import. A name/frontmatter mismatch always fails; other issues warn
+/// unless `strict`.
+pub fn check_skill_specs_for_import(
+    skill_dirs: &[PathBuf],
+    strict: bool,
+    rename_to: Option<&str>,
+) -> Result<(), SkmError> {
+    check_skill_specs_with_rename(skill_dirs, strict, rename_to)
+}
+
+fn check_skill_specs_with_rename(
+    skill_dirs: &[PathBuf],
+    strict: bool,
+    rename_to: Option<&str>,
+) -> Result<(), SkmError> {
     let reports = skill_dirs
         .iter()
-        .map(|dir| validate_skill_spec(dir))
+        .map(|dir| {
+            let expected = if skill_dirs.len() == 1 {
+                let dir_name = dir.file_name().and_then(|name| name.to_str());
+                match rename_to {
+                    None => dir_name,
+                    Some(rename) => {
+                        let declared = read_frontmatter_name(dir);
+                        if declared.as_deref() == dir_name {
+                            dir_name
+                        } else {
+                            Some(rename)
+                        }
+                    }
+                }
+            } else {
+                dir.file_name().and_then(|name| name.to_str())
+            };
+            validate_skill_spec_with_expected(dir, expected)
+        })
         .filter(|report| !report.valid)
         .collect::<Vec<_>>();
 
@@ -50,7 +93,14 @@ pub fn check_skill_specs(skill_dirs: &[PathBuf], strict: bool) -> Result<(), Skm
         }
     }
 
-    if strict && !reports.is_empty() {
+    let has_blocking = reports.iter().any(|report| {
+        report
+            .issues
+            .iter()
+            .any(|issue| issue.contains("does not match directory"))
+    });
+
+    if (strict || has_blocking) && !reports.is_empty() {
         let paths = reports
             .iter()
             .map(|report| report.path.as_str())
@@ -60,6 +110,12 @@ pub fn check_skill_specs(skill_dirs: &[PathBuf], strict: bool) -> Result<(), Skm
     }
 
     Ok(())
+}
+
+fn read_frontmatter_name(skill_dir: &Path) -> Option<String> {
+    parse_skill_md(&skill_dir.join("SKILL.md"))
+        .ok()
+        .and_then(|frontmatter| frontmatter.name)
 }
 
 fn resolve_skill_root(path: &Path) -> PathBuf {
@@ -72,7 +128,7 @@ fn resolve_skill_root(path: &Path) -> PathBuf {
     }
 }
 
-fn spec_issues(skill_dir: &Path) -> Vec<String> {
+fn spec_issues(skill_dir: &Path, expected_name: Option<&str>) -> Vec<String> {
     let skill_file = skill_dir.join("SKILL.md");
     if !skill_file.is_file() {
         return vec![format!("SKILL.md not found in {}", skill_dir.display())];
@@ -83,7 +139,13 @@ fn spec_issues(skill_dir: &Path) -> Vec<String> {
         Err(err) => return vec![err],
     };
 
-    validate_frontmatter(&frontmatter, skill_dir)
+    let expected = expected_name.or_else(|| {
+        skill_dir
+            .file_name()
+            .and_then(|name| name.to_str())
+    });
+    let expected = expected.unwrap_or_default();
+    validate_frontmatter(&frontmatter, expected)
 }
 
 fn parse_skill_md(path: &Path) -> Result<SkillFrontmatter, String> {
@@ -116,19 +178,15 @@ pub fn read_description(skill_dir: &Path) -> Option<String> {
         .and_then(|frontmatter| frontmatter.description)
 }
 
-fn validate_frontmatter(frontmatter: &SkillFrontmatter, skill_dir: &Path) -> Vec<String> {
+fn validate_frontmatter(frontmatter: &SkillFrontmatter, expected_name: &str) -> Vec<String> {
     let mut issues = Vec::new();
-    let dir_name = skill_dir
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or_default();
 
     match frontmatter.name.as_deref() {
         None | Some("") => issues.push("name: required field is missing".to_string()),
         Some(name) => {
-            if name != dir_name {
+            if name != expected_name {
                 issues.push(format!(
-                    "name: \"{name}\" does not match directory name \"{dir_name}\""
+                    "name: \"{name}\" does not match directory name \"{expected_name}\""
                 ));
             }
             if name.len() > MAX_NAME_LEN {
@@ -287,5 +345,32 @@ mod tests {
             check_skill_specs(&[skill], true),
             Err(SkmError::SkillSpecInvalid(_))
         ));
+    }
+
+    #[test]
+    fn import_fails_on_name_directory_mismatch_without_strict() {
+        let dir = tempfile::tempdir().unwrap();
+        let skill = dir.path().join("demo");
+        write_skill_md(
+            &skill,
+            "---\nname: other\ndescription: A long enough description for the demo skill.\n---\n",
+        );
+
+        assert!(matches!(
+            check_skill_specs_for_import(&[skill], false, None),
+            Err(SkmError::SkillSpecInvalid(_))
+        ));
+    }
+
+    #[test]
+    fn import_allows_rename_with_as_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let skill = dir.path().join("source");
+        write_skill_md(
+            &skill,
+            "---\nname: renamed\ndescription: A long enough description for the demo skill.\n---\n",
+        );
+
+        assert!(check_skill_specs_for_import(&[skill], false, Some("renamed")).is_ok());
     }
 }

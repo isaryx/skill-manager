@@ -58,7 +58,7 @@ pub enum SkmError {
     #[error("cannot remove the last target agent; add another agent first")]
     LastTargetAgentRemoval,
 
-    #[error("profile not found: {0}")]
+    #[error("profile not found: {0}; run `skm profile ls` to list available profiles")]
     ProfileNotFound(String),
 
     #[error("no profiles available; create one with `skm profile setup <name>`")]

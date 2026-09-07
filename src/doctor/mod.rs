@@ -49,7 +49,7 @@ pub fn run_checks(store: &StorePaths, force_user: bool) -> Result<Report, SkmErr
 
     let (agents, profiles) = if let Some(ref selected) = selected {
         step("checking profiles");
-        issues.extend(checks::check_config(selected));
+        issues.extend(checks::check_config(store, selected));
 
         let agents = selected.setup.placement.resolved_agents();
         let profiles = selected.setup.profile.active.clone();

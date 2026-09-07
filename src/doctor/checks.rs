@@ -343,7 +343,7 @@ pub fn check_profiles(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
     Ok(issues)
 }
 
-pub fn check_config(selected: &SelectedSetup) -> Vec<Issue> {
+pub fn check_config(store: &StorePaths, selected: &SelectedSetup) -> Vec<Issue> {
     let mut issues = Vec::new();
 
     if selected.setup.placement.agents.is_empty() {
@@ -361,6 +361,21 @@ pub fn check_config(selected: &SelectedSetup) -> Vec<Issue> {
                     format!("unknown agent `{agent}` in config"),
                 )
                 .with_agent(agent),
+            );
+        }
+    }
+
+    for name in &selected.setup.profile.active {
+        if !store.profile_file(name).is_file() {
+            issues.push(
+                Issue::error(
+                    "config.active_profile_not_found",
+                    format!(
+                        "active profile `{name}` not found in store; run `skm profile ls` or \
+                         `skm add-profile <profile>`"
+                    ),
+                )
+                .with_profile(name),
             );
         }
     }
@@ -677,16 +692,18 @@ mod tests {
     #[test]
     fn check_config_unknown_agent() {
         let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
         let selected = selected_setup_for(tmp.path(), &["windsurf"]);
-        let issues = check_config(&selected);
+        let issues = check_config(&store, &selected);
         assert!(issues.iter().any(|i| i.code == "config.unknown_agent"));
     }
 
     #[test]
     fn check_config_reports_each_unknown_agent_with_its_name() {
         let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
         let selected = selected_setup_for(tmp.path(), &["claude-code", "windsurf", "zed"]);
-        let issues = check_config(&selected);
+        let issues = check_config(&store, &selected);
         let unknown: Vec<&str> = issues
             .iter()
             .filter(|issue| issue.code == "config.unknown_agent")
@@ -698,8 +715,9 @@ mod tests {
     #[test]
     fn check_config_reports_empty_agent_list() {
         let tmp = TempDir::new().unwrap();
+        let store = StorePaths::new(tmp.path().to_path_buf());
         let selected = selected_setup_for(tmp.path(), &[]);
-        let issues = check_config(&selected);
+        let issues = check_config(&store, &selected);
         assert!(issues.iter().any(|i| i.code == "config.no_agents"));
     }
 

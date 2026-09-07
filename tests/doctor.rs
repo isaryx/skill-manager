@@ -194,6 +194,25 @@ fn doctor_no_active_profile_skips_link_checks() {
 }
 
 #[test]
+fn doctor_reports_missing_active_profile() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    std::fs::write(
+        home.path().join(".skm.toml"),
+        "version = 1\n\n[placement]\nagents = [\"claude-code\"]\n\n[profile]\nactive = [\"missing\"]\n",
+    )
+    .unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["doctor"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("config.active_profile_not_found"));
+}
+
+#[test]
 fn doctor_reports_index_stale() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();

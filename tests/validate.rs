@@ -95,6 +95,29 @@ fn import_warns_on_invalid_frontmatter_by_default() {
 }
 
 #[test]
+fn import_fails_on_name_directory_mismatch_by_default() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    let src = TempDir::new().unwrap();
+    let skill = src.path().join("demo");
+    std::fs::create_dir_all(&skill).unwrap();
+    std::fs::write(
+        skill.join("SKILL.md"),
+        "---\nname: other\ndescription: A long enough description for the demo skill.\n---\n",
+    )
+    .unwrap();
+
+    init_project(home.path(), store.path());
+
+    with_env(home.path(), store.path())
+        .args(["import", "--copy"])
+        .arg(&skill)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("skill spec validation failed"));
+}
+
+#[test]
 fn import_strict_fails_on_invalid_frontmatter() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();

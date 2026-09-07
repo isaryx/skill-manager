@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`skm import`** — fails when `name` in `SKILL.md` does not match the source directory (or `--as` target when renaming); no longer warns and imports under a different store id.
+- **`skm search`** — skips profiles with broken `extends` graphs instead of failing the whole command.
+- **`skm doctor`** — reports `config.active_profile_not_found` when `[profile].active` names a missing profile.
+- **`skm status`** — clearer `profile not found` error suggesting `skm profile ls`.
+
 ## [0.4.0](https://github.com/isaryx/skill-manager/releases/tag/v0.4.0) - 2026-09-07
 
 Search, validation, repo-qualified imports, and release install/update scripts.

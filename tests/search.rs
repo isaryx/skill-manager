@@ -187,3 +187,28 @@ fn search_with_no_matches_prints_a_hint_on_stderr() {
         .stderr(predicate::str::contains("no matching skills"))
         .stderr(predicate::str::contains("skm scan"));
 }
+
+#[test]
+fn search_survives_broken_profile_extend_graph() {
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    write_described_skill(store.path(), "docs", "Searchable documentation helper");
+    let profiles_dir = store.path().join(".skm/profiles");
+    fs::create_dir_all(&profiles_dir).unwrap();
+    fs::write(profiles_dir.join("a.toml"), "extends = [\"b\"]\n").unwrap();
+    fs::write(profiles_dir.join("b.toml"), "extends = [\"a\"]\n").unwrap();
+
+    with_env(home.path(), store.path())
+        .arg("scan")
+        .assert()
+        .success();
+
+    with_env(home.path(), store.path())
+        .args(["search", "documentation"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("docs"))
+        .stderr(predicate::str::contains("skipping profile"));
+}

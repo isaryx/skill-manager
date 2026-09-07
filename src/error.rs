@@ -139,6 +139,24 @@ pub enum SkmError {
     #[error("skill spec validation failed: {0}")]
     SkillSpecInvalid(String),
 
+    #[error("git is not installed or not on PATH")]
+    GitNotFound,
+
+    #[error("git command failed: {command}: {stderr}")]
+    GitCommandFailed { command: String, stderr: String },
+
+    #[error("repo \"{0}\" already registered")]
+    RepoAlreadyRegistered(String),
+
+    #[error("URL already registered as \"{existing_name}\"")]
+    RepoUrlAlreadyRegistered { url: String, existing_name: String },
+
+    #[error("remote repo not found: {0}")]
+    RepoNotFound(String),
+
+    #[error("library link for `{id}` is occupied: {path}")]
+    LibraryLinkOccupied { id: String, path: PathBuf },
+
     #[error("{0}")]
     Usage(String),
 
@@ -171,6 +189,8 @@ impl SkmError {
             | SkmError::ResolveConflict(_)
             | SkmError::InvalidProfileName(_)
             | SkmError::InvalidSkillId(_)
+            | SkmError::RepoAlreadyRegistered(_)
+            | SkmError::RepoUrlAlreadyRegistered { .. }
             | SkmError::SelfExtend(_)
             | SkmError::DuplicateExtend(_)
             | SkmError::ExtendCycle(_)

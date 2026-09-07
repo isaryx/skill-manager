@@ -25,7 +25,7 @@ const PROJECT_COMMANDS: &[&str] = &[
 ];
 
 const STORE_COMMANDS: &[&str] = &[
-    "import", "profile", "skill", "ls", "scan", "search", "doctor",
+    "import", "repo", "update", "profile", "skill", "ls", "scan", "search", "doctor",
 ];
 
 /// Root help with gh-style `PROJECT COMMANDS` / `STORE COMMANDS` sections.
@@ -102,6 +102,8 @@ mod tests {
         assert!(grouped.contains("STORE COMMANDS"));
         assert!(grouped.contains("  init"));
         assert!(grouped.contains("  import"));
+        assert!(grouped.contains("  repo"));
+        assert!(grouped.contains("  update"));
         assert!(grouped.contains("  add-profile"));
         assert!(grouped.contains("  remove-profile"));
         assert!(grouped.contains("  search"));

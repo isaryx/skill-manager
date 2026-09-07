@@ -537,6 +537,69 @@ pub fn check_links(
     Ok(issues)
 }
 
+pub fn check_remotes(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
+    use crate::store::remote::checkout_path;
+    use crate::store::remote::registry::list_repos;
+    use crate::store::remote::update::skill_count_for_repo;
+
+    let mut issues = Vec::new();
+    for reg in list_repos(store)? {
+        let checkout = checkout_path(store, &reg.name);
+        if !checkout.is_dir() {
+            issues.push(
+                Issue::error(
+                    "remote.checkout_missing",
+                    format!(
+                        "registered remote `{}` has no checkout at {}",
+                        reg.name,
+                        display_path(&checkout)
+                    ),
+                )
+                .with_path(display_path(&checkout)),
+            );
+            continue;
+        }
+
+        if let Some(err) = &reg.last_pull_error {
+            issues.push(
+                Issue::warn(
+                    "remote.pull_failed",
+                    format!("last pull failed for `{}`: {err}", reg.name),
+                )
+                .with_skill(reg.name.clone()),
+            );
+        }
+
+        let count = skill_count_for_repo(store, &reg.name)?;
+        if count == 0 {
+            issues.push(
+                Issue::info(
+                    "remote.no_skills",
+                    format!("registered remote `{}` has no skills in the library", reg.name),
+                )
+                .with_skill(reg.name.clone()),
+            );
+        }
+
+        use crate::store::remote::link::collect_repo_library_links;
+        for id in collect_repo_library_links(store, &reg.name)? {
+            let link = store.skill_dir(&id);
+            if link.is_symlink() && !link.exists() {
+                issues.push(
+                    Issue::warn(
+                        "remote.library_broken",
+                        format!("library symlink for `{id}` does not resolve"),
+                    )
+                    .with_skill(id)
+                    .with_path(display_path(&link)),
+                );
+            }
+        }
+    }
+
+    Ok(issues)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

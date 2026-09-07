@@ -108,6 +108,22 @@ where
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepoRegistration {
+    pub version: u32,
+    pub name: String,
+    pub url: String,
+    /// Relative to `.skm/` (e.g. `remotes/myskills`).
+    pub checkout: String,
+    pub commit: String,
+    /// Relative path within checkout; empty when the repo root is a single skill.
+    pub skills_root: String,
+    pub cloned_at: String,
+    pub updated_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_pull_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillMeta {
     pub source_type: String,
     pub path: String,

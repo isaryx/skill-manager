@@ -45,6 +45,7 @@ pub fn run_checks(store: &StorePaths, force_user: bool) -> Result<Report, SkmErr
         issues.extend(checks::check_skills_on_disk(store)?);
         issues.extend(checks::check_meta(store)?);
         issues.extend(checks::check_profiles(store)?);
+        issues.extend(checks::check_remotes(store)?);
     }
 
     let (agents, profiles) = if let Some(ref selected) = selected {

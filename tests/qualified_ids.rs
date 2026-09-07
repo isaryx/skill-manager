@@ -99,7 +99,8 @@ fn status_shows_store_id_for_repo_qualified_skills() {
         .stdout(predicate::str::contains(
             "\"store_id\":\"agent-skills/deploy\"",
         ))
-        .stdout(predicate::str::contains("\"name\":\"deploy\""));
+        .stdout(predicate::str::contains("\"name\":\"deploy\""))
+        .stdout(predicate::str::contains("\"source_type\":\"local\""));
 
     with_env(home.path(), store.path())
         .args(["status"])

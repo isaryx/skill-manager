@@ -45,6 +45,7 @@ pub fn run_status(store: &StorePaths, force_user: bool, json: bool) -> Result<()
                             name: placement.name.clone(),
                             store_id: placement.store_id.clone(),
                             source: display_path(&placement.source),
+                            source_type: placement.source_type.clone(),
                         })
                         .collect(),
                     conflicts: report

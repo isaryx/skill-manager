@@ -291,28 +291,28 @@ Remote skills follow the same rules as local:
 
 ### `skm repo add`
 
-- [ ] `owner/repo` shorthand resolves and clones correctly
-- [ ] Full HTTPS and SSH URLs work
-- [ ] Skills found for each standard directory layout (table above) and root `SKILL.md`
-- [ ] Duplicate repo name or URL fails with clear error (exit 2)
-- [ ] Skills appear in `skm ls` and `skm search` after add
-- [ ] No agent symlinks created by `repo add`
-- [ ] Meta: `source_type = remote`, `remote_url`, `repo_name`, `commit` set
+- [x] `owner/repo` shorthand resolves and clones correctly
+- [x] Full HTTPS and SSH URLs work
+- [x] Skills found for each standard directory layout (table above) and root `SKILL.md`
+- [x] Duplicate repo name or URL fails with clear error (exit 2)
+- [x] Skills appear in `skm ls` and `skm search` after add
+- [x] No agent symlinks created by `repo add`
+- [x] Meta: `source_type = remote`, `remote_url`, `repo_name`, `commit` set
 
 ### `skm update` / `skm sync` pull
 
-- [ ] `sync` pulls remotes before reconcile (unless `--no-pull`)
-- [ ] One failed pull does not stop other repos or agent reconcile
-- [ ] `skm update` refreshes checkouts and library symlinks without agent changes
-- [ ] Content change in existing skill visible after pull without re-sync
-- [ ] New upstream skill appears in `skm ls` after update/sync
-- [ ] `commit` in registry/meta updated after successful pull
+- [x] `sync` pulls remotes before reconcile (unless `--no-pull`)
+- [x] One failed pull does not stop other repos or agent reconcile
+- [x] `skm update` refreshes checkouts and library symlinks without agent changes
+- [x] Content change in existing skill visible after pull without re-sync
+- [x] New upstream skill appears in `skm ls` after update/sync
+- [x] `commit` in registry/meta updated after successful pull
 
 ### Integration
 
-- [ ] `skm profile setup` lists remote skills; `add-profile` + `sync` wires agent symlinks
-- [ ] `skm doctor` reports broken/missing remote state
-- [ ] `skm status --json` shows remote skills with `source_type` / store id
+- [x] `skm profile setup` lists remote skills; `add-profile` + `sync` wires agent symlinks
+- [x] `skm doctor` reports broken/missing remote state
+- [x] `skm status --json` shows remote skills with `source_type` / store id
 
 ---
 

@@ -3,7 +3,7 @@ use std::env;
 use crate::error::SkmError;
 use crate::progress;
 use crate::store::StorePaths;
-use crate::sync::{reconcile, ReconcileOptions};
+use crate::sync::{maybe_pull_remotes, reconcile, ReconcileOptions};
 
 pub fn run_sync(
     store: &StorePaths,
@@ -16,6 +16,9 @@ pub fn run_sync(
     } else {
         progress::step("syncing skills");
     }
+
+    maybe_pull_remotes(store, options)?;
+
     reconcile(store, &cwd, force_user, options).map_err(|e| e.op("syncing skills"))?;
     Ok(())
 }

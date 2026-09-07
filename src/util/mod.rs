@@ -152,8 +152,16 @@ fn discover_skill_dirs_walk(dir: &Path, skills: &mut Vec<PathBuf>) -> Result<(),
 
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
-        if entry.file_type()?.is_dir() {
-            discover_skill_dirs_walk(&entry.path(), skills)?;
+        let path = entry.path();
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            discover_skill_dirs_walk(&path, skills)?;
+        } else if file_type.is_symlink() {
+            if is_skill_dir(&path) {
+                skills.push(path);
+            } else if path.is_dir() {
+                discover_skill_dirs_walk(&path, skills)?;
+            }
         }
     }
     Ok(())

@@ -7,6 +7,7 @@ use crate::util::{discover_all_skill_dirs, path_to_store_skill_id};
 pub mod extends;
 pub mod pool;
 pub mod profiles;
+pub mod remote;
 pub mod skills;
 pub mod validate;
 
@@ -81,6 +82,8 @@ impl StorePaths {
 pub fn init_store_layout(store: &StorePaths) -> Result<(), SkmError> {
     fs::create_dir_all(store.profiles_dir())?;
     fs::create_dir_all(store.meta_dir())?;
+    fs::create_dir_all(store.skm_dir().join("repos"))?;
+    fs::create_dir_all(store.skm_dir().join("remotes"))?;
     let _ = crate::db::open_index(store)?;
     Ok(())
 }
@@ -136,6 +139,33 @@ pub fn bundle_meta_for_skill(store: &StorePaths, skill_id: &str) -> Option<Strin
 /// Store-relative id used for provenance meta (`local/foo` → `local`).
 pub fn meta_owner_id(skill_id: &str) -> &str {
     skill_id.split('/').next().unwrap_or(skill_id)
+}
+
+/// Read `source_type` from per-skill or bundle meta.
+pub fn skill_source_type(store: &StorePaths, skill_id: &str) -> String {
+    if let Some(bundle_id) = bundle_meta_for_skill(store, skill_id) {
+        if let Some(source_type) = read_meta_source_type(&store.meta_file(&bundle_id)) {
+            return source_type;
+        }
+    }
+    read_meta_source_type(&store.meta_file(meta_owner_id(skill_id)))
+        .unwrap_or_else(|| "unknown".to_string())
+}
+
+fn read_meta_source_type(path: &Path) -> Option<String> {
+    use crate::config::SkillMeta;
+    if !path.is_file() {
+        return None;
+    }
+    let content = match fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(_) => return None,
+    };
+    let meta: SkillMeta = match toml::from_str(&content) {
+        Ok(meta) => meta,
+        Err(_) => return None,
+    };
+    Some(meta.source_type)
 }
 
 /// True when the skill has its own meta file or inherits bundle-level meta.

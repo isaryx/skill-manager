@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/isaryx/skill-manager/releases/tag/v0.5.0) - 2026-09-07
+
+Remote GitHub skill repositories: register upstream repos, symlink skills into the library, and pull updates on `skm update` / `skm sync`.
+
+### Added
+
+- **`skm repo add <ref>`** — clone a GitHub repo (or local path / `file://` URL) into the store, discover skills under standard paths, and symlink them into the library (`owner/repo` shorthand supported). `--name` sets the registry prefix; `--strict` fails on invalid `SKILL.md`.
+- **`skm repo ls [--json]`** — list registered remotes with URL, commit, and skill count.
+- **`skm update [name]`** — pull registered remotes and refresh library symlinks without changing agent wiring. Supports `--dry-run`.
+- **`skm sync --no-pull`** — skip the remote pull phase before reconcile (offline / pinned workflow).
+- **Remote pull before sync** — `sync`, `add-profile`, and `remove-profile` pull remotes first (warn and continue on per-repo failure).
+- **`skm doctor`** — reports `remote.checkout_missing`, `remote.pull_failed`, `remote.library_broken`, and `remote.no_skills`.
+- **`status --json`** — linked skills include `source_type` from store meta.
+
+### Fixed
+
+- Profile commands (`add-profile`, `remove-profile`, `use-profiles`) pull remotes before reconcile, matching `sync`.
+- `update` / pull refresh removes stale library symlinks when upstream drops skills or checkout content is missing locally.
+- `repo ls` skill counts and `doctor` `remote.library_broken` use checkout/library symlink scans instead of store skill discovery (avoids stale symlinks slipping through).
+- `skm skill validate` accepts a store skill id (e.g. `myskills/deploy`) when the path is not found in the current directory.
+- `repo add` rolls back the checkout when skill validation fails after clone.
+- Git clone failures for missing or private repos report a clearer message than raw `git` auth errors.
+
 ## [Unreleased]
 
 ## [0.4.1](https://github.com/isaryx/skill-manager/releases/tag/v0.4.1) - 2026-09-07

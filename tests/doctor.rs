@@ -445,3 +445,29 @@ fn doctor_names_the_agent_whose_directory_holds_an_extra_link() {
     assert_eq!(extra_issues.len(), 1);
     assert_eq!(extra_issues[0]["agent"], "cursor");
 }
+
+#[test]
+fn doctor_reports_missing_remote_checkout() {
+    if !git_available() {
+        return;
+    }
+
+    let home = TempDir::new().unwrap();
+    let store = TempDir::new().unwrap();
+    init_project(home.path(), store.path());
+
+    fs::create_dir_all(store.path().join(".skm/repos")).unwrap();
+    fs::write(
+        store.path().join(".skm/repos/missing.toml"),
+        "version = 1\nname = \"missing\"\nurl = \"https://github.com/example/missing.git\"\n\
+         checkout = \"remotes/missing\"\ncommit = \"abc\"\nskills_root = \"skills\"\n\
+         cloned_at = \"2026-09-07T00:00:00Z\"\nupdated_at = \"2026-09-07T00:00:00Z\"\n",
+    )
+    .unwrap();
+
+    with_env(home.path(), store.path())
+        .args(["doctor", "--json"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("remote.checkout_missing"));
+}

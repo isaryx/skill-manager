@@ -21,6 +21,7 @@ pub struct StatusSkillJson {
     pub name: String,
     pub store_id: String,
     pub source: String,
+    pub source_type: String,
 }
 
 #[derive(Debug, Serialize)]

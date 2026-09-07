@@ -1,6 +1,6 @@
 # Design
 
-**CLI:** `skm` · **Version:** 0.4.1
+**CLI:** `skm` · **Version:** 0.5.0
 
 Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.md). CLI conventions: [../guides/cli-guidelines.md](../guides/cli-guidelines.md).
 
@@ -336,8 +336,8 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 | 0.3.2 | Shipped | Project commands require `./.skm.toml` unless `--user`; grouped root help |
 | 0.3.3 | Shipped | Multi-active profiles; `use-profiles` / `use-agents` + add/remove commands |
 | 0.4.0 | Shipped | Search, validate, repo-qualified imports, install/update scripts |
-| 0.5.0 | Planned | Windows binary, GitHub remote sources ([SPEC-REMOTE.md](SPEC-REMOTE.md)), `skm update`, pull-before-`sync` |
-| Later | — | Tier 2 agents, `freeze`, variants, skill groups |
+| 0.5.0 | Shipped | GitHub remote sources ([SPEC-REMOTE.md](SPEC-REMOTE.md)), `skm repo add`, `skm update`, pull-before-`sync` |
+| Later | — | Windows binary, `skm repo rm`, Tier 2 agents, `freeze`, variants, skill groups |
 
 ---
 

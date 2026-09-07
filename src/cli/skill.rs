@@ -14,6 +14,22 @@ use crate::store::StorePaths;
 use crate::util::skill_spec;
 use crate::util::validate_store_skill_id;
 
+pub fn resolve_validate_path(store: &StorePaths, path: &std::path::Path) -> std::path::PathBuf {
+    if path.exists() {
+        return path.to_path_buf();
+    }
+    if path.is_relative() {
+        let id = path.to_string_lossy();
+        if validate_store_skill_id(&id).is_ok() {
+            let store_path = store.skill_dir(&id);
+            if store_path.exists() {
+                return store_path;
+            }
+        }
+    }
+    path.to_path_buf()
+}
+
 pub fn run_validate(path: &std::path::Path, json: bool) -> Result<i32, SkmError> {
     let report = skill_spec::validate_skill_spec(path);
 

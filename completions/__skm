@@ -19,7 +19,7 @@ __skm() {
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -47,7 +47,7 @@ copilot-cli\:"Copilot CLI (.github/skills; ~/.copilot/skills with --user)"))' \
 '--accept-existing-skills[Proceed when the agent skills directory already has entries (non-interactive)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -64,7 +64,7 @@ _arguments "${_arguments_options[@]}" : \
 '--strict[Fail when SKILL.md frontmatter is invalid (default\: warn)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -77,7 +77,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -97,7 +97,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -110,7 +110,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -123,7 +123,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -138,7 +138,7 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use user-level config when checking which profile is active]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -151,7 +151,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -208,7 +208,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -228,7 +228,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -240,7 +240,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -253,7 +253,7 @@ _arguments "${_arguments_options[@]}" : \
 '--force[Remove without confirmation (required when stdin is not a TTY)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -266,7 +266,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -321,7 +321,7 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -335,7 +335,7 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -350,7 +350,7 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -365,7 +365,7 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -379,7 +379,7 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -398,7 +398,7 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -416,7 +416,7 @@ _arguments "${_arguments_options[@]}" : \
 '--force[Destroy without confirmation (required when stdin is not a TTY)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -428,10 +428,11 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-u[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
+'--no-pull[Skip pulling registered remote repositories before reconcile]' \
 '--strict[Fail when SKILL.md frontmatter is invalid (default\: warn)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -445,7 +446,7 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
@@ -461,7 +462,7 @@ _arguments "${_arguments_options[@]}" : \
 '(-p --profile)--skill[List skills only (same as \`skm skill ls\`)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -473,7 +474,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -485,7 +486,7 @@ _arguments "${_arguments_options[@]}" : \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
@@ -500,10 +501,102 @@ _arguments "${_arguments_options[@]}" : \
 '--user[Use \`~/.skm.toml\` even when \`./.skm.toml\` exists]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
-'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\` only)]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
 '--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
 '-h[Print help]' \
 '--help[Print help]' \
+&& ret=0
+;;
+(repo)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_skm__subcmd__repo_commands" \
+"*::: :->repo" \
+&& ret=0
+
+    case $state in
+    (repo)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-repo-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'--name=[Registry and library prefix (default\: derived from URL)]:NAME:_default' \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'--strict[Fail when SKILL.md frontmatter is invalid (default\: warn)]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':ref -- Repository reference (`owner/repo`, URL, or path):_default' \
+&& ret=0
+;;
+(ls)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_skm__subcmd__repo__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-repo-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(ls)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(update)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::name -- Pull only this registered repository:_default' \
 && ret=0
 ;;
 (help)
@@ -646,6 +739,34 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
+(repo)
+_arguments "${_arguments_options[@]}" : \
+":: :_skm__subcmd__help__subcmd__repo_commands" \
+"*::: :->repo" \
+&& ret=0
+
+    case $state in
+    (repo)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:skm-help-repo-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(ls)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(update)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
 (help)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
@@ -679,6 +800,8 @@ __skm_commands() {
 'scan:Refresh the on-disk skill index' \
 'search:Search indexed skill IDs and descriptions' \
 'doctor:Read-only health report for the store, profiles, and skill links' \
+'repo:Manage remote skill repositories (GitHub)' \
+'update:Pull registered remote repositories (no agent symlink changes)' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands '_skm commands' commands "$@"
@@ -723,6 +846,8 @@ _skm__subcmd__help_commands() {
 'scan:Refresh the on-disk skill index' \
 'search:Search indexed skill IDs and descriptions' \
 'doctor:Read-only health report for the store, profiles, and skill links' \
+'repo:Manage remote skill repositories (GitHub)' \
+'update:Pull registered remote repositories (no agent symlink changes)' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'skm help commands' commands "$@"
@@ -813,6 +938,24 @@ _skm__subcmd__help__subcmd__remove-profile_commands() {
     local commands; commands=()
     _describe -t commands 'skm help remove-profile commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__help__subcmd__repo_commands] )) ||
+_skm__subcmd__help__subcmd__repo_commands() {
+    local commands; commands=(
+'add:Clone and register a GitHub repository as a skill source' \
+'ls:List registered remote repositories' \
+    )
+    _describe -t commands 'skm help repo commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__repo__subcmd__add_commands] )) ||
+_skm__subcmd__help__subcmd__repo__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help repo add commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__repo__subcmd__ls_commands] )) ||
+_skm__subcmd__help__subcmd__repo__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help repo ls commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__help__subcmd__scan_commands] )) ||
 _skm__subcmd__help__subcmd__scan_commands() {
     local commands; commands=()
@@ -862,6 +1005,11 @@ _skm__subcmd__help__subcmd__status_commands() {
 _skm__subcmd__help__subcmd__sync_commands() {
     local commands; commands=()
     _describe -t commands 'skm help sync commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__update_commands] )) ||
+_skm__subcmd__help__subcmd__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help update commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__help__subcmd__use-agents_commands] )) ||
 _skm__subcmd__help__subcmd__use-agents_commands() {
@@ -977,6 +1125,49 @@ _skm__subcmd__remove-profile_commands() {
     local commands; commands=()
     _describe -t commands 'skm remove-profile commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__repo_commands] )) ||
+_skm__subcmd__repo_commands() {
+    local commands; commands=(
+'add:Clone and register a GitHub repository as a skill source' \
+'ls:List registered remote repositories' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'skm repo commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__add_commands] )) ||
+_skm__subcmd__repo__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo add commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__help_commands] )) ||
+_skm__subcmd__repo__subcmd__help_commands() {
+    local commands; commands=(
+'add:Clone and register a GitHub repository as a skill source' \
+'ls:List registered remote repositories' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'skm repo help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__help__subcmd__add_commands] )) ||
+_skm__subcmd__repo__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo help add commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__help__subcmd__help_commands] )) ||
+_skm__subcmd__repo__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo help help commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__help__subcmd__ls_commands] )) ||
+_skm__subcmd__repo__subcmd__help__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo help ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__ls_commands] )) ||
+_skm__subcmd__repo__subcmd__ls_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo ls commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__scan_commands] )) ||
 _skm__subcmd__scan_commands() {
     local commands; commands=()
@@ -1063,6 +1254,11 @@ _skm__subcmd__status_commands() {
 _skm__subcmd__sync_commands() {
     local commands; commands=()
     _describe -t commands 'skm sync commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__update_commands] )) ||
+_skm__subcmd__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm update commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__use-agents_commands] )) ||
 _skm__subcmd__use-agents_commands() {

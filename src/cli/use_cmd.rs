@@ -7,7 +7,7 @@ use crate::setup::{select_command_setup, set_active_profiles};
 use crate::store::extends::load_merged_flattened_profile;
 use crate::store::profiles::list_profiles;
 use crate::store::StorePaths;
-use crate::sync::{reconcile_for_profiles, ReconcileOptions};
+use crate::sync::{maybe_pull_remotes, reconcile_for_profiles, ReconcileOptions};
 use crate::tui::{MultiSelect, MultiSelectItem};
 use crate::util::validate_profile_name;
 
@@ -99,6 +99,8 @@ fn apply_active_profiles(
             profiles.join("`, `")
         ));
     }
+
+    maybe_pull_remotes(store, options)?;
 
     reconcile_for_profiles(store, &setup, profiles, options).map_err(|e| e.op("syncing skills"))?;
 

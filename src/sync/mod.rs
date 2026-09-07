@@ -26,6 +26,7 @@ pub(crate) use links::{
 pub struct ReconcileOptions {
     pub dry_run: bool,
     pub strict: bool,
+    pub no_pull: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,7 @@ pub struct PlacementStatus {
     pub name: String,
     pub store_id: String,
     pub source: PathBuf,
+    pub source_type: String,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +51,20 @@ pub struct AgentStatus {
     pub target: PathBuf,
     pub linked: Vec<PlacementStatus>,
     pub conflicts: Vec<PlacementConflict>,
+}
+
+pub fn maybe_pull_remotes(store: &StorePaths, options: ReconcileOptions) -> Result<(), SkmError> {
+    if options.no_pull {
+        return Ok(());
+    }
+    crate::store::remote::pull_remotes(
+        store,
+        crate::store::remote::PullOptions {
+            dry_run: options.dry_run,
+            repo_filter: None,
+        },
+    )
+    .map_err(|e| e.op("pulling remote repositories"))
 }
 
 pub fn reconcile(
@@ -496,6 +512,7 @@ pub fn collect_status(
                     name: placement.name.clone(),
                     store_id: placement.store_id.clone(),
                     source: current,
+                    source_type: crate::store::skill_source_type(store, &placement.store_id),
                 });
             }
         }

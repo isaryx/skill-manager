@@ -12,11 +12,13 @@ pub mod init;
 pub mod ls;
 pub mod output;
 pub mod profile;
+pub mod repo;
 pub mod scan;
 pub mod search;
 pub mod skill;
 pub mod status;
 pub mod sync;
+pub mod update;
 pub mod use_agents;
 pub mod use_cmd;
 
@@ -63,7 +65,7 @@ pub struct Cli {
     #[arg(long, global = true, env = "SKM_STORE")]
     pub store: Option<PathBuf>,
 
-    /// Emit machine-readable JSON on stdout (`status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor` only)
+    /// Emit machine-readable JSON on stdout (`status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor`, `repo ls` only)
     #[arg(long, global = true)]
     pub json: bool,
 
@@ -222,13 +224,17 @@ pub enum Commands {
     },
     /// Refresh skill links without changing the active profiles
     #[command(
-        after_help = "Requires `./.skm.toml` unless --user. Warns on invalid SKILL.md \
-                             frontmatter; pass --strict to fail."
+        after_help = "Requires `./.skm.toml` unless --user. Pulls registered remotes before \
+                      reconcile unless --no-pull. Warns on invalid SKILL.md frontmatter; pass \
+                      --strict to fail."
     )]
     Sync {
         /// Use `~/.skm.toml` even when `./.skm.toml` exists
         #[arg(short = 'u', long)]
         user: bool,
+        /// Skip pulling registered remote repositories before reconcile
+        #[arg(long = "no-pull")]
+        no_pull: bool,
         /// Fail when SKILL.md frontmatter is invalid (default: warn)
         #[arg(long)]
         strict: bool,
@@ -272,6 +278,37 @@ pub enum Commands {
         #[arg(short = 'u', long)]
         user: bool,
     },
+    /// Manage remote skill repositories (GitHub)
+    Repo {
+        #[command(subcommand)]
+        action: RepoAction,
+    },
+    /// Pull registered remote repositories (no agent symlink changes)
+    #[command(after_help = "Supports --dry-run to preview pulls without running git.")]
+    Update {
+        /// Pull only this registered repository
+        name: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum RepoAction {
+    /// Clone and register a GitHub repository as a skill source
+    #[command(after_help = "Accepts owner/repo shorthand, HTTPS/SSH URLs, or a local path.")]
+    Add {
+        /// Repository reference (`owner/repo`, URL, or path)
+        #[arg(value_name = "REF")]
+        r#ref: String,
+        /// Registry and library prefix (default: derived from URL)
+        #[arg(long)]
+        name: Option<String>,
+        /// Fail when SKILL.md frontmatter is invalid (default: warn)
+        #[arg(long)]
+        strict: bool,
+    },
+    /// List registered remote repositories
+    #[command(after_help = "Supports --json.")]
+    Ls,
 }
 
 #[derive(Subcommand, Debug)]

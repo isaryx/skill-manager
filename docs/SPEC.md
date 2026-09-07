@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.4.1 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
+**Version:** 0.5.0 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md) · Remotes: [SPEC-REMOTE.md](SPEC-REMOTE.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 
@@ -14,8 +14,8 @@ Global flags:
 |------|--------|
 | `--verbose` / `-v` | Debug logs on stderr |
 | `--store <path>` | Override store (`SKM_STORE`) |
-| `--json` | **Only** `status`, `ls`, `skill ls`, `skill validate`, `doctor` — otherwise exit 2 |
-| `--dry-run` | **Only** `sync`, `add-profile`, `remove-profile`, `skill rm`, `destroy` — preview; no writes |
+| `--json` | **Only** `status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor`, `repo ls` — otherwise exit 2 |
+| `--dry-run` | **Only** `sync`, `add-profile`, `remove-profile`, `skill rm`, `destroy`, `update` — preview; no writes |
 | `--color auto\|always\|never` | Human output styling (`auto` respects `NO_COLOR`) |
 
 `--dry-run` and `--json` cannot be combined.
@@ -25,6 +25,9 @@ Many commands accept `--user` / `-u` for `~/.skm.toml`.
 ```bash
 skm init [--agent AGENT]... [--force] [--accept-existing-skills]
 skm import <dir> --copy|--move [--as NAME]
+skm repo add <ref> [--name NAME] [--strict]
+skm repo ls [--json]
+skm update [name]
 
 skm profile setup|extend|ls|show|rm <name>
 skm skill setup|ls|rm <id> [--force]
@@ -37,7 +40,7 @@ skm use-agents
 skm add-agent <agent>
 skm remove-agent <agent>
 skm destroy [--force]
-skm sync
+skm sync [--no-pull]
 skm status
 skm scan
 skm doctor [--json]
@@ -105,6 +108,17 @@ Requires initialized store. `--copy` and `--move` are required and mutually excl
 - `--repo <name>` stores under a repo-qualified id (`agent-skills/deploy`); sets `repo_name` in meta while keeping `source_type` local until git provenance exists
 - Writes `.skm/meta/<name>.toml`, rebuilds index
 - Rejects overwrite and reserved names (`.skm`, leading `.`)
+
+### Remote repositories (`skm repo`, `skm update`)
+
+Register GitHub repos (or local paths / `file://` URLs) as skill sources. Skills are symlinked into the library under a repo-qualified id (`myskills/deploy`). Requires `git` on `PATH` for clone and pull.
+
+- `repo add` — clone into `.skm/remotes/<name>/`, symlink skills into `$STORE/<name>/…`, no agent wiring
+- `repo ls` — list registered remotes (`--json` for scripts)
+- `update` — pull all or one remote, refresh library symlinks; does not change agent links (`--dry-run` supported)
+- `sync` / `add-profile` / `remove-profile` — pull remotes first unless `sync --no-pull`
+
+Full layout, discovery rules, and doctor codes: [SPEC-REMOTE.md](SPEC-REMOTE.md).
 
 ### Profiles & library skills
 
@@ -247,7 +261,9 @@ whole list is visible.
 
 ### `skm use-profiles` / `skm sync`
 
-Both call `reconcile()`: validate → fix (rebuild index, adopt missing meta) → sync the managed
+Both call `reconcile()` after optionally pulling registered remotes (unless `sync --no-pull`). Pull uses `git pull --ff-only` per repo; one failed pull warns and continues. See [SPEC-REMOTE.md](SPEC-REMOTE.md) for remote store layout and `skm update`.
+
+Reconcile: validate → fix (rebuild index, adopt missing meta) → sync the managed
 local exclude (when `ignore_links` is on) → clean stale `skm` symlinks → apply links. The exclude
 is written before symlinks change, so a write failure cannot leave newly linked skills unignored.
 
@@ -364,6 +380,10 @@ Read-only health report. Setup selection same as `sync`.
 | `link.extra` | info | Store-owned symlink not in active profiles |
 | `link.conflict` | info | Profile placement blocked by a non-skm entry at that name |
 | `link.tracked` | warn | `ignore_links` on, skills dir in a git worktree, and a store-owned symlink is tracked (`git ls-files`). Message names the path and hints `git rm --cached <path>` — skm never untracks |
+| `remote.checkout_missing` | error | Registered remote has no checkout under `.skm/remotes/` |
+| `remote.pull_failed` | warn | Last pull for a registered remote failed |
+| `remote.library_broken` | warn | Library symlink for a remote skill does not resolve |
+| `remote.no_skills` | info | Registered remote, zero skills discovered in checkout |
 | `config.no_active_profile` | info | No active profiles (skips link checks) |
 
 Exit **1** on any `warn` or `error`; **0** on success or `info` only.
@@ -380,7 +400,9 @@ Human output on stdout; progress on stderr. `status` shows every target agent wi
 
 Data on stdout only; no ANSI on stdout.
 
-**`status`:** `{ agents: [{ agent, skills_path, skills: [{ name, store_id, source }], conflicts: [{ name, store_id, reason: "conflicted" }] }], profiles }`
+**`status`:** `{ agents: [{ agent, skills_path, skills: [{ name, store_id, source, source_type? }], conflicts: [{ name, store_id, reason: "conflicted" }] }], profiles }`
+
+**`repo ls`:** `{ repos: [{ name, url, commit, skills_root, skill_count, updated_at }] }`
 
 **`ls` / `skill ls`:** `{ skills: [...] }` and/or `{ profiles: [...] }` depending on filters.
 
@@ -407,5 +429,7 @@ Respect `NO_COLOR`.
 
 ## Deferred
 
-- **0.5.0:** Windows release binary; remote GitHub sources — see [SPEC-REMOTE.md](SPEC-REMOTE.md) (`skm repo add`, `skm update`, pull-before-`sync`)
-- **Later:** Tier 2 agents, skill groups, `skm freeze`, variants (`skm fork`), `skm init --user`, copy-mode placements, `skm repo rm`
+- **Later:** Windows release binary; `skm repo rm`; branch/tag pin; skills.sh browse UI
+- **Later:** Tier 2 agents, skill groups, `skm freeze`, variants (`skm fork`), `skm init --user`, copy-mode placements
+
+Remote GitHub sources shipped in **0.5.0** — see [SPEC-REMOTE.md](SPEC-REMOTE.md) (`skm repo add`, `skm update`, pull-before-`sync`).

@@ -53,7 +53,7 @@ brew install isaryx/collection/skm
 curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/install.sh | bash
 ```
 
-Pin a release with `SKM_VERSION=v0.4.1` or `--version v0.4.1`. Use `--install-dir` for a custom path and `--dry-run` to preview. Unsupported OS or architecture exits with a clear error.
+Pin a release with `SKM_VERSION=v0.5.0` or `--version v0.5.0`. Use `--install-dir` for a custom path and `--dry-run` to preview. Unsupported OS or architecture exits with a clear error.
 
 Other install paths: download a binary from [GitHub Releases](https://github.com/isaryx/skill-manager/releases), build from source with `cargo install --path .`, or run `scripts/check-update.sh` to compare against the latest release. Details in [docs/SPEC.md](docs/SPEC.md).
 
@@ -69,6 +69,18 @@ skm import ./skill-tree --copy --as local  # nested skills under one bundle name
 **Copy skills into the store yourself**
 
 If you place skill folders directly under the store (for example `cp -r ./local ~/.skill-store/local`), run `skm scan` to refresh the index and register them. Existing import metadata is never overwritten.
+
+**Register a GitHub skill repo**
+
+```bash
+skm repo add owner/repo              # clones into the store; skills appear in skm ls
+skm profile setup work               # pick remote skills (e.g. myskills/deploy)
+skm add-profile work
+skm update                           # pull upstream without re-wiring agents
+skm sync                             # pull + refresh agent symlinks
+```
+
+Requires `git` for `repo add`, `update`, and the pull phase of `sync`. See [docs/SPEC-REMOTE.md](docs/SPEC-REMOTE.md).
 
 **Compose profiles**
 
@@ -119,7 +131,7 @@ Grouped overview — every flag and exit code is in [docs/SPEC.md](docs/SPEC.md)
 | Group | Commands |
 |-------|----------|
 | Setup | `init`, `destroy` |
-| Store | `import`, `scan`, `search`, `ls`, `skill ls/setup/rm/validate` |
+| Store | `import`, `repo add/ls`, `update`, `scan`, `search`, `ls`, `skill ls/setup/rm/validate` |
 | Profiles | `profile setup/ls/show/rm/extend`, `use-profiles`, `add-profile`, `remove-profile` |
 | Agents | `use-agents`, `add-agent`, `remove-agent` |
 | Sync & status | `sync`, `status`, `doctor` |
@@ -130,7 +142,7 @@ Global flags: `--verbose` / `-v`, `--store <path>` (env: `SKM_STORE`), `--json`,
 
 - Set `SKM_STORE` or pass `--store <path>` to select the store without a prompt.
 - Pass `--agent` to `skm init`; repeat it or comma-separate for several agents (`--agent claude-code,cursor`). Use `skm add-agent` / `skm remove-agent` to change the set after init. If a target directory already contains skills, also pass `--accept-existing-skills`.
-- Use `--json` with `status`, `ls`, `search`, `skill ls`, `skill validate`, and `doctor`. Structured data stays on stdout; progress and errors go to stderr.
+- Use `--json` with `status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor`, and `repo ls`. Structured data stays on stdout; progress and errors go to stderr.
 - Use `--dry-run` before `sync`, `add-profile`, `remove-profile`, or `skill rm`. Non-interactive `skill rm` also requires `--force`.
 - Exit codes: `0` success, `1` runtime or health-check failure, `2` invalid usage or resolution conflicts.
 

@@ -407,5 +407,5 @@ Respect `NO_COLOR`.
 
 ## Deferred
 
-- **0.5.0:** Windows release binary; `skm import github:…`, `skm update`
-- **Later:** Tier 2 agents, skill groups, `skm freeze`, variants (`skm fork`), `skm init --user`, copy-mode placements
+- **0.5.0:** Windows release binary; remote GitHub sources — see [SPEC-REMOTE.md](SPEC-REMOTE.md) (`skm repo add`, `skm update`, pull-before-`sync`)
+- **Later:** Tier 2 agents, skill groups, `skm freeze`, variants (`skm fork`), `skm init --user`, copy-mode placements, `skm repo rm`

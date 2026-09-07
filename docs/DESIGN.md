@@ -336,7 +336,7 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 | 0.3.2 | Shipped | Project commands require `./.skm.toml` unless `--user`; grouped root help |
 | 0.3.3 | Shipped | Multi-active profiles; `use-profiles` / `use-agents` + add/remove commands |
 | 0.4.0 | Shipped | Search, validate, repo-qualified imports, install/update scripts |
-| 0.5.0 | Planned | Windows binary, GitHub import, `skm update` |
+| 0.5.0 | Planned | Windows binary, GitHub remote sources ([SPEC-REMOTE.md](SPEC-REMOTE.md)), `skm update`, pull-before-`sync` |
 | Later | — | Tier 2 agents, `freeze`, variants, skill groups |
 
 ---

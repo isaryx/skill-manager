@@ -59,10 +59,10 @@ fn fetch_text(url: &str) -> Result<String, SkmError> {
         .timeout_read(Duration::from_secs(60))
         .build();
     match agent.get(url).call() {
-        Ok(response) => response
-            .into_string()
-            .map_err(|e| network_error(url, e)),
-        Err(ureq::Error::Status(code, _)) => Err(fetch_failed(format!("{url} returned HTTP {code}"))),
+        Ok(response) => response.into_string().map_err(|e| network_error(url, e)),
+        Err(ureq::Error::Status(code, _)) => {
+            Err(fetch_failed(format!("{url} returned HTTP {code}")))
+        }
         Err(err) => Err(network_error(url, err)),
     }
 }
@@ -171,7 +171,10 @@ fn parse_weekly_installs(segment: &str) -> Option<u64> {
     let marker = "Weekly installs: ";
     let start = segment.find(marker)?;
     let rest = &segment[start + marker.len()..];
-    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == ',').collect();
+    let digits: String = rest
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == ',')
+        .collect();
     let number = digits.replace(',', "");
     number.parse().ok()
 }
@@ -207,7 +210,11 @@ fn aggregate_skills(skills: Vec<(String, String, u64)>) -> Vec<LeaderboardRepo> 
 }
 
 fn sort_repos(mut repos: Vec<LeaderboardRepo>) -> Vec<LeaderboardRepo> {
-    repos.sort_by(|a, b| b.installs.cmp(&a.installs).then_with(|| a.owner_repo().cmp(&b.owner_repo())));
+    repos.sort_by(|a, b| {
+        b.installs
+            .cmp(&a.installs)
+            .then_with(|| a.owner_repo().cmp(&b.owner_repo()))
+    });
     repos
 }
 
@@ -322,20 +329,18 @@ mod tests {
     #[test]
     fn registered_github_owner_repos_from_urls() {
         use crate::config::RepoRegistration;
-        let repos = vec![
-            RepoRegistration {
-                version: 1,
-                name: "myskills".into(),
-                url: "https://github.com/jverhoeks/myskills.git".into(),
-                checkout: "remotes/myskills".into(),
-                commit: "abc".into(),
-                skills_root: "skills".into(),
-                cloned_at: "".into(),
-                updated_at: "".into(),
-                last_pull_error: None,
-                pin: None,
-            },
-        ];
+        let repos = vec![RepoRegistration {
+            version: 1,
+            name: "myskills".into(),
+            url: "https://github.com/jverhoeks/myskills.git".into(),
+            checkout: "remotes/myskills".into(),
+            commit: "abc".into(),
+            skills_root: "skills".into(),
+            cloned_at: "".into(),
+            updated_at: "".into(),
+            last_pull_error: None,
+            pin: None,
+        }];
         let keys = registered_github_owner_repos(&repos);
         assert!(keys.contains("jverhoeks/myskills"));
     }

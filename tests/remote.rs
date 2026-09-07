@@ -15,7 +15,12 @@ fn git(repo: &std::path::Path, args: &[&str]) {
         .args(args)
         .status()
         .expect("git spawn");
-    assert!(status.success(), "git {:?} failed in {}", args, repo.display());
+    assert!(
+        status.success(),
+        "git {:?} failed in {}",
+        args,
+        repo.display()
+    );
 }
 
 fn init_store(home: &std::path::Path, store: &std::path::Path) {
@@ -29,9 +34,7 @@ fn write_skill_md(dir: &std::path::Path, name: &str) {
     fs::create_dir_all(dir).unwrap();
     fs::write(
         dir.join("SKILL.md"),
-        format!(
-            "---\nname: {name}\ndescription: Remote fixture skill {name}.\n---\n\n# {name}\n"
-        ),
+        format!("---\nname: {name}\ndescription: Remote fixture skill {name}.\n---\n\n# {name}\n"),
     )
     .unwrap();
 }
@@ -527,7 +530,10 @@ fn sync_no_pull_skips_git_pull() {
 
     write_skill_md(&fixture.path().join("skills/new-skill"), "new-skill");
     git(fixture.path(), &["add", "."]);
-    git(fixture.path(), &["commit", "-m", "add new-skill", "--quiet"]);
+    git(
+        fixture.path(),
+        &["commit", "-m", "add new-skill", "--quiet"],
+    );
 
     with_env(home.path(), store.path())
         .args(["sync", "--no-pull"])
@@ -646,7 +652,11 @@ fn repo_add_writes_per_skill_sync_meta() {
         .success();
 
     let meta_path = store.path().join(".skm/meta/fixture/deploy.toml");
-    assert!(meta_path.is_file(), "expected per-skill meta at {}", meta_path.display());
+    assert!(
+        meta_path.is_file(),
+        "expected per-skill meta at {}",
+        meta_path.display()
+    );
     let body = fs::read_to_string(meta_path).unwrap();
     assert!(body.contains("source_type = \"remote\""));
     assert!(body.contains("commit = "));
@@ -681,10 +691,16 @@ fn doctor_reports_stale_remote_skill_after_checkout_changes() {
         "---\nname: deploy\ndescription: Updated for stale doctor test.\n---\n\n# deploy\n",
     )
     .unwrap();
-    git(checkout.as_path(), &["config", "user.email", "test@example.com"]);
+    git(
+        checkout.as_path(),
+        &["config", "user.email", "test@example.com"],
+    );
     git(checkout.as_path(), &["config", "user.name", "test"]);
     git(checkout.as_path(), &["add", "."]);
-    git(checkout.as_path(), &["commit", "-m", "change deploy", "--quiet"]);
+    git(
+        checkout.as_path(),
+        &["commit", "-m", "change deploy", "--quiet"],
+    );
 
     with_env(home.path(), store.path())
         .args(["doctor", "--json"])
@@ -735,10 +751,7 @@ fn sync_updates_remote_skill_synced_at() {
 
     let meta_path = store.path().join(".skm/meta/fixture/deploy.toml");
     let before = fs::read_to_string(&meta_path).unwrap();
-    let tampered = before.replace(
-        "synced_at = \"",
-        "synced_at = \"2000-01-01T00:00:00+00:00",
-    );
+    let tampered = before.replace("synced_at = \"", "synced_at = \"2000-01-01T00:00:00+00:00");
     fs::write(&meta_path, tampered).unwrap();
 
     with_env(home.path(), store.path())

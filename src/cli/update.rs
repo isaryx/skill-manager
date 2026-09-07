@@ -3,11 +3,7 @@ use crate::progress;
 use crate::store::remote::{pull_remotes, PullOptions};
 use crate::store::StorePaths;
 
-pub fn run_update(
-    store: &StorePaths,
-    name: Option<&str>,
-    dry_run: bool,
-) -> Result<(), SkmError> {
+pub fn run_update(store: &StorePaths, name: Option<&str>, dry_run: bool) -> Result<(), SkmError> {
     if dry_run {
         progress::step("(dry-run) updating remote repositories");
     } else {

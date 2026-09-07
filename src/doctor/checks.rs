@@ -8,7 +8,7 @@ use crate::adapters::get_adapter;
 use crate::db::{list_skills, open_index};
 use crate::error::SkmError;
 use crate::progress::display_path;
-use crate::resolver::{resolve, ResolveError, placement_name_is_disambiguated};
+use crate::resolver::{placement_name_is_disambiguated, resolve, ResolveError};
 use crate::setup::{target_dirs_for_setup, SelectedSetup};
 use crate::store::extends::{flatten_skill_ids, load_merged_flattened_profile};
 use crate::store::profiles::{list_profiles, load_profile};
@@ -122,11 +122,7 @@ impl Issue {
         self
     }
 
-    fn with_commits(
-        mut self,
-        recorded: impl Into<String>,
-        current: impl Into<String>,
-    ) -> Self {
+    fn with_commits(mut self, recorded: impl Into<String>, current: impl Into<String>) -> Self {
         self.recorded_commit = Some(recorded.into());
         self.current_commit = Some(current.into());
         self
@@ -596,7 +592,10 @@ pub fn check_remotes(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
             issues.push(
                 Issue::info(
                     "remote.no_skills",
-                    format!("registered remote `{}` has no skills in the library", reg.name),
+                    format!(
+                        "registered remote `{}` has no skills in the library",
+                        reg.name
+                    ),
                 )
                 .with_skill(reg.name.clone()),
             );
@@ -625,9 +624,7 @@ pub fn check_remotes(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
             let skill_path = if target.is_absolute() {
                 target
             } else {
-                link.parent()
-                    .unwrap_or(store.root())
-                    .join(target)
+                link.parent().unwrap_or(store.root()).join(target)
             };
             let skill_path = fs::canonicalize(&skill_path).unwrap_or(skill_path);
             if !skill_path.starts_with(&checkout) {

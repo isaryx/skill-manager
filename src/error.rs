@@ -155,7 +155,9 @@ pub enum SkmError {
     #[error("remote repo not found: {0}")]
     RepoNotFound(String),
 
-    #[error("remote repo `{name}` is referenced by profiles: {profiles}; pass --force to remove anyway")]
+    #[error(
+        "remote repo `{name}` is referenced by profiles: {profiles}; pass --force to remove anyway"
+    )]
     RepoReferencedByProfiles { name: String, profiles: String },
 
     #[error("library link for `{id}` is occupied: {path}")]
@@ -311,11 +313,7 @@ impl SkmError {
                 code: self.code(),
                 message: self.leaf().to_string(),
                 retryable: self.retryable(),
-                operation: if verbose {
-                    self.top_operation()
-                } else {
-                    None
-                },
+                operation: if verbose { self.top_operation() } else { None },
             },
         }
     }

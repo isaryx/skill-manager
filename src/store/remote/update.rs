@@ -36,8 +36,7 @@ pub fn pull_remotes(store: &StorePaths, options: PullOptions) -> Result<(), SkmE
         if options.dry_run {
             progress::step(format!(
                 "(dry-run) would pull remote `{}` from {}",
-                reg.name,
-                reg.url
+                reg.name, reg.url
             ));
             continue;
         }
@@ -55,11 +54,7 @@ pub fn pull_remotes(store: &StorePaths, options: PullOptions) -> Result<(), SkmE
         match update_checkout(&checkout, reg.pin.as_deref()) {
             Ok(commit) => {
                 if let Err(err) = refresh_repo_after_pull(store, &reg.name, &commit) {
-                    progress::warn(format!(
-                        "refresh failed for `{}`: {}",
-                        reg.name,
-                        err.leaf()
-                    ));
+                    progress::warn(format!("refresh failed for `{}`: {}", reg.name, err.leaf()));
                 }
                 any_pulled = true;
             }
@@ -103,9 +98,7 @@ pub fn refresh_repo_after_pull(
     let skills = list_repo_skills(&checkout, &skills_root, &reg.name)?;
     refresh_library_symlinks(store, &reg.name, &skills)?;
 
-    let checkout_abs = checkout
-        .canonicalize()
-        .unwrap_or_else(|_| checkout.clone());
+    let checkout_abs = checkout.canonicalize().unwrap_or_else(|_| checkout.clone());
     let meta = SkillMeta {
         source_type: "remote".to_string(),
         path: checkout_abs.to_string_lossy().into_owned(),

@@ -80,9 +80,7 @@ pub fn register_repo(
     };
     write_repo(store, &reg)?;
 
-    let checkout_abs = checkout
-        .canonicalize()
-        .unwrap_or_else(|_| checkout.clone());
+    let checkout_abs = checkout.canonicalize().unwrap_or_else(|_| checkout.clone());
     let meta = SkillMeta {
         source_type: "remote".to_string(),
         path: checkout_abs.to_string_lossy().into_owned(),

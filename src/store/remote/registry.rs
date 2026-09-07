@@ -3,9 +3,9 @@ use std::path::Path;
 
 use crate::config::RepoRegistration;
 use crate::error::SkmError;
-use crate::store::StorePaths;
 use crate::store::remote::paths::{repo_registry_file, repos_dir};
 use crate::store::remote::url::normalize_url;
+use crate::store::StorePaths;
 
 pub fn list_repos(store: &StorePaths) -> Result<Vec<RepoRegistration>, SkmError> {
     let dir = repos_dir(store);
@@ -51,11 +51,7 @@ pub fn find_by_url(store: &StorePaths, url: &str) -> Result<Option<RepoRegistrat
     Ok(None)
 }
 
-pub fn ensure_not_registered(
-    store: &StorePaths,
-    name: &str,
-    url: &str,
-) -> Result<(), SkmError> {
+pub fn ensure_not_registered(store: &StorePaths, name: &str, url: &str) -> Result<(), SkmError> {
     let path = repo_registry_file(store, name);
     if path.is_file() {
         return Err(SkmError::RepoAlreadyRegistered(name.to_string()));

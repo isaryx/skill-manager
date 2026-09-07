@@ -139,11 +139,7 @@ fn spec_issues(skill_dir: &Path, expected_name: Option<&str>) -> Vec<String> {
         Err(err) => return vec![err],
     };
 
-    let expected = expected_name.or_else(|| {
-        skill_dir
-            .file_name()
-            .and_then(|name| name.to_str())
-    });
+    let expected = expected_name.or_else(|| skill_dir.file_name().and_then(|name| name.to_str()));
     let expected = expected.unwrap_or_default();
     validate_frontmatter(&frontmatter, expected)
 }

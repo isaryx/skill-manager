@@ -62,13 +62,11 @@ pub fn checkout_default_branch(checkout: &Path) -> Result<(), SkmError> {
     require_git()?;
     let _ = run_git(&["fetch", "--quiet", "origin"], Some(checkout));
 
-    if let Ok(sym) =
-        git_output(&["symbolic-ref", "--short", "refs/remotes/origin/HEAD"], Some(checkout))
-    {
-        let branch = sym
-            .trim()
-            .strip_prefix("origin/")
-            .unwrap_or(sym.trim());
+    if let Ok(sym) = git_output(
+        &["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
+        Some(checkout),
+    ) {
+        let branch = sym.trim().strip_prefix("origin/").unwrap_or(sym.trim());
         run_git(&["checkout", "--quiet", branch], Some(checkout))?;
         let _ = run_git(
             &["pull", "--ff-only", "--quiet", "origin", branch],
@@ -116,7 +114,10 @@ pub fn path_last_commit(checkout: &Path, path: &Path) -> Result<String, SkmError
     } else {
         rel.to_string_lossy().into_owned()
     };
-    let output = git_output(&["log", "-1", "--format=%H", "--", &rel_arg], Some(checkout))?;
+    let output = git_output(
+        &["log", "-1", "--format=%H", "--", &rel_arg],
+        Some(checkout),
+    )?;
     let trimmed = output.trim();
     if trimmed.is_empty() {
         current_commit(checkout)
@@ -143,7 +144,10 @@ fn clarify_clone_error(url: &str, err: SkmError) -> SkmError {
             } else {
                 stderr
             };
-            SkmError::GitCommandFailed { command, stderr: hint }
+            SkmError::GitCommandFailed {
+                command,
+                stderr: hint,
+            }
         }
         other => other,
     }
@@ -190,7 +194,9 @@ mod tests {
     #[test]
     fn commit_pin_detection() {
         assert!(looks_like_commit("abc1234"));
-        assert!(looks_like_commit("f3bbc1d3b82cdf56d0e793271c0a7ea064598b15"));
+        assert!(looks_like_commit(
+            "f3bbc1d3b82cdf56d0e793271c0a7ea064598b15"
+        ));
         assert!(!looks_like_commit("main"));
         assert!(!looks_like_commit("v1.0.0"));
     }

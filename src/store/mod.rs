@@ -222,7 +222,10 @@ pub(crate) fn write_meta(store: &StorePaths, id: &str, content: &str) -> Result<
     write_meta_file(&store.meta_file(id), content)
 }
 
-pub fn read_skill_meta(store: &StorePaths, skill_id: &str) -> Result<Option<crate::config::SkillMeta>, SkmError> {
+pub fn read_skill_meta(
+    store: &StorePaths,
+    skill_id: &str,
+) -> Result<Option<crate::config::SkillMeta>, SkmError> {
     let path = store.meta_file(skill_id);
     if !path.is_file() {
         return Ok(None);

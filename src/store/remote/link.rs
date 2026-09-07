@@ -239,12 +239,8 @@ mod tests {
         fs::create_dir_all(&checkout).unwrap();
         fs::write(checkout.join("SKILL.md"), "# deploy\n").unwrap();
 
-        install_library_symlinks(
-            &store,
-            "demo",
-            &[("demo/deploy".into(), checkout.clone())],
-        )
-        .unwrap();
+        install_library_symlinks(&store, "demo", &[("demo/deploy".into(), checkout.clone())])
+            .unwrap();
 
         let link = store.skill_dir("demo/deploy");
         assert!(link.is_symlink());
@@ -277,12 +273,8 @@ mod tests {
 
         fs::remove_dir_all(&lint).unwrap();
 
-        refresh_library_symlinks(
-            &store,
-            "demo",
-            &[("demo/deploy".into(), checkout.clone())],
-        )
-        .unwrap();
+        refresh_library_symlinks(&store, "demo", &[("demo/deploy".into(), checkout.clone())])
+            .unwrap();
 
         assert!(store.skill_dir("demo/deploy").is_symlink());
         assert!(!store.skill_dir("demo/lint").exists());

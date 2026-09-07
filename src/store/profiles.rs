@@ -283,9 +283,11 @@ pub fn profiles_referencing_repo_prefix(
     let mut names = Vec::new();
     for name in list_profiles(store)? {
         let profile = load_profile(store, &name)?;
-        if profile.skill.iter().any(|entry| {
-            entry.id == repo_name || entry.id.starts_with(&prefix)
-        }) {
+        if profile
+            .skill
+            .iter()
+            .any(|entry| entry.id == repo_name || entry.id.starts_with(&prefix))
+        {
             names.push(name);
         }
     }

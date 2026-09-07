@@ -55,7 +55,9 @@ pub fn run_repo_pin(
             ));
         }
         clear_repo_pin(store, name)?;
-        progress::step(format!("cleared pin for remote `{name}` (tracks default branch)"));
+        progress::step(format!(
+            "cleared pin for remote `{name}` (tracks default branch)"
+        ));
         return Ok(());
     }
     match pin {

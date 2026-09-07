@@ -178,20 +178,12 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
                     name,
                     pin,
                     strict,
-                } => run_repo_add(
-                    &store,
-                    &r#ref,
-                    name.as_deref(),
-                    strict,
-                    pin.as_deref(),
-                )?,
+                } => run_repo_add(&store, &r#ref, name.as_deref(), strict, pin.as_deref())?,
                 RepoAction::Ls => run_repo_ls(&store, json)?,
                 RepoAction::Rm { name, force } => run_repo_rm(&store, &name, force)?,
-                RepoAction::Pin {
-                    name,
-                    r#ref,
-                    clear,
-                } => run_repo_pin(&store, &name, r#ref.as_deref(), clear)?,
+                RepoAction::Pin { name, r#ref, clear } => {
+                    run_repo_pin(&store, &name, r#ref.as_deref(), clear)?
+                }
                 RepoAction::Browse { strict } => run_repo_browse(&store, strict)?,
             }
             0

@@ -49,11 +49,7 @@ pub fn github_import_ref(path: &std::path::Path) -> Option<String> {
 pub fn name_from_url(ref_str: &str) -> Result<String, SkmError> {
     let trimmed = ref_str.trim();
     if is_owner_repo(trimmed) {
-        return Ok(trimmed
-            .rsplit('/')
-            .next()
-            .unwrap_or(trimmed)
-            .to_string());
+        return Ok(trimmed.rsplit('/').next().unwrap_or(trimmed).to_string());
     }
 
     let url = if trimmed.starts_with('/') {
@@ -71,11 +67,7 @@ pub fn name_from_url(ref_str: &str) -> Result<String, SkmError> {
         )));
     };
 
-    let segment = url
-        .trim_end_matches('/')
-        .rsplit('/')
-        .next()
-        .unwrap_or(&url);
+    let segment = url.trim_end_matches('/').rsplit('/').next().unwrap_or(&url);
     let name = segment.trim_end_matches(".git");
     if name.is_empty() {
         return Err(SkmError::Usage(

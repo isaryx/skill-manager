@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::adapters::{
-    canonical_agent_id, get_adapter, resolve_target_dirs, AgentTarget, SetupLevel,
-};
+use crate::adapters::{get_adapter, resolve_target_dirs, AgentTarget, SetupLevel};
 use crate::config::{default_setup, read_setup, write_setup, SetupFile};
 use crate::error::SkmError;
 use crate::store::extends::flatten_skill_ids;
@@ -164,23 +162,22 @@ pub fn clear_active_profile_if_empty(
     Ok(())
 }
 
-/// Replace the setup's target agents, canonicalizing aliases and dropping repeats so the
-/// written file says exactly what will be placed into.
+/// Replace the setup's target agents, dropping repeats so the written file says exactly what
+/// will be placed into.
 pub fn set_setup_agents(setup: &mut SetupFile, agents: &[String]) -> Result<(), SkmError> {
     if agents.is_empty() {
         return Err(SkmError::NoTargetAgents);
     }
 
-    let mut canonical: Vec<String> = Vec::with_capacity(agents.len());
+    let mut deduped: Vec<String> = Vec::with_capacity(agents.len());
     for agent in agents {
         get_adapter(agent)?;
-        let agent = canonical_agent_id(agent).to_string();
-        if !canonical.contains(&agent) {
-            canonical.push(agent);
+        if !deduped.contains(agent) {
+            deduped.push(agent.clone());
         }
     }
 
-    setup.placement.agents = canonical;
+    setup.placement.agents = deduped;
     Ok(())
 }
 

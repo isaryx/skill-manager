@@ -50,9 +50,9 @@ skm scan
 skm doctor [--json]
 ```
 
-Agents: `generic` (Codex, Cursor, Gemini CLI, Copilot CLI), `claude-code`, `cursor`, `gemini-cli`, `copilot-cli`. Existing configs with `placement.agent = "codex"` still work.
+Agents: `generic` (Codex, Cursor, Gemini CLI, Copilot CLI), `claude-code`, `cursor`, `gemini-cli`, `copilot-cli`.
 
-`--agent` is repeatable and comma-separated (`--agent claude-code,cursor`); repeats and ids that resolve to the same directory are collapsed. Omitted on a TTY, the agents are picked from a checkbox list pre-checked with agents whose skills directory already exists in the project root (`--user`: under `$HOME`). `--agent` overrides; off-TTY unchanged.
+`--agent` is repeatable and comma-separated (`--agent claude-code,cursor`); repeats are collapsed. Omitted on a TTY, the agents are picked from a checkbox list pre-checked with agents whose skills directory already exists in the project root (`--user`: under `$HOME`). `--agent` overrides; off-TTY unchanged.
 
 ---
 
@@ -345,7 +345,7 @@ Init `git` **in the project tempdir**, not in `HOME`, so user-level tests stay n
 
 When the new set adds a target directory, skills are optionally synced into it (TTY prompt; auto on off-TTY when a profile is active). Store-owned symlinks are removed from every directory that leaves the set. Dropping agents alone needs no sync — the directories that remain are already wired — and with `ignore_links` on, the managed exclude block is rebuilt from the links still on disk, so a dropped agent's paths drop out of the list.
 
-A selection that names the same agents in a different order is treated as unchanged. Replacing a legacy alias with the id it maps to (`codex` → `generic`) rewrites the config but touches no symlinks, since both name the same directory.
+A selection that names the same agents in a different order is treated as unchanged.
 
 ### `skm skill rm`
 
@@ -465,7 +465,7 @@ Respect `NO_COLOR`.
 
 ## Agent adapters
 
-Each id in `placement.agents` maps to a skills directory. All adapters use flat symlink names and absolute links into the store. A config may list several agents; each gets its own copy of the links, and ids resolving to the same directory are collapsed.
+Each id in `placement.agents` maps to a skills directory. All adapters use flat symlink names and absolute links into the store. A config may list several agents; each gets its own copy of the links. Duplicate ids in the list are collapsed on write.
 
 | Agent | Project | User |
 |-------|---------|------|
@@ -475,7 +475,7 @@ Each id in `placement.agents` maps to a skills directory. All adapters use flat 
 | `gemini-cli` | `.gemini/skills` | `~/.gemini/skills` |
 | `copilot-cli` | `.github/skills` | `~/.copilot/skills` |
 
-`generic` is the [Agent Skills](https://agentskills.io) layout (`.agents/skills`). Codex, Cursor, Gemini CLI, and Copilot CLI document that path; each also has a native adapter (`cursor`, `gemini-cli`, `copilot-cli`) when you want the tool-specific directory. Claude Code uses `claude-code` only. Legacy `placement.agent = "codex"` is accepted as an alias for `generic`.
+`generic` is the [Agent Skills](https://agentskills.io) layout (`.agents/skills`). Codex, Cursor, Gemini CLI, and Copilot CLI document that path; each also has a native adapter (`cursor`, `gemini-cli`, `copilot-cli`) when you want the tool-specific directory. Claude Code uses `claude-code` only.
 
 **Planned (not shipped):** Tier 2 — `windsurf`, `cline`, `opencode`, `goose`, `roo-code`, `openclaw`. Tier 3 on demand — `kilocode`, `aider`, `amazon-q`, `augment`, `tabnine`, `sourcegraph-cody`, `antigravity`, `pi`.
 

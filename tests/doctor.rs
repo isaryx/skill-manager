@@ -296,7 +296,7 @@ fn doctor_json_reports_unknown_agent() {
     init_project(home.path(), store.path());
     fs::write(
         home.path().join(".skm.toml"),
-        "version = 1\n[placement]\nagent = \"windsurf\"\n",
+        "version = 1\n[placement]\nagents = [\"windsurf\"]\n",
     )
     .unwrap();
 

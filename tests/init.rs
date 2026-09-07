@@ -452,54 +452,23 @@ fn setup_agents_cleans_up_old_agent_symlinks() {
 }
 
 #[test]
-fn setup_agents_same_target_only_updates_agent_name() {
+fn init_dedupes_duplicate_agents_in_config() {
     let home = TempDir::new().unwrap();
     let store = TempDir::new().unwrap();
-    let src = TempDir::new().unwrap();
-    write_skill(src.path(), "docx");
 
     with_env(home.path(), store.path())
         .args(["init", "--agent", "generic"])
         .assert()
         .success();
-    with_env(home.path(), store.path())
-        .args([
-            "import",
-            src.path().join("docx").to_str().unwrap(),
-            "--copy",
-        ])
-        .assert()
-        .success();
-    write_profile(store.path(), "work", &["docx"]);
-    with_env(home.path(), store.path())
-        .args(["add-profile", "work"])
-        .assert()
-        .success();
+    fs::write(
+        home.path().join(".skm.toml"),
+        "version = 1\n[placement]\nagents = [\"generic\", \"generic\"]\n",
+    )
+    .unwrap();
 
-    let setup_path = home.path().join(".skm.toml");
-    let setup = fs::read_to_string(&setup_path)
-        .unwrap()
-        .replace("generic", "codex");
-    fs::write(&setup_path, setup).unwrap();
+    activate_docx(home.path(), store.path());
 
-    let link = home.path().join(".agents/skills/docx");
-    assert!(fs::symlink_metadata(&link).is_ok());
-
-    with_env(home.path(), store.path())
-        .args(["add-agent", "generic"])
-        .assert()
-        .success()
-        .stderr(predicate::str::contains("target agents unchanged: codex"))
-        .stderr(predicate::str::contains("syncing skills").not());
-
-    assert!(
-        fs::symlink_metadata(&link).is_ok(),
-        "expected symlink to remain when only the agent name changes"
-    );
-
-    let content = fs::read_to_string(&setup_path).unwrap();
-    assert!(content.contains("codex"));
-    assert!(!content.contains("agents = [\"generic\"]"));
+    assert!(agent_link(home.path(), ".agents", "docx").is_symlink());
 }
 
 #[test]
@@ -665,29 +634,6 @@ fn init_drops_a_repeated_agent() {
     assert!(setup_body(home.path()).contains("agents = [\"cursor\"]"));
 }
 
-/// Two ids naming the same directory must not both be placed into: the second pass would unwire
-/// what the first had just wired.
-#[test]
-fn init_collapses_agents_that_share_a_directory() {
-    let home = TempDir::new().unwrap();
-    let store = TempDir::new().unwrap();
-
-    with_env(home.path(), store.path())
-        .args(["init", "--agent", "generic"])
-        .assert()
-        .success();
-    // `codex` is a config-only alias of `generic`, so both name `.agents/skills`.
-    fs::write(
-        home.path().join(".skm.toml"),
-        "version = 1\n[placement]\nagents = [\"generic\", \"codex\"]\n",
-    )
-    .unwrap();
-
-    activate_docx(home.path(), store.path());
-
-    assert!(agent_link(home.path(), ".agents", "docx").is_symlink());
-}
-
 #[test]
 fn setup_agents_adds_an_agent_and_syncs_into_its_directory() {
     let home = TempDir::new().unwrap();
@@ -792,25 +738,4 @@ fn remove_agent_errors_when_removing_the_last_agent() {
 
     let content = fs::read_to_string(home.path().join(".skm.toml")).unwrap();
     assert!(content.contains("claude-code"));
-}
-
-/// Setups written before multi-agent support say `agent = "..."`. They must keep working, and
-/// the next write should leave the file in the current shape.
-#[test]
-fn legacy_single_agent_config_is_read_and_migrated_on_write() {
-    let home = TempDir::new().unwrap();
-    let store = TempDir::new().unwrap();
-
-    init_project(home.path(), store.path());
-    fs::write(
-        home.path().join(".skm.toml"),
-        "version = 1\n[placement]\nagent = \"claude-code\"\n",
-    )
-    .unwrap();
-
-    activate_docx(home.path(), store.path());
-
-    assert!(agent_link(home.path(), ".claude", "docx").is_symlink());
-    let body = setup_body(home.path());
-    assert!(body.contains("agents = [\"claude-code\"]"), "{body}");
 }

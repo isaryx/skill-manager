@@ -3,9 +3,7 @@ use std::io::{self, IsTerminal};
 
 use dialoguer::Confirm;
 
-use crate::adapters::{
-    canonical_agent_id, get_adapter, interactive_select_agents, resolve_target_dirs, AgentTarget,
-};
+use crate::adapters::{get_adapter, interactive_select_agents, resolve_target_dirs, AgentTarget};
 use crate::cli::Agent;
 use crate::config::write_setup;
 use crate::error::SkmError;
@@ -57,10 +55,8 @@ fn apply_target_agents(
     mut selected: crate::setup::SelectedSetup,
     chosen: &[String],
 ) -> Result<(), SkmError> {
-    // Compared against the ids as written, not the canonical ones, so replacing a legacy alias
-    // (`codex`) with the id it maps to (`generic`) still rewrites the file. The order agents are
-    // listed in does not change where anything is placed, so a reordered selection is the same
-    // setup and not worth a rewrite.
+    // The order agents are listed in does not change where anything is placed, so a reordered
+    // selection is the same setup and not worth a rewrite.
     if same_agents(&selected.setup.placement.agents, chosen) {
         progress::step(format!(
             "target agents unchanged: {}",
@@ -130,11 +126,7 @@ fn apply_target_agents(
 fn build_chosen_for_add(current: &[String], agent: &Agent) -> Result<Vec<String>, SkmError> {
     let id = agent.as_str();
     get_adapter(id)?;
-    let canonical = canonical_agent_id(id).to_string();
-    if current
-        .iter()
-        .any(|agent| canonical_agent_id(agent) == canonical)
-    {
+    if current.iter().any(|agent| agent == id) {
         return Ok(current.to_vec());
     }
     let mut agents = current.to_vec();
@@ -145,16 +137,12 @@ fn build_chosen_for_add(current: &[String], agent: &Agent) -> Result<Vec<String>
 fn build_chosen_for_remove(current: &[String], agent: &Agent) -> Result<Vec<String>, SkmError> {
     let id = agent.as_str();
     get_adapter(id)?;
-    let canonical = canonical_agent_id(id).to_string();
-    if !current
-        .iter()
-        .any(|agent| canonical_agent_id(agent) == canonical)
-    {
+    if !current.iter().any(|agent| agent == id) {
         return Err(SkmError::AgentNotTarget(id.to_string()));
     }
     let remaining: Vec<String> = current
         .iter()
-        .filter(|agent| canonical_agent_id(agent) != canonical)
+        .filter(|agent| agent.as_str() != id)
         .cloned()
         .collect();
     if remaining.is_empty() {

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::adapters::{canonical_agent_id, get_adapter};
+use crate::adapters::get_adapter;
 use crate::error::SkmError;
 
 pub mod app;
@@ -27,58 +27,27 @@ pub struct SetupFile {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PlacementSection {
     /// Every agent this setup places skills into, in the order the user picked them.
-    ///
-    /// Read from `agents = [...]` or, for setups written before multi-agent support, from a
-    /// single `agent = "..."`. Always written back as `agents`, so an old file migrates the
-    /// first time any command rewrites it.
-    #[serde(rename = "agents", alias = "agent", deserialize_with = "de_agents")]
     pub agents: Vec<String>,
     #[serde(default = "default_true", skip_serializing_if = "is_true")]
     pub ignore_links: bool,
 }
 
 impl PlacementSection {
-    /// The agents to place into, with aliases canonicalized and duplicates dropped.
-    ///
-    /// `codex` and `generic` name the same directory, so a setup listing both would otherwise
-    /// have every command visit that directory twice.
+    /// The agents to place into, with duplicates dropped.
     pub fn resolved_agents(&self) -> Vec<String> {
         let mut out: Vec<String> = Vec::with_capacity(self.agents.len());
         for agent in &self.agents {
-            let canonical = canonical_agent_id(agent).to_string();
-            if !out.contains(&canonical) {
-                out.push(canonical);
+            if !out.contains(agent) {
+                out.push(agent.clone());
             }
         }
         out
     }
 }
 
-/// Accepts both `agent = "claude-code"` and `agents = ["claude-code", "cursor"]`.
-fn de_agents<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum OneOrMany {
-        One(String),
-        Many(Vec<String>),
-    }
-
-    Ok(match OneOrMany::deserialize(deserializer)? {
-        OneOrMany::One(agent) => vec![agent],
-        OneOrMany::Many(agents) => agents,
-    })
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProfileSection {
-    #[serde(
-        default,
-        deserialize_with = "de_active_profiles",
-        skip_serializing_if = "Vec::is_empty"
-    )]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub active: Vec<String>,
 }
 
@@ -86,25 +55,6 @@ impl ProfileSection {
     pub fn is_active(&self, name: &str) -> bool {
         self.active.iter().any(|profile| profile == name)
     }
-}
-
-/// Accepts `active = "work"` (legacy) and `active = ["work", "personal"]`.
-fn de_active_profiles<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum ActiveProfiles {
-        One(String),
-        Many(Vec<String>),
-    }
-
-    Ok(match Option::<ActiveProfiles>::deserialize(deserializer)? {
-        None => Vec::new(),
-        Some(ActiveProfiles::One(name)) => vec![name],
-        Some(ActiveProfiles::Many(names)) => names,
-    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -362,16 +312,6 @@ mod tests {
     }
 
     #[test]
-    fn legacy_single_agent_field_is_read_and_rewritten_as_a_list() {
-        let setup: SetupFile =
-            toml::from_str("version = 1\n[placement]\nagent = \"claude-code\"\n").unwrap();
-        assert_eq!(setup.placement.agents, vec!["claude-code".to_string()]);
-        assert!(toml::to_string(&setup)
-            .unwrap()
-            .contains("agents = [\"claude-code\"]"));
-    }
-
-    #[test]
     fn agents_list_is_read_in_order() {
         let setup: SetupFile =
             toml::from_str("version = 1\n[placement]\nagents = [\"cursor\", \"claude-code\"]\n")
@@ -383,14 +323,14 @@ mod tests {
     }
 
     #[test]
-    fn resolved_agents_canonicalizes_aliases_and_drops_repeats() {
+    fn resolved_agents_drops_repeats() {
         let setup: SetupFile = toml::from_str(
-            "version = 1\n[placement]\nagents = [\"codex\", \"generic\", \"cursor\"]\n",
+            "version = 1\n[placement]\nagents = [\"cursor\", \"cursor\", \"claude-code\"]\n",
         )
         .unwrap();
         assert_eq!(
             setup.placement.resolved_agents(),
-            vec!["generic".to_string(), "cursor".to_string()]
+            vec!["cursor".to_string(), "claude-code".to_string()]
         );
     }
 
@@ -412,18 +352,6 @@ mod tests {
             validate_setup_agents(&setup),
             Err(SkmError::UnknownAgent(agent)) if agent == "windsurf"
         ));
-    }
-
-    #[test]
-    fn legacy_single_active_profile_is_read_as_a_list() {
-        let setup: SetupFile = toml::from_str(
-            "version = 1\n[placement]\nagents = [\"claude-code\"]\n[profile]\nactive = \"work\"\n",
-        )
-        .unwrap();
-        assert_eq!(setup.profile.active, vec!["work".to_string()]);
-        assert!(toml::to_string(&setup)
-            .unwrap()
-            .contains("active = [\"work\"]"));
     }
 
     #[test]

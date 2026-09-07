@@ -76,7 +76,7 @@ Meta owner for nested id `local/foo` → `local` (`store::meta_owner_id`). `has_
 | Layer | Path | Contents |
 |-------|------|----------|
 | App | `~/.config/skm/config.toml` | `[store].path` |
-| Setup | `./.skm.toml` or `~/.skm.toml` | `placement.agents` (list; legacy `agent = "…"` still read), `placement.ignore_links` (default true), `[profile].active` |
+| Setup | `./.skm.toml` or `~/.skm.toml` | `placement.agents`, `placement.ignore_links` (default true), `[profile].active` |
 | Profile | `$STORE/.skm/profiles/*.toml` | `[[skill]] id = "…"` |
 
 Store path resolution: `--store` → `SKM_STORE` → app config → `~/.skill-store`.
@@ -93,7 +93,7 @@ Store path resolution: `--store` → `SKM_STORE` → app config → `~/.skill-st
 
 `--user` / `-u` always loads `~/.skm.toml`. Default: `./.skm.toml` if present, else user setup.
 
-**Agents** (see [SPEC.md](SPEC.md#agent-adapters)): `generic`, `claude-code`, `cursor`, `gemini-cli`, `copilot-cli`. Legacy `codex` → `generic`.
+**Agents** (see [SPEC.md](SPEC.md#agent-adapters)): `generic`, `claude-code`, `cursor`, `gemini-cli`, `copilot-cli`.
 
 ---
 
@@ -355,6 +355,7 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 | 0.4.0 | Shipped | Search, validate, repo-qualified imports, install/update scripts |
 | 0.5.0 | Shipped | Git remotes: `repo add`, `repo ls`, `update`, pull-before-`sync` |
 | 0.5.1 | Shipped | `repo rm` / `pin` / `browse`, `import github:…`, GitLab URLs, per-skill sync meta |
+| 0.6.0 | Shipped | Drop legacy setup config shims (`agent`, string `active`, `codex` alias) |
 | Later | — | Windows binary, Tier 2 agents, `freeze`, variants, skill groups |
 
 ---

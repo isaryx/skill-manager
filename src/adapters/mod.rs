@@ -107,7 +107,7 @@ pub fn get_adapter(name: &str) -> Result<Box<dyn AgentAdapter>, SkmError> {
     match name {
         "claude-code" => Ok(Box::new(ClaudeCodeAdapter)),
         "cursor" => Ok(Box::new(CursorAdapter)),
-        "generic" | "codex" => Ok(Box::new(GenericAdapter)),
+        "generic" => Ok(Box::new(GenericAdapter)),
         "gemini-cli" => Ok(Box::new(GeminiCliAdapter)),
         "copilot-cli" => Ok(Box::new(CopilotCliAdapter)),
         other => Err(SkmError::UnknownAgent(other.to_string())),
@@ -135,9 +135,6 @@ pub fn resolve_target_dir(
 
 /// Resolve every agent to its skills directory, keeping the caller's order and dropping
 /// agents that repeat a directory already covered.
-///
-/// Two ids can name the same directory (`codex` is an alias of `generic`), and visiting it
-/// twice would have the second pass unwire what the first had just wired.
 pub fn resolve_target_dirs(
     agents: &[String],
     level: SetupLevel,
@@ -249,14 +246,6 @@ pub fn known_agent_ids() -> &'static [&'static str] {
     INIT_AGENTS
 }
 
-/// Maps legacy config ids to their canonical menu / CLI id.
-pub fn canonical_agent_id(agent: &str) -> &str {
-    match agent {
-        "codex" => "generic",
-        other => other,
-    }
-}
-
 fn agent_skills_dir_exists(agent: &str, level: SetupLevel, scan_root: &Path) -> bool {
     if skills_dir_for_detection(agent, level, scan_root).is_some_and(|dir| dir.is_dir()) {
         return true;
@@ -332,7 +321,7 @@ pub fn interactive_select_agents(
         items.push(
             MultiSelectItem::new(agent)
                 .hint(agent_hint(agent, level, project_root)?)
-                .selected(preselected.iter().any(|id| canonical_agent_id(id) == agent)),
+                .selected(preselected.iter().any(|id| id == agent)),
         );
     }
 
@@ -396,11 +385,22 @@ mod tests {
     }
 
     #[test]
-    fn codex_canonicalizes_to_generic() {
-        assert_eq!(canonical_agent_id("codex"), "generic");
-        assert_eq!(canonical_agent_id("cursor"), "cursor");
+    fn resolve_target_dirs_drops_duplicate_agents() {
+        let agents = vec![
+            "generic".to_string(),
+            "generic".to_string(),
+            "cursor".to_string(),
+        ];
+        let targets =
+            resolve_target_dirs(&agents, SetupLevel::Project, Path::new("/tmp/proj")).unwrap();
+        assert_eq!(
+            targets
+                .iter()
+                .map(|target| target.agent.as_str())
+                .collect::<Vec<_>>(),
+            vec!["generic", "cursor"]
+        );
     }
-
     #[test]
     fn known_agent_ids_all_resolve() {
         for agent in known_agent_ids() {
@@ -416,24 +416,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(targets.len(), known_agent_ids().len());
-    }
-
-    #[test]
-    fn resolve_target_dirs_drops_agents_sharing_a_directory() {
-        let agents = vec![
-            "generic".to_string(),
-            "codex".to_string(),
-            "cursor".to_string(),
-        ];
-        let targets =
-            resolve_target_dirs(&agents, SetupLevel::Project, Path::new("/tmp/proj")).unwrap();
-        assert_eq!(
-            targets
-                .iter()
-                .map(|target| target.agent.as_str())
-                .collect::<Vec<_>>(),
-            vec!["generic", "cursor"]
-        );
     }
 
     #[test]
@@ -461,19 +443,11 @@ mod tests {
     }
 
     #[test]
-    fn codex_config_alias_uses_generic_adapter() {
-        let adapter = get_adapter("codex").unwrap();
-        let project = Path::new("/tmp/proj");
-        assert_eq!(adapter.name(), "generic");
-        assert_eq!(
-            adapter.target_dir(SetupLevel::Project, project).unwrap(),
-            project.join(".agents/skills")
-        );
-        let home = home_dir().unwrap();
-        assert_eq!(
-            adapter.target_dir(SetupLevel::User, project).unwrap(),
-            home.join(".agents/skills")
-        );
+    fn unknown_agent_id_is_rejected() {
+        assert!(matches!(
+            get_adapter("codex"),
+            Err(SkmError::UnknownAgent(agent)) if agent == "codex"
+        ));
     }
 
     #[test]

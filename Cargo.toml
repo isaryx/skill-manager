@@ -1,6 +1,6 @@
 [package]
 name = "skill-manager"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 description = "Manage AI agent skills from one local store — profiles, symlinks, and sync for Claude Code, Cursor, and more"
 authors = ["Vu Tran"]

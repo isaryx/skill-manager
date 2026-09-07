@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/isaryx/skill-manager/releases/tag/v0.6.0) - 2026-09-07
+
+### Removed (breaking)
+
+- **Legacy setup config formats** — `placement.agent = "…"` (use `agents = ["…"]`), `[profile].active = "work"` (use `active = ["work"]`), and the `codex` agent id (use `generic`). Setups still on the old shapes must be updated before upgrading.
+
+### Changed
+
+- **Docs** — [SPEC.md](docs/SPEC.md) and [DESIGN.md](docs/DESIGN.md) no longer describe the removed shims.
+
 ## [0.5.1](https://github.com/isaryx/skill-manager/releases/tag/v0.5.1) - 2026-09-07
 
 Remote repo lifecycle, skills.sh browse, per-skill sync tracking, and structured CLI messaging.

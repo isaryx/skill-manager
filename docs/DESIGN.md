@@ -1,6 +1,6 @@
 # Design
 
-**CLI:** `skm` · **Version:** 0.5.0
+**CLI:** `skm` · **Version:** 0.5.1
 
 Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.md). CLI conventions: [../guides/cli-guidelines.md](../guides/cli-guidelines.md).
 
@@ -49,12 +49,16 @@ skm import / cp+scan
 ```
 ~/.skill-store/
 ├── .skm/
+│   ├── remotes/<repo>/            # git checkouts (remote sources only)
+│   ├── repos/<repo>.toml          # remote registry
 │   ├── profiles/work.toml
 │   ├── meta/
 │   │   ├── docx.toml              # single-skill provenance
-│   │   └── local.toml             # bundle meta for local/*
+│   │   ├── local.toml             # bundle meta for local/*
+│   │   └── <repo>/<skill>.toml    # per-skill remote sync meta
 │   ├── disabled.toml              # optional
 │   └── index.db                   # rebuildable SQLite cache
+├── <repo>/<skill>/  →  .skm/remotes/…   # remote library symlinks
 ├── docx/SKILL.md
 └── local/foo/SKILL.md             # skill id: local/foo
 ```
@@ -89,7 +93,7 @@ Store path resolution: `--store` → `SKM_STORE` → app config → `~/.skill-st
 
 `--user` / `-u` always loads `~/.skm.toml`. Default: `./.skm.toml` if present, else user setup.
 
-Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md).
+**Agents** (see [SPEC.md](SPEC.md#agent-adapters)): `generic`, `claude-code`, `cursor`, `gemini-cli`, `copilot-cli`. Legacy `codex` → `generic`.
 
 ---
 
@@ -120,16 +124,19 @@ main.rs  →  lib::run(Cli)  →  cli/<command>.rs handlers
 cli/          Command handlers, clap (cli/mod.rs), JSON (cli/output.rs)
 setup.rs      Setup file selection, active profile writes
 store/        StorePaths, discovery, profiles, extends graph, pool import, disabled, validate
+store/remote/ Git remotes: url, discover, git, registry, link, register, unregister, pin, meta, update, skills_sh
 resolver/     Pure profile → SkillPlacement
-sync/         reconcile(), symlink walk/apply (sync/links.rs), managed local exclude
+sync/         reconcile(), symlink walk/apply (sync/links.rs), managed local exclude, pull_remotes pre-phase
 doctor/       Read-only checks → Issue list
 db/           SQLite index; refresh_store_index = adopt + rebuild
 adapters/     AgentAdapter trait, agent pickers
 tui/          Reusable full-screen widgets (MultiSelect)
-config/       App config + SetupFile / ProfileFile types
+config/       App config + SetupFile / ProfileFile / RepoRegistration types
 util/         SKILL.md discovery, hashing, validation
 progress.rs   stderr steps; colored +/- on TTY
 ```
+
+**Git remotes.** `store/remote/register.rs` orchestrates `repo add`; `update.rs` / `sync` call `pull_remotes` then `refresh_library_symlinks` before `reconcile()`. `reconcile()` remains the only agent symlink mutator. `skills_sh.rs` fetches the skills.sh leaderboard (API + HTML fallback) for `repo browse`. Tests: `tests/remote.rs`, unit tests under `store/remote/`.
 
 ### Interactive TUI (`src/tui/`)
 
@@ -286,7 +293,7 @@ Helper pattern in `tests/common/mod.rs`: `with_env(home, store)` sets `HOME`, `X
 2. Register in `get_adapter()` and `INIT_AGENTS` (the `init` / `use-agents` picker)
 3. Unit test `target_dir` for project + user levels
 4. Integration test: `init --agent <id>` + `use-profiles` → symlink under expected path
-5. Document in [SPEC-AGENTS.md](SPEC-AGENTS.md) and README agent table
+5. Document agent paths in [SPEC.md](SPEC.md#agent-adapters) and README agent table
 
 ### New profile-graph consumer
 
@@ -336,8 +343,9 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 | 0.3.2 | Shipped | Project commands require `./.skm.toml` unless `--user`; grouped root help |
 | 0.3.3 | Shipped | Multi-active profiles; `use-profiles` / `use-agents` + add/remove commands |
 | 0.4.0 | Shipped | Search, validate, repo-qualified imports, install/update scripts |
-| 0.5.0 | Shipped | GitHub remote sources ([SPEC-REMOTE.md](SPEC-REMOTE.md)), `skm repo add`, `skm update`, pull-before-`sync` |
-| Later | — | Windows binary, `skm repo rm`, Tier 2 agents, `freeze`, variants, skill groups |
+| 0.5.0 | Shipped | Git remotes: `repo add`, `repo ls`, `update`, pull-before-`sync` |
+| 0.5.1 | Shipped | `repo rm` / `pin` / `browse`, `import github:…`, GitLab URLs, per-skill sync meta |
+| Later | — | Windows binary, Tier 2 agents, `freeze`, variants, skill groups |
 
 ---
 
@@ -350,3 +358,4 @@ Two invariants worth keeping when touching `sync/exclude.rs`:
 - Nested skill discovery at any depth; skip walking inside valid skill dirs when scanning for orphans
 - `use-profiles` replaces `skm use`; writes active profile only after reconcile succeeds
 - Index is disposable — always rebuildable from store + meta on disk
+- Git remotes: library symlinks into `.skm/remotes/`; pull before reconcile (unless `--no-pull`); no tokens in store files

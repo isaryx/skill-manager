@@ -222,6 +222,23 @@ pub(crate) fn write_meta(store: &StorePaths, id: &str, content: &str) -> Result<
     write_meta_file(&store.meta_file(id), content)
 }
 
+pub fn read_skill_meta(store: &StorePaths, skill_id: &str) -> Result<Option<crate::config::SkillMeta>, SkmError> {
+    let path = store.meta_file(skill_id);
+    if !path.is_file() {
+        return Ok(None);
+    }
+    let content = fs::read_to_string(&path)?;
+    Ok(Some(toml::from_str(&content)?))
+}
+
+pub fn remove_skill_meta(store: &StorePaths, skill_id: &str) -> Result<(), SkmError> {
+    let path = store.meta_file(skill_id);
+    if path.is_file() {
+        fs::remove_file(path)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

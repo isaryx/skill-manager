@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use crate::error::SkmError;
+use crate::store::remote::meta::remove_remote_skill_meta;
 use crate::store::StorePaths;
 use crate::util::is_skill_dir;
 
@@ -45,6 +46,7 @@ pub fn refresh_library_symlinks(
             let link = store.skill_dir(&id);
             if link.is_symlink() {
                 fs::remove_file(&link)?;
+                remove_remote_skill_meta(store, &id)?;
                 if let Some(parent) = link.parent() {
                     prune_empty_parents(&store.skill_dir(repo_name), parent);
                 }
@@ -98,6 +100,29 @@ fn walk_library_symlink_ids(
             walk_library_symlink_ids(&path, &id, ids)?;
         }
     }
+    Ok(())
+}
+
+/// Remove every library symlink for a registered remote.
+pub fn remove_repo_library_links(store: &StorePaths, repo_name: &str) -> Result<(), SkmError> {
+    let ids = collect_repo_library_links(store, repo_name)?;
+    for id in ids {
+        let link = store.skill_dir(&id);
+        if link.is_symlink() {
+            fs::remove_file(&link)?;
+            if let Some(parent) = link.parent() {
+                prune_empty_parents(&store.skill_dir(repo_name), parent);
+            }
+        }
+    }
+
+    let repo_dir = store.skill_dir(repo_name);
+    if repo_dir.is_dir() && fs::read_dir(&repo_dir)?.next().is_none() {
+        fs::remove_dir(&repo_dir)?;
+    } else if repo_dir.is_symlink() {
+        fs::remove_file(&repo_dir)?;
+    }
+
     Ok(())
 }
 

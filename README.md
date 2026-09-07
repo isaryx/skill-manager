@@ -2,6 +2,8 @@
 
 **skm** manages a local library of [Agent Skills](https://agentskills.io) and wires them into Claude Code, Cursor, and other tools via symlinks. You keep one canonical store, group skills into named profiles, and run `skm sync` to reconcile links.
 
+Import skills from disk, **register git repositories** (GitHub `owner/repo`, GitLab, SSH), **browse [skills.sh](https://skills.sh)** to add popular repos, and **pull upstream** with `skm update` or `skm sync`.
+
 A skill is a directory with a `SKILL.md` file at its root (or nested under a skill tree).
 
 ## Quick start
@@ -31,11 +33,13 @@ Most project commands read `./.skm.toml` in the current directory. Pass `--user`
 
 | Piece | What it does |
 |-------|----------------|
-| **Store** | Canonical copies of your skills (one folder per skill) |
+| **Store** | Canonical skill library — local copies (`import`) or symlinks into git checkouts (`repo add`) |
 | **Profile** | A named set of skills to activate together (`work`, `personal`, …) |
-| **Sync** | Creates symlinks from the active profiles into every target agent's skills directory |
+| **Sync** | Pulls remotes (optional), then symlinks active profile skills into every target agent directory |
 
 **Store vs profile:** `skm skill setup` controls which store skills are enabled (disable without deleting). `skm profile setup` picks which enabled skills belong to a profile. Both open a full-screen picker; keys are shown in the bar at the bottom of the screen.
+
+**Remote repos:** `skm repo add` clones into the store and symlinks skills into the library (`myskills/deploy`). They are not wired to agents until you add them to a profile and sync. Use `skm repo ls` to see registered remotes; `skm doctor` warns when a remote checkout has moved on (`remote.stale`).
 
 ## Install
 
@@ -53,7 +57,7 @@ brew install isaryx/collection/skm
 curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/install.sh | bash
 ```
 
-Pin a release with `SKM_VERSION=v0.5.0` or `--version v0.5.0`. Use `--install-dir` for a custom path and `--dry-run` to preview. Unsupported OS or architecture exits with a clear error.
+Pin a release with `SKM_VERSION=v0.5.1` or `--version v0.5.1`. Use `--install-dir` for a custom path and `--dry-run` to preview. Unsupported OS or architecture exits with a clear error.
 
 Other install paths: download a binary from [GitHub Releases](https://github.com/isaryx/skill-manager/releases), build from source with `cargo install --path .`, or run `scripts/check-update.sh` to compare against the latest release. Details in [docs/SPEC.md](docs/SPEC.md).
 
@@ -63,6 +67,7 @@ Other install paths: download a binary from [GitHub Releases](https://github.com
 
 ```bash
 skm import ./path/to/skill --copy          # or --move
+skm import github:owner/repo             # register a GitHub remote (no --copy/--move)
 skm import ./skill-tree --copy --as local  # nested skills under one bundle name
 ```
 
@@ -70,17 +75,27 @@ skm import ./skill-tree --copy --as local  # nested skills under one bundle name
 
 If you place skill folders directly under the store (for example `cp -r ./local ~/.skill-store/local`), run `skm scan` to refresh the index and register them. Existing import metadata is never overwritten.
 
-**Register a GitHub skill repo**
+**Register or browse git skill repos**
 
 ```bash
-skm repo add owner/repo              # clones into the store; skills appear in skm ls
-skm profile setup work               # pick remote skills (e.g. myskills/deploy)
+skm repo add owner/repo                        # GitHub shorthand
+skm repo add https://gitlab.com/g/skills.git --name skills
+skm import github:owner/repo                   # same as repo add
+skm repo browse                                # skills.sh leaderboard (TTY)
+skm repo ls                                    # list registered remotes
+
+skm profile setup work                         # pick remote skills (e.g. myskills/deploy)
 skm add-profile work
-skm update                           # pull upstream without re-wiring agents
-skm sync                             # pull + refresh agent symlinks
+skm update                                     # pull upstream without re-wiring agents
+skm sync                                       # pull + refresh agent symlinks
+skm sync --no-pull                             # offline: skip pull, reconcile only
+
+skm repo pin myskills v1.0.0                   # optional: pin checkout
+skm repo pin myskills --clear                  # track default branch again
+skm repo rm myskills --force                   # remove when no longer needed
 ```
 
-Requires `git` for `repo add`, `update`, and the pull phase of `sync`. See [docs/SPEC-REMOTE.md](docs/SPEC-REMOTE.md).
+Requires `git` for `repo add`, `update`, and the pull phase of `sync`. See [docs/SPEC.md](docs/SPEC.md#git-remote-sources).
 
 **Compose profiles**
 
@@ -109,7 +124,7 @@ work
 
 ```bash
 skm doctor           # human-readable report; exit 1 on warnings/errors
-skm doctor --json    # for scripts (includes link.conflict when a profile skill is blocked)
+skm doctor --json    # for scripts (link.conflict, remote.stale, …)
 ```
 
 ## Project and hand-installed skills
@@ -131,7 +146,7 @@ Grouped overview — every flag and exit code is in [docs/SPEC.md](docs/SPEC.md)
 | Group | Commands |
 |-------|----------|
 | Setup | `init`, `destroy` |
-| Store | `import`, `repo add/ls`, `update`, `scan`, `search`, `ls`, `skill ls/setup/rm/validate` |
+| Store | `import`, `repo add/ls/rm/pin/browse`, `update`, `scan`, `search`, `ls`, `skill ls/setup/rm/validate` |
 | Profiles | `profile setup/ls/show/rm/extend`, `use-profiles`, `add-profile`, `remove-profile` |
 | Agents | `use-agents`, `add-agent`, `remove-agent` |
 | Sync & status | `sync`, `status`, `doctor` |
@@ -143,10 +158,11 @@ Global flags: `--verbose` / `-v`, `--store <path>` (env: `SKM_STORE`), `--json`,
 - Set `SKM_STORE` or pass `--store <path>` to select the store without a prompt.
 - Pass `--agent` to `skm init`; repeat it or comma-separate for several agents (`--agent claude-code,cursor`). Use `skm add-agent` / `skm remove-agent` to change the set after init. If a target directory already contains skills, also pass `--accept-existing-skills`.
 - Use `--json` with `status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor`, and `repo ls`. Structured data stays on stdout; progress and errors go to stderr.
-- Use `--dry-run` before `sync`, `add-profile`, `remove-profile`, or `skill rm`. Non-interactive `skill rm` also requires `--force`.
+- Use `--dry-run` before `sync`, `update`, `add-profile`, `remove-profile`, or `skill rm`. Non-interactive `skill rm` also requires `--force`.
 - Exit codes: `0` success, `1` runtime or health-check failure, `2` invalid usage or resolution conflicts.
 
 ```bash
+skm update --dry-run
 skm sync --dry-run
 skm add-profile work --dry-run
 skm skill rm docx --dry-run
@@ -177,16 +193,15 @@ Store path resolution (first match wins): `--store` → `SKM_STORE` → app conf
 agents = ["claude-code", "cursor"]
 ```
 
-Every target agent gets its own symlinks, so the same profile can serve several tools at once. Project vs user paths are listed in [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md).
+Every target agent gets its own symlinks, so the same profile can serve several tools at once. Project vs user paths are in [docs/SPEC.md](docs/SPEC.md#agent-adapters).
 
 ## Documentation
 
 | Doc | Use when you need |
 |-----|-------------------|
 | This README | Install, quick start, everyday workflows |
-| [docs/SPEC.md](docs/SPEC.md) | Full command reference, flags, exit codes |
+| [docs/SPEC.md](docs/SPEC.md) | Commands, agents, remotes, flags, exit codes |
 | [docs/DESIGN.md](docs/DESIGN.md) | Architecture and design decisions |
-| [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md) | Agent paths and placement rules |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ## Development

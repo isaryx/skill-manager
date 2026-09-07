@@ -154,8 +154,17 @@ _skm() {
             skm__subcmd__help__subcmd__repo,add)
                 cmd="skm__subcmd__help__subcmd__repo__subcmd__add"
                 ;;
+            skm__subcmd__help__subcmd__repo,browse)
+                cmd="skm__subcmd__help__subcmd__repo__subcmd__browse"
+                ;;
             skm__subcmd__help__subcmd__repo,ls)
                 cmd="skm__subcmd__help__subcmd__repo__subcmd__ls"
+                ;;
+            skm__subcmd__help__subcmd__repo,pin)
+                cmd="skm__subcmd__help__subcmd__repo__subcmd__pin"
+                ;;
+            skm__subcmd__help__subcmd__repo,rm)
+                cmd="skm__subcmd__help__subcmd__repo__subcmd__rm"
                 ;;
             skm__subcmd__help__subcmd__skill,ls)
                 cmd="skm__subcmd__help__subcmd__skill__subcmd__ls"
@@ -208,20 +217,38 @@ _skm() {
             skm__subcmd__repo,add)
                 cmd="skm__subcmd__repo__subcmd__add"
                 ;;
+            skm__subcmd__repo,browse)
+                cmd="skm__subcmd__repo__subcmd__browse"
+                ;;
             skm__subcmd__repo,help)
                 cmd="skm__subcmd__repo__subcmd__help"
                 ;;
             skm__subcmd__repo,ls)
                 cmd="skm__subcmd__repo__subcmd__ls"
                 ;;
+            skm__subcmd__repo,pin)
+                cmd="skm__subcmd__repo__subcmd__pin"
+                ;;
+            skm__subcmd__repo,rm)
+                cmd="skm__subcmd__repo__subcmd__rm"
+                ;;
             skm__subcmd__repo__subcmd__help,add)
                 cmd="skm__subcmd__repo__subcmd__help__subcmd__add"
+                ;;
+            skm__subcmd__repo__subcmd__help,browse)
+                cmd="skm__subcmd__repo__subcmd__help__subcmd__browse"
                 ;;
             skm__subcmd__repo__subcmd__help,help)
                 cmd="skm__subcmd__repo__subcmd__help__subcmd__help"
                 ;;
             skm__subcmd__repo__subcmd__help,ls)
                 cmd="skm__subcmd__repo__subcmd__help__subcmd__ls"
+                ;;
+            skm__subcmd__repo__subcmd__help,pin)
+                cmd="skm__subcmd__repo__subcmd__help__subcmd__pin"
+                ;;
+            skm__subcmd__repo__subcmd__help,rm)
+                cmd="skm__subcmd__repo__subcmd__help__subcmd__rm"
                 ;;
             skm__subcmd__skill,help)
                 cmd="skm__subcmd__skill__subcmd__help"
@@ -608,7 +635,7 @@ _skm() {
             return 0
             ;;
         skm__subcmd__help__subcmd__repo)
-            opts="add ls"
+            opts="add ls rm pin browse"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -635,7 +662,49 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
+        skm__subcmd__help__subcmd__repo__subcmd__browse)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
         skm__subcmd__help__subcmd__repo__subcmd__ls)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__help__subcmd__repo__subcmd__pin)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__help__subcmd__repo__subcmd__rm)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -1170,7 +1239,7 @@ _skm() {
             return 0
             ;;
         skm__subcmd__repo)
-            opts="-v -h --verbose --store --json --dry-run --color --help add ls help"
+            opts="-v -h --verbose --store --json --dry-run --color --help add ls rm pin browse help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1192,13 +1261,17 @@ _skm() {
             return 0
             ;;
         skm__subcmd__repo__subcmd__add)
-            opts="-v -h --name --strict --verbose --store --json --dry-run --color --help"
+            opts="-v -h --name --pin --strict --verbose --store --json --dry-run --color --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
                 --name)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --pin)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
@@ -1217,8 +1290,30 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
+        skm__subcmd__repo__subcmd__browse)
+            opts="-v -h --strict --verbose --store --json --dry-run --color --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --store)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
         skm__subcmd__repo__subcmd__help)
-            opts="add ls help"
+            opts="add ls rm pin browse help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1232,6 +1327,20 @@ _skm() {
             return 0
             ;;
         skm__subcmd__repo__subcmd__help__subcmd__add)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__repo__subcmd__help__subcmd__browse)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -1273,8 +1382,80 @@ _skm() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
+        skm__subcmd__repo__subcmd__help__subcmd__pin)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__repo__subcmd__help__subcmd__rm)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
         skm__subcmd__repo__subcmd__ls)
             opts="-v -h --verbose --store --json --dry-run --color --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --store)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__repo__subcmd__pin)
+            opts="-v -h --clear --verbose --store --json --dry-run --color --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --store)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --color)
+                    COMPREPLY=($(compgen -W "auto always never" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        skm__subcmd__repo__subcmd__rm)
+            opts="-v -h --force --verbose --store --json --dry-run --color --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

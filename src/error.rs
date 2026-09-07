@@ -154,8 +154,14 @@ pub enum SkmError {
     #[error("remote repo not found: {0}")]
     RepoNotFound(String),
 
+    #[error("remote repo `{name}` is referenced by profiles: {profiles}; pass --force to remove anyway")]
+    RepoReferencedByProfiles { name: String, profiles: String },
+
     #[error("library link for `{id}` is occupied: {path}")]
     LibraryLinkOccupied { id: String, path: PathBuf },
+
+    #[error("failed to fetch skills.sh leaderboard: {message}")]
+    SkillsShFetchFailed { message: String },
 
     #[error("{0}")]
     Usage(String),
@@ -191,6 +197,7 @@ impl SkmError {
             | SkmError::InvalidSkillId(_)
             | SkmError::RepoAlreadyRegistered(_)
             | SkmError::RepoUrlAlreadyRegistered { .. }
+            | SkmError::RepoReferencedByProfiles { .. }
             | SkmError::SelfExtend(_)
             | SkmError::DuplicateExtend(_)
             | SkmError::ExtendCycle(_)

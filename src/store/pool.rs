@@ -158,6 +158,7 @@ fn import_meta(
         repo_name: repo.map(str::to_string),
         remote_url: None,
         commit: None,
+        synced_at: None,
     })
 }
 

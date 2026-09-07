@@ -16,7 +16,7 @@ pub mod util;
 use std::env;
 
 use crate::cli::ls::LsFilter;
-use crate::cli::repo::{run_repo_add, run_repo_ls};
+use crate::cli::repo::{run_repo_add, run_repo_browse, run_repo_ls, run_repo_pin, run_repo_rm};
 use crate::cli::sync as sync_cmd;
 use crate::cli::update::run_update;
 use crate::cli::{
@@ -60,6 +60,22 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
             repo,
             strict,
         } => {
+            if let Some(ref_str) = store::remote::url::github_import_ref(&dir) {
+                if copy || move_ {
+                    return Err(SkmError::Usage(
+                        "`github:` imports register a remote repository; omit --copy and --move (use `skm repo add`)"
+                            .into(),
+                    ));
+                }
+                if as_name.is_some() {
+                    return Err(SkmError::Usage(
+                        "`github:` imports register a remote repository; omit --as (use `skm repo add --name`)"
+                            .into(),
+                    ));
+                }
+                run_repo_add(&store, &ref_str, None, strict, None)?;
+                return Ok(0);
+            }
             import::run_import(&store, &dir, copy, move_, as_name, repo, strict)?;
             0
         }
@@ -160,9 +176,23 @@ pub fn run(cli: Cli) -> Result<i32, SkmError> {
                 RepoAction::Add {
                     r#ref,
                     name,
+                    pin,
                     strict,
-                } => run_repo_add(&store, &r#ref, name.as_deref(), strict)?,
+                } => run_repo_add(
+                    &store,
+                    &r#ref,
+                    name.as_deref(),
+                    strict,
+                    pin.as_deref(),
+                )?,
                 RepoAction::Ls => run_repo_ls(&store, json)?,
+                RepoAction::Rm { name, force } => run_repo_rm(&store, &name, force)?,
+                RepoAction::Pin {
+                    name,
+                    r#ref,
+                    clear,
+                } => run_repo_pin(&store, &name, r#ref.as_deref(), clear)?,
+                RepoAction::Browse { strict } => run_repo_browse(&store, strict)?,
             }
             0
         }

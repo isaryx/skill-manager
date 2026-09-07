@@ -25,6 +25,8 @@ pub struct MultiSelectItem {
     /// Whether `note` marks the row as lesser (e.g. a disabled skill), dimming the whole row.
     /// A neutral note set with [`MultiSelectItem::hint`] leaves the row at full brightness.
     dim_row: bool,
+    /// When false, the row cannot be toggled (still visible and searchable).
+    selectable: bool,
     selected: bool,
 }
 
@@ -37,6 +39,7 @@ impl MultiSelectItem {
             key,
             note: None,
             dim_row: false,
+            selectable: true,
             selected: false,
         }
     }
@@ -60,6 +63,12 @@ impl MultiSelectItem {
 
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
+        self
+    }
+
+    /// When `false`, space/tab cannot toggle this row (e.g. already registered).
+    pub fn selectable(mut self, selectable: bool) -> Self {
+        self.selectable = selectable;
         self
     }
 
@@ -196,6 +205,9 @@ impl State {
 
     fn toggle_current(&mut self) {
         if let Some(&index) = self.filtered.get(self.cursor) {
+            if !self.items[index].selectable {
+                return;
+            }
             self.items[index].selected = !self.items[index].selected;
         }
     }
@@ -206,8 +218,17 @@ impl State {
         if self.filtered.is_empty() {
             return;
         }
-        let select = !self.filtered.iter().all(|&i| self.items[i].selected);
-        for &index in &self.filtered {
+        let selectable: Vec<usize> = self
+            .filtered
+            .iter()
+            .copied()
+            .filter(|&i| self.items[i].selectable)
+            .collect();
+        if selectable.is_empty() {
+            return;
+        }
+        let select = !selectable.iter().all(|&i| self.items[i].selected);
+        for index in selectable {
             self.items[index].selected = select;
         }
     }
@@ -737,6 +758,41 @@ mod tests {
     }
 
     // ---- selection ----------------------------------------------------------------
+
+    #[test]
+    fn non_selectable_rows_cannot_be_toggled() {
+        let mut state = State::new("repos".to_string());
+        state.items = vec![
+            MultiSelectItem::new("open"),
+            MultiSelectItem::new("taken")
+                .note("registered")
+                .selectable(false),
+        ];
+        state.refilter();
+
+        state.handle(Key::Char(' ')); // select open
+        assert_eq!(state.selected_keys(), vec!["open"]);
+
+        state.handle(Key::Char('j')); // cursor on taken
+        state.handle(Key::Char(' ')); // cannot toggle
+        assert_eq!(state.selected_keys(), vec!["open"]);
+    }
+
+    #[test]
+    fn toggle_all_skips_non_selectable_rows() {
+        let mut state = State::new("repos".to_string());
+        state.items = vec![
+            MultiSelectItem::new("open"),
+            MultiSelectItem::new("taken")
+                .note("registered")
+                .selectable(false),
+        ];
+        state.refilter();
+        state.handle(Key::Char('a'));
+        assert_eq!(state.selected_keys(), vec!["open"]);
+        state.handle(Key::Char('a'));
+        assert!(state.selected_keys().is_empty());
+    }
 
     #[test]
     fn space_toggles_the_highlighted_item() {

@@ -5,8 +5,9 @@ use crate::db::rebuild_from_store;
 use crate::error::SkmError;
 use crate::progress;
 use crate::store::remote::discover::{find_skills_root, list_repo_skills};
-use crate::store::remote::git::pull_ff_only;
+use crate::store::remote::git::update_checkout;
 use crate::store::remote::link::refresh_library_symlinks;
+use crate::store::remote::meta::{record_remote_skill_sync, RemoteSyncRecord};
 use crate::store::remote::paths::checkout_path;
 use crate::store::remote::registry::{list_repos, read_repo, write_repo};
 use crate::store::{write_meta, StorePaths};
@@ -51,7 +52,7 @@ pub fn pull_remotes(store: &StorePaths, options: PullOptions) -> Result<(), SkmE
             continue;
         }
 
-        match pull_ff_only(&checkout) {
+        match update_checkout(&checkout, reg.pin.as_deref()) {
             Ok(commit) => {
                 if let Err(err) = refresh_repo_after_pull(store, &reg.name, &commit) {
                     eprintln!("warning: refresh failed for `{}`: {}", reg.name, err.leaf());
@@ -110,6 +111,7 @@ pub fn refresh_repo_after_pull(
         repo_name: Some(reg.name.clone()),
         remote_url: Some(reg.url.clone()),
         commit: Some(commit.to_string()),
+        synced_at: None,
     };
     write_meta(store, &reg.name, &toml::to_string_pretty(&meta)?)?;
 
@@ -119,6 +121,8 @@ pub fn refresh_repo_after_pull(
     updated.updated_at = Utc::now().to_rfc3339();
     updated.last_pull_error = None;
     write_repo(store, &updated)?;
+
+    record_remote_skill_sync(store, &updated, &skills, &checkout, RemoteSyncRecord::Full)?;
 
     Ok(())
 }

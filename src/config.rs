@@ -121,6 +121,9 @@ pub struct RepoRegistration {
     pub updated_at: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_pull_error: Option<String>,
+    /// Branch, tag, or commit to track instead of the default branch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pin: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -137,6 +140,9 @@ pub struct SkillMeta {
     pub remote_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commit: Option<String>,
+    /// Last time this skill's remote commit was recorded (pull or sync).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub synced_at: Option<String>,
 }
 
 impl SkillMeta {
@@ -156,6 +162,7 @@ impl SkillMeta {
             repo_name: None,
             remote_url: None,
             commit: None,
+            synced_at: None,
         }
     }
 }

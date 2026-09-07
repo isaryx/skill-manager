@@ -221,6 +221,12 @@ pub fn reconcile_with_setup(
         apply_placements(&target.dir, &placements, &store_root, false)?;
     }
 
+    crate::store::remote::record_all_remote_skill_syncs(
+        store,
+        crate::store::remote::RemoteSyncRecord::AfterReconcile,
+    )
+    .map_err(|e| e.op("recording remote skill sync metadata"))?;
+
     Ok(())
 }
 

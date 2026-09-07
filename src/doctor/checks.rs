@@ -45,6 +45,10 @@ pub struct Issue {
     /// Set on issues that belong to one target agent's skills directory.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recorded_commit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_commit: Option<String>,
 }
 
 impl Issue {
@@ -58,6 +62,8 @@ impl Issue {
             placement: None,
             path: None,
             agent: None,
+            recorded_commit: None,
+            current_commit: None,
         }
     }
 
@@ -71,6 +77,8 @@ impl Issue {
             placement: None,
             path: None,
             agent: None,
+            recorded_commit: None,
+            current_commit: None,
         }
     }
 
@@ -84,6 +92,8 @@ impl Issue {
             placement: None,
             path: None,
             agent: None,
+            recorded_commit: None,
+            current_commit: None,
         }
     }
 
@@ -109,6 +119,16 @@ impl Issue {
 
     fn with_agent(mut self, agent: impl Into<String>) -> Self {
         self.agent = Some(agent.into());
+        self
+    }
+
+    fn with_commits(
+        mut self,
+        recorded: impl Into<String>,
+        current: impl Into<String>,
+    ) -> Self {
+        self.recorded_commit = Some(recorded.into());
+        self.current_commit = Some(current.into());
         self
     }
 }
@@ -545,6 +565,7 @@ pub fn check_remotes(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
     let mut issues = Vec::new();
     for reg in list_repos(store)? {
         let checkout = checkout_path(store, &reg.name);
+        let checkout = checkout.canonicalize().unwrap_or(checkout);
         if !checkout.is_dir() {
             issues.push(
                 Issue::error(
@@ -581,6 +602,8 @@ pub fn check_remotes(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
             );
         }
 
+        use crate::store::read_skill_meta;
+        use crate::store::remote::git::path_last_commit;
         use crate::store::remote::link::collect_repo_library_links;
         for id in collect_repo_library_links(store, &reg.name)? {
             let link = store.skill_dir(&id);
@@ -592,6 +615,68 @@ pub fn check_remotes(store: &StorePaths) -> Result<Vec<Issue>, SkmError> {
                     )
                     .with_skill(id)
                     .with_path(display_path(&link)),
+                );
+                continue;
+            }
+            if !link.is_symlink() {
+                continue;
+            }
+            let target = fs::read_link(&link)?;
+            let skill_path = if target.is_absolute() {
+                target
+            } else {
+                link.parent()
+                    .unwrap_or(store.root())
+                    .join(target)
+            };
+            let skill_path = fs::canonicalize(&skill_path).unwrap_or(skill_path);
+            if !skill_path.starts_with(&checkout) {
+                continue;
+            }
+            let meta = read_skill_meta(store, &id)?;
+            let Some(meta) = meta else {
+                issues.push(
+                    Issue::info(
+                        "remote.sync_meta_missing",
+                        format!(
+                            "remote skill `{id}` has no per-skill sync metadata; run `skm update` or `skm sync`"
+                        ),
+                    )
+                    .with_skill(id.clone()),
+                );
+                continue;
+            };
+            if meta.source_type != "remote" {
+                continue;
+            }
+            let recorded = match &meta.commit {
+                Some(commit) => commit.clone(),
+                None => {
+                    issues.push(
+                        Issue::info(
+                            "remote.sync_meta_missing",
+                            format!(
+                                "remote skill `{id}` has no recorded commit; run `skm update` or `skm sync`"
+                            ),
+                        )
+                        .with_skill(id.clone()),
+                    );
+                    continue;
+                }
+            };
+            let current = path_last_commit(&checkout, &skill_path)?;
+            if recorded != current {
+                issues.push(
+                    Issue::warn(
+                        "remote.stale",
+                        format!(
+                            "remote skill `{id}` changed in checkout since last sync (recorded {}, current {})",
+                            recorded.chars().take(7).collect::<String>(),
+                            current.chars().take(7).collect::<String>(),
+                        ),
+                    )
+                    .with_skill(id.clone())
+                    .with_commits(recorded, current),
                 );
             }
         }

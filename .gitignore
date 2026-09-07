@@ -17,9 +17,13 @@
 ._*
 Thumbs.db
 
-# Editors
+# Editors / IDE (local MCP, etc.)
 .idea/
 .vscode/
+
+# Local manual test / scratch dirs (may contain machine-specific paths)
+.skm-manual-test*/
+.skm-test-workdir
 *.swp
 *.swo
 *~

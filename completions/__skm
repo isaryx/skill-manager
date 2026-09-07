@@ -530,6 +530,7 @@ _arguments "${_arguments_options[@]}" : \
             (add)
 _arguments "${_arguments_options[@]}" : \
 '--name=[Registry and library prefix (default\: derived from URL)]:NAME:_default' \
+'--pin=[Branch, tag, or commit to check out (default\: repository default branch)]:PIN:_default' \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
 '--strict[Fail when SKILL.md frontmatter is invalid (default\: warn)]' \
@@ -546,6 +547,48 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
 '--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'--force[Remove even when profiles reference skills under this repo]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Registered repository name:_default' \
+&& ret=0
+;;
+(pin)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'--clear[Stop pinning; track the repository default branch on pull]' \
+'-v[Enable verbose logging on stderr]' \
+'--verbose[Enable verbose logging on stderr]' \
+'--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
+'--dry-run[Preview changes without writing (\`sync\`, \`add-profile\`, \`remove-profile\`, \`skill rm\`, \`destroy\` only)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Registered repository name:_default' \
+'::ref -- Branch, tag, or commit:_default' \
+&& ret=0
+;;
+(browse)
+_arguments "${_arguments_options[@]}" : \
+'--store=[Store root directory (env\: SKM_STORE)]:STORE:_files' \
+'--color=[When to colorize human output (\`auto\` respects NO_COLOR)]:COLOR:(auto always never)' \
+'--strict[Fail when SKILL.md frontmatter is invalid (default\: warn)]' \
 '-v[Enable verbose logging on stderr]' \
 '--verbose[Enable verbose logging on stderr]' \
 '--json[Emit machine-readable JSON on stdout (\`status\`, \`ls\`, \`search\`, \`skill ls\`, \`skill validate\`, \`doctor\`, \`repo ls\` only)]' \
@@ -571,6 +614,18 @@ _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
 (ls)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pin)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(browse)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
@@ -759,6 +814,18 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
+(rm)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pin)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(browse)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
         esac
     ;;
 esac
@@ -784,7 +851,7 @@ esac
 __skm_commands() {
     local commands; commands=(
 'init:Set up the skill store and project config (\`.skm.toml\`)' \
-'import:Import a skill directory into the store' \
+'import:Import a skill directory into the store (or \`github\:owner/repo\` to register a remote)' \
 'profile:Create and manage profiles' \
 'skill:Manage skills in the store' \
 'use-profiles:Choose active profiles and sync skill links (interactive)' \
@@ -800,7 +867,7 @@ __skm_commands() {
 'scan:Refresh the on-disk skill index' \
 'search:Search indexed skill IDs and descriptions' \
 'doctor:Read-only health report for the store, profiles, and skill links' \
-'repo:Manage remote skill repositories (GitHub)' \
+'repo:Manage remote skill repositories (GitHub, GitLab, and other git hosts)' \
 'update:Pull registered remote repositories (no agent symlink changes)' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
@@ -830,7 +897,7 @@ _skm__subcmd__doctor_commands() {
 _skm__subcmd__help_commands() {
     local commands; commands=(
 'init:Set up the skill store and project config (\`.skm.toml\`)' \
-'import:Import a skill directory into the store' \
+'import:Import a skill directory into the store (or \`github\:owner/repo\` to register a remote)' \
 'profile:Create and manage profiles' \
 'skill:Manage skills in the store' \
 'use-profiles:Choose active profiles and sync skill links (interactive)' \
@@ -846,7 +913,7 @@ _skm__subcmd__help_commands() {
 'scan:Refresh the on-disk skill index' \
 'search:Search indexed skill IDs and descriptions' \
 'doctor:Read-only health report for the store, profiles, and skill links' \
-'repo:Manage remote skill repositories (GitHub)' \
+'repo:Manage remote skill repositories (GitHub, GitLab, and other git hosts)' \
 'update:Pull registered remote repositories (no agent symlink changes)' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
@@ -941,8 +1008,11 @@ _skm__subcmd__help__subcmd__remove-profile_commands() {
 (( $+functions[_skm__subcmd__help__subcmd__repo_commands] )) ||
 _skm__subcmd__help__subcmd__repo_commands() {
     local commands; commands=(
-'add:Clone and register a GitHub repository as a skill source' \
+'add:Clone and register a git repository as a skill source' \
 'ls:List registered remote repositories' \
+'rm:Remove a registered remote repository from the store' \
+'pin:Pin a remote to a branch, tag, or commit (or show/clear the pin)' \
+'browse:Browse the skills.sh leaderboard and register selected repositories' \
     )
     _describe -t commands 'skm help repo commands' commands "$@"
 }
@@ -951,10 +1021,25 @@ _skm__subcmd__help__subcmd__repo__subcmd__add_commands() {
     local commands; commands=()
     _describe -t commands 'skm help repo add commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__help__subcmd__repo__subcmd__browse_commands] )) ||
+_skm__subcmd__help__subcmd__repo__subcmd__browse_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help repo browse commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__help__subcmd__repo__subcmd__ls_commands] )) ||
 _skm__subcmd__help__subcmd__repo__subcmd__ls_commands() {
     local commands; commands=()
     _describe -t commands 'skm help repo ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__repo__subcmd__pin_commands] )) ||
+_skm__subcmd__help__subcmd__repo__subcmd__pin_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help repo pin commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__help__subcmd__repo__subcmd__rm_commands] )) ||
+_skm__subcmd__help__subcmd__repo__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm help repo rm commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__help__subcmd__scan_commands] )) ||
 _skm__subcmd__help__subcmd__scan_commands() {
@@ -1128,8 +1213,11 @@ _skm__subcmd__remove-profile_commands() {
 (( $+functions[_skm__subcmd__repo_commands] )) ||
 _skm__subcmd__repo_commands() {
     local commands; commands=(
-'add:Clone and register a GitHub repository as a skill source' \
+'add:Clone and register a git repository as a skill source' \
 'ls:List registered remote repositories' \
+'rm:Remove a registered remote repository from the store' \
+'pin:Pin a remote to a branch, tag, or commit (or show/clear the pin)' \
+'browse:Browse the skills.sh leaderboard and register selected repositories' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'skm repo commands' commands "$@"
@@ -1139,11 +1227,19 @@ _skm__subcmd__repo__subcmd__add_commands() {
     local commands; commands=()
     _describe -t commands 'skm repo add commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__repo__subcmd__browse_commands] )) ||
+_skm__subcmd__repo__subcmd__browse_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo browse commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__repo__subcmd__help_commands] )) ||
 _skm__subcmd__repo__subcmd__help_commands() {
     local commands; commands=(
-'add:Clone and register a GitHub repository as a skill source' \
+'add:Clone and register a git repository as a skill source' \
 'ls:List registered remote repositories' \
+'rm:Remove a registered remote repository from the store' \
+'pin:Pin a remote to a branch, tag, or commit (or show/clear the pin)' \
+'browse:Browse the skills.sh leaderboard and register selected repositories' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'skm repo help commands' commands "$@"
@@ -1152,6 +1248,11 @@ _skm__subcmd__repo__subcmd__help_commands() {
 _skm__subcmd__repo__subcmd__help__subcmd__add_commands() {
     local commands; commands=()
     _describe -t commands 'skm repo help add commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__help__subcmd__browse_commands] )) ||
+_skm__subcmd__repo__subcmd__help__subcmd__browse_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo help browse commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__repo__subcmd__help__subcmd__help_commands] )) ||
 _skm__subcmd__repo__subcmd__help__subcmd__help_commands() {
@@ -1163,10 +1264,30 @@ _skm__subcmd__repo__subcmd__help__subcmd__ls_commands() {
     local commands; commands=()
     _describe -t commands 'skm repo help ls commands' commands "$@"
 }
+(( $+functions[_skm__subcmd__repo__subcmd__help__subcmd__pin_commands] )) ||
+_skm__subcmd__repo__subcmd__help__subcmd__pin_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo help pin commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__help__subcmd__rm_commands] )) ||
+_skm__subcmd__repo__subcmd__help__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo help rm commands' commands "$@"
+}
 (( $+functions[_skm__subcmd__repo__subcmd__ls_commands] )) ||
 _skm__subcmd__repo__subcmd__ls_commands() {
     local commands; commands=()
     _describe -t commands 'skm repo ls commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__pin_commands] )) ||
+_skm__subcmd__repo__subcmd__pin_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo pin commands' commands "$@"
+}
+(( $+functions[_skm__subcmd__repo__subcmd__rm_commands] )) ||
+_skm__subcmd__repo__subcmd__rm_commands() {
+    local commands; commands=()
+    _describe -t commands 'skm repo rm commands' commands "$@"
 }
 (( $+functions[_skm__subcmd__scan_commands] )) ||
 _skm__subcmd__scan_commands() {

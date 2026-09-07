@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.5.0 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md) · Remotes: [SPEC-REMOTE.md](SPEC-REMOTE.md)
+**Version:** 0.5.1 · Architecture: [DESIGN.md](DESIGN.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 
@@ -24,9 +24,13 @@ Many commands accept `--user` / `-u` for `~/.skm.toml`.
 
 ```bash
 skm init [--agent AGENT]... [--force] [--accept-existing-skills]
-skm import <dir> --copy|--move [--as NAME]
-skm repo add <ref> [--name NAME] [--strict]
+skm import <dir> --copy|--move [--as NAME] [--repo NAME] [--strict]
+skm import github:owner/repo [--strict]    # same as skm repo add
+skm repo add <ref> [--name NAME] [--pin REF] [--strict]
+skm repo browse [--strict]
 skm repo ls [--json]
+skm repo rm <name> [--force]
+skm repo pin <name> [ref] [--clear]
 skm update [name]
 
 skm profile setup|extend|ls|show|rm <name>
@@ -106,19 +110,24 @@ Requires initialized store. `--copy` and `--move` are required and mutually excl
 - Single skill: `SKILL.md` at root, no nested trees
 - Skill tree: one or more `SKILL.md` at any depth under one bundle name
 - `--repo <name>` stores under a repo-qualified id (`agent-skills/deploy`); sets `repo_name` in meta while keeping `source_type` local until git provenance exists
+- `github:owner/repo` as `<dir>` registers a remote (same as `skm repo add`); `--copy`, `--move`, and `--as` are rejected
 - Writes `.skm/meta/<name>.toml`, rebuilds index
 - Rejects overwrite and reserved names (`.skm`, leading `.`)
 
 ### Remote repositories (`skm repo`, `skm update`)
 
-Register GitHub repos (or local paths / `file://` URLs) as skill sources. Skills are symlinked into the library under a repo-qualified id (`myskills/deploy`). Requires `git` on `PATH` for clone and pull.
+Register git repositories as skill sources. `owner/repo` resolves to GitHub HTTPS; any other `git clone` URL (GitLab, SSH, `file://`, local path) passes through. Skills are symlinked into the library under a repo-qualified id (`myskills/deploy`). Requires `git` on `PATH` for clone and pull.
 
-- `repo add` — clone into `.skm/remotes/<name>/`, symlink skills into `$STORE/<name>/…`, no agent wiring
-- `repo ls` — list registered remotes (`--json` for scripts)
+- `repo add` — clone into `.skm/remotes/<name>/`, symlink skills into `$STORE/<name>/…`, no agent wiring (`--pin` for branch/tag/commit)
+- `repo browse` — interactive [skills.sh](https://skills.sh) leaderboard; filter and multi-select repos to register (TTY; see [Git remote sources](#git-remote-sources))
+- `repo ls` — list registered remotes (`--json` for scripts; includes optional `pin`)
+- `repo rm` — remove registry, checkout, and library symlinks (`--force` when profiles still reference skills)
+- `repo pin` — pin to a branch, tag, or commit; `--clear` tracks default branch again
 - `update` — pull all or one remote, refresh library symlinks; does not change agent links (`--dry-run` supported)
 - `sync` / `add-profile` / `remove-profile` — pull remotes first unless `sync --no-pull`
+- `import github:owner/repo` — same as `repo add` (reject `--copy`, `--move`, `--as`)
 
-Full layout, discovery rules, and doctor codes: [SPEC-REMOTE.md](SPEC-REMOTE.md).
+Remote commands are **store commands** (no `./.skm.toml` required). Library entries are symlinks into `.skm/remotes/<name>/`; auth via SSH keys or `GITHUB_TOKEN` / `gh` — no tokens in store files. `skm scan` does not pull; pull is `update` / `sync` only. Layout, discovery, and schemas: [Git remote sources](#git-remote-sources).
 
 ### Profiles & library skills
 
@@ -261,7 +270,7 @@ whole list is visible.
 
 ### `skm use-profiles` / `skm sync`
 
-Both call `reconcile()` after optionally pulling registered remotes (unless `sync --no-pull`). Pull uses `git pull --ff-only` per repo; one failed pull warns and continues. See [SPEC-REMOTE.md](SPEC-REMOTE.md) for remote store layout and `skm update`.
+Both call `reconcile()` after optionally pulling registered remotes (unless `sync --no-pull`). Pull uses `git pull --ff-only` per repo; one failed pull warns and continues. See [Git remote sources](#git-remote-sources).
 
 Reconcile: validate → fix (rebuild index, adopt missing meta) → sync the managed
 local exclude (when `ignore_links` is on) → clean stale `skm` symlinks → apply links. The exclude
@@ -383,6 +392,8 @@ Read-only health report. Setup selection same as `sync`.
 | `remote.checkout_missing` | error | Registered remote has no checkout under `.skm/remotes/` |
 | `remote.pull_failed` | warn | Last pull for a registered remote failed |
 | `remote.library_broken` | warn | Library symlink for a remote skill does not resolve |
+| `remote.stale` | warn | Remote skill checkout changed since last recorded `commit` (JSON includes `recorded_commit`, `current_commit`) |
+| `remote.sync_meta_missing` | info | Remote library skill lacks per-skill sync meta (pre-0.5.x store or not yet synced) |
 | `remote.no_skills` | info | Registered remote, zero skills discovered in checkout |
 | `config.no_active_profile` | info | No active profiles (skips link checks) |
 
@@ -402,7 +413,7 @@ Data on stdout only; no ANSI on stdout.
 
 **`status`:** `{ agents: [{ agent, skills_path, skills: [{ name, store_id, source, source_type? }], conflicts: [{ name, store_id, reason: "conflicted" }] }], profiles }`
 
-**`repo ls`:** `{ repos: [{ name, url, commit, skills_root, skill_count, updated_at }] }`
+**`repo ls`:** `{ repos: [{ name, url, commit, skills_root, skill_count, updated_at, pin? }] }`
 
 **`ls` / `skill ls`:** `{ skills: [...] }` and/or `{ profiles: [...] }` depending on filters.
 
@@ -427,9 +438,99 @@ Respect `NO_COLOR`.
 
 ---
 
+## Agent adapters
+
+Each id in `placement.agents` maps to a skills directory. All adapters use flat symlink names and absolute links into the store. A config may list several agents; each gets its own copy of the links, and ids resolving to the same directory are collapsed.
+
+| Agent | Project | User |
+|-------|---------|------|
+| `generic` | `.agents/skills` | `~/.agents/skills` |
+| `claude-code` | `.claude/skills` | `~/.claude/skills` |
+| `cursor` | `.cursor/skills` | `~/.cursor/skills` |
+| `gemini-cli` | `.gemini/skills` | `~/.gemini/skills` |
+| `copilot-cli` | `.github/skills` | `~/.copilot/skills` |
+
+`generic` is the [Agent Skills](https://agentskills.io) layout (`.agents/skills`). Codex, Cursor, Gemini CLI, and Copilot CLI document that path; each also has a native adapter (`cursor`, `gemini-cli`, `copilot-cli`) when you want the tool-specific directory. Claude Code uses `claude-code` only. Legacy `placement.agent = "codex"` is accepted as an alias for `generic`.
+
+**Planned (not shipped):** Tier 2 — `windsurf`, `cline`, `opencode`, `goose`, `roo-code`, `openclaw`. Tier 3 on demand — `kilocode`, `aider`, `amazon-q`, `augment`, `tabnine`, `sourcegraph-cody`, `antigravity`, `pi`.
+
+---
+
+## Git remote sources
+
+Register git repos as skill sources ([myskills](https://github.com/jverhoeks/myskills)-aligned URL shorthand and discovery). Remote skills appear in the library immediately; agent dirs change only after profile + `sync`.
+
+### Store layout
+
+```
+~/.skill-store/
+├── .skm/
+│   ├── remotes/myskills/       # git checkout
+│   ├── repos/myskills.toml     # registry (url, commit, skills_root, pin?)
+│   ├── meta/myskills.toml      # bundle provenance (source_type=remote)
+│   ├── meta/myskills/deploy.toml  # per-skill commit + synced_at
+│   └── …
+├── myskills/deploy/  →  ../.skm/remotes/myskills/skills/deploy
+└── docx/SKILL.md               # local import (real files)
+```
+
+Discovery walks `$STORE/` (`.skm/` skipped). Scan does not walk `.skm/remotes/` directly.
+
+| | Local import | Remote `repo add` |
+|--|--------------|-------------------|
+| Library path | `$STORE/<id>/` files | `$STORE/<repo>/<skill>/` symlink |
+| `source_type` | `local` / `local-bundle` | `remote` |
+| `commit` / `remote_url` | absent | set |
+| Update | re-import | `update` / `sync` pull |
+
+### Skill discovery in checkouts
+
+First directory under the checkout root with an immediate child containing `SKILL.md`, in order: `skills/`, `.agents/skills/`, `.cursor/skills/`, `.github/skills/`, `.claude/skills/`, `.copilot/skills/`. If none match and `SKILL.md` is at the repo root, the repo is a single-skill source (library id = registry name). Nested skills: `<repo-name>/<path-within-root>`.
+
+### Registry and meta
+
+`.skm/repos/<name>.toml`: `version`, `name`, `url`, `checkout`, `commit`, `skills_root`, `cloned_at`, `updated_at`, optional `pin`.
+
+Bundle `.skm/meta/<name>.toml`: `source_type = "remote"`, `repo_name`, `remote_url`, `path`, `commit`, `hash`, `imported_at`, `transfer = "clone"`.
+
+Per-skill `.skm/meta/<repo>/<skill>.toml`: same fields plus `synced_at` (updated on `update` and `sync`).
+
+### `repo add` behavior
+
+1. `owner/repo` → `https://github.com/owner/repo.git`; other HTTPS/SSH/`file://`/paths pass through.
+2. Reject duplicate name or URL (exit 2).
+3. `git clone` → discover → write registry + meta → library symlinks → rebuild index. No profile or agent changes.
+4. Clone failure rolls back checkout (exit 1). Zero skills: exit 0 with warning; registry kept.
+
+### `repo browse`
+
+TTY required. Fetches `https://skills.sh/api/skills` (JSON); on failure scrapes homepage HTML (`href="/owner/repo/skill"`, weekly install counts). Multi-select registers via `repo add`. Already registered GitHub repos: `registered`, not selectable. Fetch failure: `failed to fetch skills.sh leaderboard: …` (exit 1).
+
+### Pull and symlink refresh
+
+`update` / `sync` (unless `--no-pull`): `git pull --ff-only` per repo; warn and continue on failure; refresh library symlinks (add/remove/repoint); update registry, bundle meta, and per-skill `commit` / `synced_at`. `update` does not call `reconcile()` (no agent symlink changes).
+
+| Command | Pull | Library symlinks | Agent symlinks |
+|---------|------|------------------|----------------|
+| `scan` | No | No | No |
+| `update` | Yes | Yes | No |
+| `sync` | Yes* | Yes | Yes |
+
+\*unless `--no-pull`
+
+### Remote errors
+
+| Situation | Behavior |
+|-----------|----------|
+| Duplicate name / URL | Exit 2 |
+| `git clone` fails | Exit 1, rollback checkout |
+| `git pull` fails | Warn, skip repo, continue |
+| skills.sh fetch fails | Exit 1 |
+| Library path occupied by non-skm dir | Skip skill, warn |
+
+---
+
 ## Deferred
 
-- **Later:** Windows release binary; `skm repo rm`; branch/tag pin; skills.sh browse UI
-- **Later:** Tier 2 agents, skill groups, `skm freeze`, variants (`skm fork`), `skm init --user`, copy-mode placements
-
-Remote GitHub sources shipped in **0.5.0** — see [SPEC-REMOTE.md](SPEC-REMOTE.md) (`skm repo add`, `skm update`, pull-before-`sync`).
+- **Later:** Windows release binary
+- **Later:** Tier 2 agents, skill groups, `skm freeze`, variants (`skm fork`), `skm init --user`, copy-mode placements and copy-mode remote import

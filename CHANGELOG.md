@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.5.1](https://github.com/isaryx/skill-manager/releases/tag/v0.5.1) - 2026-09-07
+
+Remote repo lifecycle, skills.sh browse, and per-skill sync tracking.
+
+### Added
+
+- **`skm repo rm <name>`** — remove a registered remote (checkout, registry, library symlinks, bundle meta). Refuses when profiles reference skills under the repo unless `--force`; TTY confirm by default.
+- **`skm repo pin <name> [ref]`** — pin a remote to a branch, tag, or commit; `skm repo pin <name> --clear` tracks the default branch again. `skm repo add --pin` sets the initial pin.
+- **`skm import github:owner/repo`** — shorthand for `skm repo add` (no `--copy` / `--move`).
+- **Non-GitHub git hosts** — any HTTPS/SSH URL that `git clone` accepts (e.g. GitLab) works; `owner/repo` shorthand remains GitHub-only.
+- **Per-skill remote sync meta** — `commit` and `synced_at` in `.skm/meta/<repo>/<skill>.toml`, updated on `update` and `sync`. Doctor reports `remote.stale` when checkout content has moved on.
+- **`skm repo browse`** — interactive skills.sh leaderboard (JSON API with HTML fallback); filter and multi-select repos to register via `repo add`.
+
+### Changed
+
+- Docs consolidated into [SPEC.md](docs/SPEC.md) and [DESIGN.md](docs/DESIGN.md); removed `SPEC-REMOTE.md` and `SPEC-AGENTS.md`.
+
+### Fixed
+
+- `repo pin --clear` checks out the default branch and refreshes library symlinks (not just registry metadata).
+- `repo rm --force` removes skills under the repo from affected profiles so doctor does not leave `profile.missing_ref` warnings.
+- `repo pin` rejects `--clear` together with a ref argument.
+- `import github:…` rejects `--as` (use `skm repo add --name`).
+
 ## [0.5.0](https://github.com/isaryx/skill-manager/releases/tag/v0.5.0) - 2026-09-07
 
 Remote GitHub skill repositories: register upstream repos, symlink skills into the library, and pull updates on `skm update` / `skm sync`.
@@ -27,8 +53,6 @@ Remote GitHub skill repositories: register upstream repos, symlink skills into t
 - `skm skill validate` accepts a store skill id (e.g. `myskills/deploy`) when the path is not found in the current directory.
 - `repo add` rolls back the checkout when skill validation fails after clone.
 - Git clone failures for missing or private repos report a clearer message than raw `git` auth errors.
-
-## [Unreleased]
 
 ## [0.4.1](https://github.com/isaryx/skill-manager/releases/tag/v0.4.1) - 2026-09-07
 
@@ -226,7 +250,7 @@ Agent adapter cleanup and `switch-agent` fix when agents share a skills director
 ### Changed
 
 - `codex` **agent removed** — use `generic` instead (same `.agents/skills` path). Existing configs with `placement.agent = "codex"` still resolve.
-- `generic` **agent** — help and docs now list supported clients: Codex, Cursor, Gemini CLI, Copilot CLI ([docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md))
+- `generic` **agent** — help and docs now list supported clients: Codex, Cursor, Gemini CLI, Copilot CLI ([docs/SPEC.md](docs/SPEC.md#agent-adapters))
 
 
 
@@ -244,7 +268,7 @@ Health checks, scriptable JSON output, Tier 1 agent adapters, and CLI polish.
 
 - `skm doctor` — read-only health report for the store, profiles, and skill links (`--json` supported)
 - **Global** `--json` — machine-readable output for `status`, `ls`, `skill ls`, and `doctor`
-- **Agent adapters** — `codex`, `gemini-cli`, `copilot-cli` (see [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md))
+- **Agent adapters** — `codex`, `gemini-cli`, `copilot-cli` (see [docs/SPEC.md](docs/SPEC.md#agent-adapters))
 - `--color auto|always|never` — global flag; `auto` respects `NO_COLOR`, `CLICOLOR`, `CLICOLOR_FORCE`
 - `--dry-run` — preview link changes for `sync` and `use-profile`; preview removal for `skill rm`
 - **Shell completions** — `completions/` (bash, zsh, fish); regenerate with `cargo run --example generate-completions`

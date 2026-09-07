@@ -106,7 +106,7 @@ pub enum Commands {
         #[arg(long = "accept-existing-skills")]
         accept_existing_skills: bool,
     },
-    /// Import a skill directory into the store
+    /// Import a skill directory into the store (or `github:owner/repo` to register a remote)
     Import {
         /// Path to the skill directory
         dir: PathBuf,
@@ -278,7 +278,7 @@ pub enum Commands {
         #[arg(short = 'u', long)]
         user: bool,
     },
-    /// Manage remote skill repositories (GitHub)
+    /// Manage remote skill repositories (GitHub, GitLab, and other git hosts)
     Repo {
         #[command(subcommand)]
         action: RepoAction,
@@ -293,8 +293,10 @@ pub enum Commands {
 
 #[derive(Subcommand, Debug)]
 pub enum RepoAction {
-    /// Clone and register a GitHub repository as a skill source
-    #[command(after_help = "Accepts owner/repo shorthand, HTTPS/SSH URLs, or a local path.")]
+    /// Clone and register a git repository as a skill source
+    #[command(
+        after_help = "Accepts owner/repo shorthand (GitHub), HTTPS/SSH URLs (GitHub, GitLab, …), or a local path."
+    )]
     Add {
         /// Repository reference (`owner/repo`, URL, or path)
         #[arg(value_name = "REF")]
@@ -302,6 +304,9 @@ pub enum RepoAction {
         /// Registry and library prefix (default: derived from URL)
         #[arg(long)]
         name: Option<String>,
+        /// Branch, tag, or commit to check out (default: repository default branch)
+        #[arg(long)]
+        pin: Option<String>,
         /// Fail when SKILL.md frontmatter is invalid (default: warn)
         #[arg(long)]
         strict: bool,
@@ -309,6 +314,42 @@ pub enum RepoAction {
     /// List registered remote repositories
     #[command(after_help = "Supports --json.")]
     Ls,
+    /// Remove a registered remote repository from the store
+    #[command(
+        after_help = "Refuses when profiles reference skills under this repo unless --force. \
+                      Off-TTY removal requires --force."
+    )]
+    Rm {
+        /// Registered repository name
+        name: String,
+        /// Remove even when profiles reference skills under this repo
+        #[arg(long)]
+        force: bool,
+    },
+    /// Pin a remote to a branch, tag, or commit (or show/clear the pin)
+    #[command(
+        after_help = "With no REF: print the current pin. Use --clear to track the default branch again."
+    )]
+    Pin {
+        /// Registered repository name
+        name: String,
+        /// Branch, tag, or commit
+        #[arg(value_name = "REF")]
+        r#ref: Option<String>,
+        /// Stop pinning; track the repository default branch on pull
+        #[arg(long)]
+        clear: bool,
+    },
+    /// Browse the skills.sh leaderboard and register selected repositories
+    #[command(
+        after_help = "Fetches skills.sh (JSON API with HTML fallback). Requires a TTY. \
+                      Already registered GitHub repos are marked and skipped on add."
+    )]
+    Browse {
+        /// Fail when SKILL.md frontmatter is invalid (default: warn)
+        #[arg(long)]
+        strict: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]

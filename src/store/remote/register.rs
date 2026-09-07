@@ -9,6 +9,7 @@ use crate::error::SkmError;
 use crate::store::remote::discover::{find_skills_root, list_repo_skills};
 use crate::store::remote::git::{clone_repo, current_commit};
 use crate::store::remote::link::install_library_symlinks;
+use crate::store::remote::meta::{record_remote_skill_sync, RemoteSyncRecord};
 use crate::store::remote::paths::{checkout_path, checkout_relative, remotes_dir};
 use crate::store::remote::registry::{ensure_not_registered, write_repo};
 use crate::store::remote::url::{name_from_url, resolve_url};
@@ -21,6 +22,7 @@ pub fn register_repo(
     ref_str: &str,
     name_override: Option<&str>,
     strict: bool,
+    pin: Option<&str>,
 ) -> Result<Vec<String>, SkmError> {
     store.ensure_initialized()?;
 
@@ -35,7 +37,7 @@ pub fn register_repo(
     fs::create_dir_all(remotes_dir(store))?;
     let checkout = checkout_path(store, &name);
 
-    if let Err(err) = clone_repo(&url, &checkout) {
+    if let Err(err) = clone_repo(&url, &checkout, pin) {
         if checkout.exists() {
             let _ = fs::remove_dir_all(&checkout);
         }
@@ -48,7 +50,7 @@ pub fn register_repo(
             eprintln!(
                 "warning: no skills discovered in repository `{name}`; registry kept for retry"
             );
-            write_empty_registration(store, &name, &url, &checkout)?;
+            write_empty_registration(store, &name, &url, &checkout, pin)?;
             rebuild_from_store(store)?;
             return Ok(Vec::new());
         }
@@ -73,6 +75,7 @@ pub fn register_repo(
         cloned_at: now.clone(),
         updated_at: now.clone(),
         last_pull_error: None,
+        pin: pin.map(ToString::to_string),
     };
     write_repo(store, &reg)?;
 
@@ -88,10 +91,12 @@ pub fn register_repo(
         repo_name: Some(name.clone()),
         remote_url: Some(url),
         commit: Some(commit),
+        synced_at: None,
     };
     write_meta(store, &name, &toml::to_string_pretty(&meta)?)?;
 
     let installed = install_library_symlinks(store, &name, &skills)?;
+    record_remote_skill_sync(store, &reg, &skills, &checkout, RemoteSyncRecord::Full)?;
     rebuild_from_store(store)?;
 
     if installed.is_empty() {
@@ -109,6 +114,7 @@ fn write_empty_registration(
     name: &str,
     url: &str,
     checkout: &PathBuf,
+    pin: Option<&str>,
 ) -> Result<(), SkmError> {
     let commit = current_commit(checkout)?;
     let now = Utc::now().to_rfc3339();
@@ -122,6 +128,7 @@ fn write_empty_registration(
         cloned_at: now.clone(),
         updated_at: now,
         last_pull_error: None,
+        pin: pin.map(ToString::to_string),
     };
     write_repo(store, &reg)?;
     Ok(())

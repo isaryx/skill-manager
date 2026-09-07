@@ -32,8 +32,17 @@ pub fn resolve_url(ref_str: &str) -> Result<String, SkmError> {
     }
 
     Err(SkmError::Usage(format!(
-        "invalid repository ref `{trimmed}`; use owner/repo, a git URL, or an absolute path"
+        "invalid repository ref `{trimmed}`; use owner/repo (GitHub), a git URL, or an absolute path"
     )))
+}
+
+/// Strip `github:` prefix from an import path (`github:owner/repo` → `owner/repo`).
+pub fn github_import_ref(path: &std::path::Path) -> Option<String> {
+    let s = path.to_string_lossy();
+    s.strip_prefix("github:")
+        .map(str::trim)
+        .filter(|r| !r.is_empty())
+        .map(ToString::to_string)
 }
 
 /// Derive the default registry name from a ref or URL.
@@ -99,17 +108,53 @@ pub fn normalize_url(url: &str) -> String {
     without_git.to_lowercase()
 }
 
+/// Extract `owner/repo` from a GitHub HTTPS or `git@` URL, if present.
+pub fn github_owner_repo(url: &str) -> Option<String> {
+    let normalized = normalize_url(url);
+    if let Some(rest) = normalized.strip_prefix("https://github.com/") {
+        let parts: Vec<&str> = rest.split('/').collect();
+        if parts.len() >= 2 && !parts[0].is_empty() && !parts[1].is_empty() {
+            return Some(format!("{}/{}", parts[0], parts[1]));
+        }
+    }
+    if let Some(rest) = normalized.strip_prefix("git@github.com:") {
+        let parts: Vec<&str> = rest.split('/').collect();
+        if parts.len() >= 2 && !parts[0].is_empty() && !parts[1].is_empty() {
+            return Some(format!("{}/{}", parts[0], parts[1]));
+        }
+    }
+    None
+}
+
 fn is_owner_repo(s: &str) -> bool {
     if s.contains("://") || s.starts_with('/') || s.contains('\\') {
         return false;
     }
     let parts: Vec<&str> = s.split('/').collect();
-    parts.len() == 2 && parts[0].len() > 0 && parts[1].len() > 0 && !parts[0].contains('.')
+    parts.len() == 2 && !parts[0].is_empty() && !parts[1].is_empty() && !parts[0].contains('.')
+}
+
+/// Whether `owner/repo` is valid GitHub shorthand (used by browse and URL resolution).
+pub(crate) fn is_github_owner_repo(owner: &str, repo: &str) -> bool {
+    is_owner_repo(&format!("{owner}/{repo}"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn github_owner_repo_from_https_and_ssh() {
+        assert_eq!(
+            github_owner_repo("https://github.com/jverhoeks/myskills.git").as_deref(),
+            Some("jverhoeks/myskills")
+        );
+        assert_eq!(
+            github_owner_repo("git@github.com:O/R.git").as_deref(),
+            Some("o/r")
+        );
+        assert!(github_owner_repo("https://gitlab.com/g/r.git").is_none());
+    }
 
     #[test]
     fn owner_repo_resolves_to_github_https() {
@@ -145,6 +190,15 @@ mod tests {
     }
 
     #[test]
+    fn github_import_ref_strips_prefix() {
+        assert_eq!(
+            github_import_ref(std::path::Path::new("github:owner/repo")).as_deref(),
+            Some("owner/repo")
+        );
+        assert!(github_import_ref(std::path::Path::new("./local")).is_none());
+    }
+
+    #[test]
     fn normalize_strips_git_and_lowercases_host() {
         assert_eq!(
             normalize_url("https://GitHub.com/O/R.git"),
@@ -154,5 +208,11 @@ mod tests {
             normalize_url("git@github.com:O/R.git"),
             "git@github.com:o/r"
         );
+    }
+
+    #[test]
+    fn gitlab_https_url_passes_through() {
+        let url = "https://gitlab.com/group/my-repo.git";
+        assert_eq!(resolve_url(url).unwrap(), url);
     }
 }

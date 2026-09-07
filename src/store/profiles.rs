@@ -274,6 +274,24 @@ pub fn remove_skills_from_profiles(
     Ok(updated)
 }
 
+/// Profile names that reference any skill under a remote repo prefix.
+pub fn profiles_referencing_repo_prefix(
+    store: &StorePaths,
+    repo_name: &str,
+) -> Result<Vec<String>, SkmError> {
+    let prefix = format!("{repo_name}/");
+    let mut names = Vec::new();
+    for name in list_profiles(store)? {
+        let profile = load_profile(store, &name)?;
+        if profile.skill.iter().any(|entry| {
+            entry.id == repo_name || entry.id.starts_with(&prefix)
+        }) {
+            names.push(name);
+        }
+    }
+    Ok(names)
+}
+
 /// Profile names that reference any of the given skill IDs.
 pub fn profiles_referencing_skills(
     store: &StorePaths,

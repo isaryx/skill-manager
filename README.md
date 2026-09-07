@@ -1,6 +1,31 @@
 # skill-manager (`skm`)
 
-**skm** keeps canonical skill directories in one local store, groups skill IDs into named profiles, and creates symlinks in agent-specific directories (Claude Code, Cursor, or the generic Agent Skills layout). Run `skm sync` to reconcile those links.
+**skm** manages a local library of [Agent Skills](https://agentskills.io) and wires them into Claude Code, Cursor, and other tools via symlinks. You keep one canonical store, group skills into named profiles, and run `skm sync` to reconcile links.
+
+A skill is a directory with a `SKILL.md` file at its root (or nested under a skill tree).
+
+## Quick start
+
+```bash
+skm init --agent claude-code           # or --agent claude-code,cursor for several
+skm import ./my-skill --copy
+skm profile setup work
+skm add-profile work
+skm status
+```
+
+When setup succeeds, `skm status` shows target agents, active profiles, and linked skills:
+
+```
+Target agents:
+  claude-code (.claude/skills)
+Active profiles: work
+
+Linked
+  my-skill -> ~/.skill-store/my-skill
+```
+
+Most project commands read `./.skm.toml` in the current directory. Pass `--user` / `-u` to use `~/.skm.toml` instead.
 
 ## How it works
 
@@ -8,20 +33,51 @@
 |-------|----------------|
 | **Store** | Canonical copies of your skills (one folder per skill) |
 | **Profile** | A named set of skills to activate together (`work`, `personal`, …) |
-| **Sync** | Creates symlinks from the active profiles into every target agent’s skills directory |
+| **Sync** | Creates symlinks from the active profiles into every target agent's skills directory |
 
-**Store vs profile:** `skm skill setup` controls which store skills are enabled (disable without deleting). `skm profile setup` picks which enabled skills belong to a profile.
+**Store vs profile:** `skm skill setup` controls which store skills are enabled (disable without deleting). `skm profile setup` picks which enabled skills belong to a profile. Both open a full-screen picker; keys are shown in the bar at the bottom of the screen.
 
-Both open a full-screen picker: `/` to search, `space` to toggle, `enter` to confirm, `q` to quit. Arrow keys and `k`/`j` both move. Keys are listed in the bar at the bottom of the screen.
+## Install
 
-**Profiles can extend other profiles.** `skm profile extend work` picks the profiles `work` inherits from; its skill list is the union, flattened when you sync. Editing a base profile updates everything extending it. `skm profile show` marks where each skill came from:
+macOS and Linux only (symlink-based). Windows is not supported yet — see [docs/SPEC.md](docs/SPEC.md).
 
+**Homebrew** ([isaryx/collection](https://github.com/isaryx/homebrew-collection)):
+
+```bash
+brew install isaryx/collection/skm
 ```
-docx
-git (from base)
+
+**Install script** (macOS and Linux, `arm64` / `x86_64`; default install dir: `~/.local/bin`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/install.sh | bash
 ```
 
-`skm profile show work --tree` shows the whole graph, including the path each skill arrived by:
+Pin a release with `SKM_VERSION=v0.4.0` or `--version v0.4.0`. Use `--install-dir` for a custom path and `--dry-run` to preview. Unsupported OS or architecture exits with a clear error.
+
+Other install paths: download a binary from [GitHub Releases](https://github.com/isaryx/skill-manager/releases), build from source with `cargo install --path .`, or run `scripts/check-update.sh` to compare against the latest release. Details in [docs/SPEC.md](docs/SPEC.md).
+
+## Common workflows
+
+**Import from outside the store**
+
+```bash
+skm import ./path/to/skill --copy          # or --move
+skm import ./skill-tree --copy --as local  # nested skills under one bundle name
+```
+
+**Copy skills into the store yourself**
+
+If you place skill folders directly under the store (for example `cp -r ./local ~/.skill-store/local`), run `skm scan` to refresh the index and register them. Existing import metadata is never overwritten.
+
+**Compose profiles**
+
+Profiles can extend other profiles. `skm profile extend work` picks which profiles `work` inherits from; its skill list is the union, flattened when you sync:
+
+```bash
+skm profile extend work
+skm profile show work --tree
+```
 
 ```
 work
@@ -37,68 +93,16 @@ work
 4 skills resolved
 ```
 
-A skill is a directory with a `SKILL.md` file at its root (or nested under a skill tree).
-
-## Install
-
-**Platforms:** macOS and Linux (symlink-based installs). Windows is not supported yet (planned for 0.3.0 — see [docs/SPEC.md](docs/SPEC.md)).
-
-**Homebrew** ([isaryx/collection](https://github.com/isaryx/homebrew-collection)):
+**Check health**
 
 ```bash
-brew install isaryx/collection/skm
-```
-
-**Install script** (macOS and Linux, `arm64` / `x86_64`):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/install.sh | bash
-```
-
-Install to a custom directory (default: `~/.local/bin`):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/install.sh | bash -s -- --install-dir /usr/local/bin
-```
-
-Pin a release with `SKM_VERSION=v0.4.0` or `--version v0.4.0`. Preview with `--dry-run`. Unsupported OS or architecture exits with a clear error.
-
-**Check for updates** (requires `skm` on `PATH`):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/check-update.sh | bash
-curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/check-update.sh | bash -s -- --json
-```
-
-Exits **1** when a newer release is available; diagnostics on stderr, JSON on stdout with `--json`.
-
-**From a release** — download `skm` for your platform from [GitHub Releases](https://github.com/isaryx/skill-manager/releases) (`macos-arm64`, `macos-x86_64`, `linux-arm64`, or `linux-x86_64`), extract the binary, and put it on your `PATH`.
-
-**From source** (requires [Rust](https://rustup.rs)):
-
-```bash
-git clone https://github.com/isaryx/skill-manager.git
-cd skill-manager
-cargo install --path .
-```
-
-## Quick start
-
-```bash
-skm init --agent claude-code           # or --agent claude-code,cursor for several
-skm import ./my-skill --copy
-skm profile setup work
-skm add-profile work
-skm status
+skm doctor           # human-readable report; exit 1 on warnings/errors
+skm doctor --json    # for scripts (includes link.conflict when a profile skill is blocked)
 ```
 
 ## Project and hand-installed skills
 
-Repositories often ship skills under `.claude/skills/`, `.cursor/skills/`, and similar paths. **skm does not delete or overwrite skills it did not place.** It only manages symlinks whose targets live inside your skill store.
-
-In Git projects, skm keeps its own links out of `git add` through a managed block in the clone-local
-`.git/info/exclude`; it never edits a project `.gitignore`. This is on by default. Set
-`ignore_links = false` under `[placement]` in `.skm.toml` to opt out.
+**skm does not delete or overwrite skills it did not place.** It only manages symlinks whose targets live inside your skill store. In Git projects, skm keeps its own links out of `git add` through a managed block in `.git/info/exclude` (never `.gitignore`). Set `ignore_links = false` under `[placement]` in `.skm.toml` to opt out.
 
 | Situation | What skm does |
 |-----------|----------------|
@@ -108,52 +112,19 @@ In Git projects, skm keeps its own links out of `git add` through a managed bloc
 
 Check results with `skm status` (Linked and **Conflicts** sections) or `skm doctor` (`link.conflict` is informational — exit 0).
 
-## Common workflows
-
-**Import from outside the store**
-
-```bash
-skm import ./path/to/skill --copy          # or --move
-skm import ./skill-tree --copy --as local  # nested skills under one bundle name
-```
-
-**Copy skills into the store yourself**
-
-If you place skill folders directly under the store (for example `cp -r ./local ~/.skill-store/local`), run `skm scan` to refresh the index and register them. Existing import metadata is never overwritten.
-
-**Check health**
-
-```bash
-skm doctor           # human-readable report; exit 1 on warnings/errors
-skm doctor --json    # for scripts (includes link.conflict when a profile skill is blocked)
-```
-
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `skm init` | Set up the skill store and write `./.skm.toml`. Refuses if that file already exists (`use-agents` / `use-profiles`); `--force` overwrites. `--accept-existing-skills` when the agent folder already has skills |
-| `skm import <dir> --copy\|--move` | Import a skill or nested skill tree into the store (`--strict` fails on invalid frontmatter) |
-| `skm ls` | List skills and profiles (`-s`/`--skill` or `-p`/`--profile` to filter) |
-| `skm skill ls` / `setup` / `rm` / `validate` | List, enable/disable, remove, or validate `SKILL.md` frontmatter |
-| `skm profile setup/ls/show/rm` | Create and manage profiles |
-| `skm profile extend <profile>` | Pick which profiles this one inherits skills from (creates the profile if missing) |
-| `skm use-profiles` | Choose active profiles interactively (checkbox list; TTY only; `./.skm.toml` unless `--user`) |
-| `skm add-profile <profile>` | Add a profile to the active set and sync links (`./.skm.toml` unless `--user`) |
-| `skm remove-profile <profile>` | Remove a profile from the active set and sync links (`./.skm.toml` unless `--user`) |
-| `skm use-agents` | Choose target agents interactively (checkbox list; TTY only; `./.skm.toml` unless `--user`) |
-| `skm add-agent <agent>` | Add an agent to the target set and sync links (`./.skm.toml` unless `--user`) |
-| `skm remove-agent <agent>` | Remove an agent from the target set (`./.skm.toml` unless `--user`) |
-| `skm destroy` | Remove `./.skm.toml`, store-owned links in every known project agent dir, and the managed git exclude (store kept; `--force` off-TTY) |
-| `skm sync` | Refresh skill links and index without changing the active profiles (`./.skm.toml` unless `--user`; `--strict` fails on invalid frontmatter) |
-| `skm status` | Show target agents, active profiles, linked skills, and name conflicts (`./.skm.toml` unless `--user`) |
-| `skm doctor` | Health report for store, profiles, and links |
-| `skm scan` | Refresh the skill index and adopt skills added to the store without metadata |
-| `skm search <terms...>` | Case-insensitive search of indexed skill IDs and descriptions |
+Grouped overview — every flag and exit code is in [docs/SPEC.md](docs/SPEC.md).
 
-Global flags: `--verbose` / `-v`, `--store <path>` (env: `SKM_STORE`), `--json` (on `status`, `ls`, `search`, `skill ls`, `skill validate`, `doctor`), `--dry-run` (on `sync`, `add-profile`, `remove-profile`, `skill rm`, `destroy`), `--color auto|always|never`.
+| Group | Commands |
+|-------|----------|
+| Setup | `init`, `destroy` |
+| Store | `import`, `scan`, `search`, `ls`, `skill ls/setup/rm/validate` |
+| Profiles | `profile setup/ls/show/rm/extend`, `use-profiles`, `add-profile`, `remove-profile` |
+| Agents | `use-agents`, `add-agent`, `remove-agent` |
+| Sync & status | `sync`, `status`, `doctor` |
 
-Many commands accept `--user` / `-u` to use `~/.skm.toml` instead of `./.skm.toml`.
+Global flags: `--verbose` / `-v`, `--store <path>` (env: `SKM_STORE`), `--json`, `--dry-run`, `--color auto|always|never`. See SPEC for which commands accept each flag.
 
 ### Scripting and CI
 
@@ -161,31 +132,13 @@ Many commands accept `--user` / `-u` to use `~/.skm.toml` instead of `./.skm.tom
 - Pass `--agent` to `skm init`; repeat it or comma-separate for several agents (`--agent claude-code,cursor`). Use `skm add-agent` / `skm remove-agent` to change the set after init. If a target directory already contains skills, also pass `--accept-existing-skills`.
 - Use `--json` with `status`, `ls`, `search`, `skill ls`, `skill validate`, and `doctor`. Structured data stays on stdout; progress and errors go to stderr.
 - Use `--dry-run` before `sync`, `add-profile`, `remove-profile`, or `skill rm`. Non-interactive `skill rm` also requires `--force`.
-- Exit codes are `0` for success, `1` for runtime or health-check failure, and `2` for invalid usage or resolution conflicts.
-
-**Preview changes**
+- Exit codes: `0` success, `1` runtime or health-check failure, `2` invalid usage or resolution conflicts.
 
 ```bash
 skm sync --dry-run
 skm add-profile work --dry-run
 skm skill rm docx --dry-run
 ```
-
-## Shell completions
-
-Regenerate after CLI changes:
-
-```bash
-cargo run --example generate-completions
-```
-
-Install (bash example):
-
-```bash
-source completions/skm.bash
-```
-
-Files: `completions/skm.bash`, `completions/_skm` (zsh), `completions/skm.fish`.
 
 ## Configuration
 
@@ -207,21 +160,22 @@ Store path resolution (first match wins): `--store` → `SKM_STORE` → app conf
 | `gemini-cli` | `.gemini/skills` |
 | `copilot-cli` | `.github/skills` (project); `~/.copilot/skills` (`--user`) |
 
-A config file targets one or more agents via `placement.agents`:
-
 ```toml
 [placement]
 agents = ["claude-code", "cursor"]
 ```
 
-Every target agent gets its own symlinks, so the same profile can serve several tools at once. Run `skm use-agents` to change the set interactively, or `skm add-agent` / `skm remove-agent` in scripts — removed agents have their store-owned links unwired. Setups written before multi-agent support (`agent = "claude-code"`) are still read, and rewritten as a list the next time skm writes the file. Project vs user paths are listed in [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md).
+Every target agent gets its own symlinks, so the same profile can serve several tools at once. Project vs user paths are listed in [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md).
 
 ## Documentation
 
-- [CHANGELOG.md](CHANGELOG.md) — release history
-- [docs/SPEC.md](docs/SPEC.md) — command reference
-- [docs/DESIGN.md](docs/DESIGN.md) — architecture
-- [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md) — agent paths
+| Doc | Use when you need |
+|-----|-------------------|
+| This README | Install, quick start, everyday workflows |
+| [docs/SPEC.md](docs/SPEC.md) | Full command reference, flags, exit codes |
+| [docs/DESIGN.md](docs/DESIGN.md) | Architecture and design decisions |
+| [docs/SPEC-AGENTS.md](docs/SPEC-AGENTS.md) | Agent paths and placement rules |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ## Development
 
@@ -232,6 +186,7 @@ cargo build
 cargo test
 cargo clippy -- -D warnings
 cargo fmt --check
+cargo run --example generate-completions   # writes completions/skm.{bash,fish} and completions/_skm
 ```
 
 ## License

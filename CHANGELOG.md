@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1](https://github.com/isaryx/skill-manager/releases/tag/v0.4.1) - 2026-09-07
+
+Bug fixes for import validation, search, doctor, and status; README onboarding refresh; remote-sources spec draft.
+
+### Added
+
+- **[SPEC-REMOTE.md](docs/SPEC-REMOTE.md)** — draft spec for GitHub remote skill sources (`skm repo add`, `skm update`, pull-before-`sync`) targeting 0.5.0.
+
+### Changed
+
+- **README** — restructured for onboarding; detailed workflow deferred to SPEC.
+
 ### Fixed
 
 - **`skm import`** — fails when `name` in `SKILL.md` does not match the source directory (or `--as` target when renaming); no longer warns and imports under a different store id.

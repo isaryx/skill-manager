@@ -53,7 +53,7 @@ brew install isaryx/collection/skm
 curl -fsSL https://raw.githubusercontent.com/isaryx/skill-manager/master/scripts/install.sh | bash
 ```
 
-Pin a release with `SKM_VERSION=v0.4.0` or `--version v0.4.0`. Use `--install-dir` for a custom path and `--dry-run` to preview. Unsupported OS or architecture exits with a clear error.
+Pin a release with `SKM_VERSION=v0.4.1` or `--version v0.4.1`. Use `--install-dir` for a custom path and `--dry-run` to preview. Unsupported OS or architecture exits with a clear error.
 
 Other install paths: download a binary from [GitHub Releases](https://github.com/isaryx/skill-manager/releases), build from source with `cargo install --path .`, or run `scripts/check-update.sh` to compare against the latest release. Details in [docs/SPEC.md](docs/SPEC.md).
 

@@ -1,6 +1,6 @@
 # Spec: `skm`
 
-**Version:** 0.4.0 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
+**Version:** 0.4.1 · Architecture: [DESIGN.md](DESIGN.md) · Agents: [SPEC-AGENTS.md](SPEC-AGENTS.md)
 
 CLI for managing AI agent skills: one library, named profiles, symlink-based installs.
 

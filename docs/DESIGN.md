@@ -1,6 +1,6 @@
 # Design
 
-**CLI:** `skm` · **Version:** 0.4.0
+**CLI:** `skm` · **Version:** 0.4.1
 
 Contributor-facing architecture. User-visible behavior lives in [SPEC.md](SPEC.md). CLI conventions: [../guides/cli-guidelines.md](../guides/cli-guidelines.md).
 

@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use chrono::Utc;
 
@@ -112,7 +112,7 @@ fn write_empty_registration(
     store: &StorePaths,
     name: &str,
     url: &str,
-    checkout: &PathBuf,
+    checkout: &Path,
     pin: Option<&str>,
 ) -> Result<(), SkmError> {
     let commit = current_commit(checkout)?;

@@ -11,7 +11,7 @@ use crate::store::StorePaths;
 pub fn set_repo_pin(store: &StorePaths, name: &str, pin: &str) -> Result<(), SkmError> {
     store.ensure_initialized()?;
     let mut reg = read_repo(store, name)?;
-    let checkout = checkout_path(store, &name);
+    let checkout = checkout_path(store, name);
     if !checkout.is_dir() {
         return Err(SkmError::Usage(format!(
             "checkout missing for remote `{name}`; run `skm doctor`"
@@ -33,7 +33,7 @@ pub fn set_repo_pin(store: &StorePaths, name: &str, pin: &str) -> Result<(), Skm
 pub fn clear_repo_pin(store: &StorePaths, name: &str) -> Result<(), SkmError> {
     store.ensure_initialized()?;
     let mut reg = read_repo(store, name)?;
-    let checkout = checkout_path(store, &name);
+    let checkout = checkout_path(store, name);
     if !checkout.is_dir() {
         return Err(SkmError::Usage(format!(
             "checkout missing for remote `{name}`; run `skm doctor`"
